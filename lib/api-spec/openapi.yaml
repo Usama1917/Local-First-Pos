@@ -3,20 +3,37 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: POS System API for Egyptian retail shop
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
-    description: Health operations
+  - name: auth
+  - name: dashboard
+  - name: products
+  - name: categories
+  - name: brands
+  - name: units
+  - name: customers
+  - name: craftsmen
+  - name: suppliers
+  - name: quotations
+  - name: sales
+  - name: purchases
+  - name: stock
+  - name: payments
+  - name: drafts
+  - name: reports
+  - name: settings
+  - name: backup
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,13 +41,2437 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  # Auth
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginInput"
+      responses:
+        "200":
+          description: Logged in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthUser"
+        "401":
+          description: Invalid credentials
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Get current user
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthUser"
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: Logout
+      responses:
+        "200":
+          description: Logged out
+
+  # Dashboard
+  /dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [dashboard]
+      summary: Get dashboard summary stats
+      responses:
+        "200":
+          description: Dashboard summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+  /dashboard/recent-invoices:
+    get:
+      operationId: getRecentInvoices
+      tags: [dashboard]
+      summary: Get recent sales invoices
+      responses:
+        "200":
+          description: Recent invoices
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SalesInvoice"
+  /dashboard/recent-quotations:
+    get:
+      operationId: getRecentQuotations
+      tags: [dashboard]
+      summary: Get recent quotations
+      responses:
+        "200":
+          description: Recent quotations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Quotation"
+  /dashboard/low-stock:
+    get:
+      operationId: getLowStockProducts
+      tags: [dashboard]
+      summary: Get low stock products
+      responses:
+        "200":
+          description: Low stock items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Product"
+
+  # Categories
+  /categories:
+    get:
+      operationId: listCategories
+      tags: [categories]
+      summary: List all categories
+      responses:
+        "200":
+          description: List of categories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Category"
+    post:
+      operationId: createCategory
+      tags: [categories]
+      summary: Create category
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CategoryInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Category"
+  /categories/{id}:
+    get:
+      operationId: getCategory
+      tags: [categories]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: Category
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Category"
+    patch:
+      operationId: updateCategory
+      tags: [categories]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CategoryUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Category"
+    delete:
+      operationId: deleteCategory
+      tags: [categories]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: Deleted
+
+  # Brands
+  /brands:
+    get:
+      operationId: listBrands
+      tags: [brands]
+      summary: List all brands
+      responses:
+        "200":
+          description: List of brands
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Brand"
+    post:
+      operationId: createBrand
+      tags: [brands]
+      summary: Create brand
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BrandInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Brand"
+  /brands/{id}:
+    patch:
+      operationId: updateBrand
+      tags: [brands]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BrandUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Brand"
+    delete:
+      operationId: deleteBrand
+      tags: [brands]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: Deleted
+
+  # Units
+  /units:
+    get:
+      operationId: listUnits
+      tags: [units]
+      summary: List all units
+      responses:
+        "200":
+          description: List of units
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Unit"
+    post:
+      operationId: createUnit
+      tags: [units]
+      summary: Create unit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UnitInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Unit"
+  /units/{id}:
+    patch:
+      operationId: updateUnit
+      tags: [units]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UnitUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Unit"
+    delete:
+      operationId: deleteUnit
+      tags: [units]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: Deleted
+
+  # Products
+  /products:
+    get:
+      operationId: listProducts
+      tags: [products]
+      summary: List products with optional filters
+      parameters:
+        - { name: search, in: query, schema: { type: string } }
+        - { name: categoryId, in: query, schema: { type: integer } }
+        - { name: brandId, in: query, schema: { type: integer } }
+        - { name: supplierId, in: query, schema: { type: integer } }
+        - { name: lowStock, in: query, schema: { type: boolean } }
+        - { name: active, in: query, schema: { type: boolean } }
+        - { name: page, in: query, schema: { type: integer } }
+        - { name: limit, in: query, schema: { type: integer } }
+      responses:
+        "200":
+          description: Paginated products
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductsPage"
+    post:
+      operationId: createProduct
+      tags: [products]
+      summary: Create product
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+  /products/search:
+    get:
+      operationId: searchProducts
+      tags: [products]
+      summary: Fast product search for POS (by name, SKU, barcode)
+      parameters:
+        - { name: q, in: query, required: true, schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer } }
+      responses:
+        "200":
+          description: Matching products
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Product"
+  /products/{id}:
+    get:
+      operationId: getProduct
+      tags: [products]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: Product
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+    patch:
+      operationId: updateProduct
+      tags: [products]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+    delete:
+      operationId: deleteProduct
+      tags: [products]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: Deleted
+  /products/{id}/movements:
+    get:
+      operationId: getProductMovements
+      tags: [products]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: Stock movements for product
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/StockMovement"
+
+  # Customers
+  /customers:
+    get:
+      operationId: listCustomers
+      tags: [customers]
+      summary: List customers
+      parameters:
+        - { name: search, in: query, schema: { type: string } }
+        - { name: page, in: query, schema: { type: integer } }
+        - { name: limit, in: query, schema: { type: integer } }
+      responses:
+        "200":
+          description: Customers
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomersPage"
+    post:
+      operationId: createCustomer
+      tags: [customers]
+      summary: Create customer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CustomerInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Customer"
+  /customers/{id}:
+    get:
+      operationId: getCustomer
+      tags: [customers]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: Customer profile with debts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerProfile"
+    patch:
+      operationId: updateCustomer
+      tags: [customers]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CustomerUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Customer"
+    delete:
+      operationId: deleteCustomer
+      tags: [customers]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: Deleted
+  /customers/{id}/statement:
+    get:
+      operationId: getCustomerStatement
+      tags: [customers]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: Customer statement
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerStatement"
+  /customers/{id}/payments:
+    get:
+      operationId: getCustomerPayments
+      tags: [customers]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: Customer payments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CustomerPayment"
+    post:
+      operationId: addCustomerPayment
+      tags: [customers]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CustomerPaymentInput"
+      responses:
+        "201":
+          description: Payment recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerPayment"
+
+  # Craftsmen
+  /craftsmen:
+    get:
+      operationId: listCraftsmen
+      tags: [craftsmen]
+      summary: List craftsmen
+      parameters:
+        - { name: search, in: query, schema: { type: string } }
+        - { name: page, in: query, schema: { type: integer } }
+        - { name: limit, in: query, schema: { type: integer } }
+      responses:
+        "200":
+          description: Craftsmen
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CraftsmenPage"
+    post:
+      operationId: createCraftsman
+      tags: [craftsmen]
+      summary: Create craftsman
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CraftsmanInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Craftsman"
+  /craftsmen/{id}:
+    get:
+      operationId: getCraftsman
+      tags: [craftsmen]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: Craftsman profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CraftsmanProfile"
+    patch:
+      operationId: updateCraftsman
+      tags: [craftsmen]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CraftsmanUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Craftsman"
+    delete:
+      operationId: deleteCraftsman
+      tags: [craftsmen]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: Deleted
+
+  # Suppliers
+  /suppliers:
+    get:
+      operationId: listSuppliers
+      tags: [suppliers]
+      summary: List suppliers
+      parameters:
+        - { name: search, in: query, schema: { type: string } }
+        - { name: page, in: query, schema: { type: integer } }
+        - { name: limit, in: query, schema: { type: integer } }
+      responses:
+        "200":
+          description: Suppliers
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuppliersPage"
+    post:
+      operationId: createSupplier
+      tags: [suppliers]
+      summary: Create supplier
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SupplierInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Supplier"
+  /suppliers/{id}:
+    get:
+      operationId: getSupplier
+      tags: [suppliers]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: Supplier profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupplierProfile"
+    patch:
+      operationId: updateSupplier
+      tags: [suppliers]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SupplierUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Supplier"
+    delete:
+      operationId: deleteSupplier
+      tags: [suppliers]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: Deleted
+  /suppliers/{id}/payments:
+    get:
+      operationId: getSupplierPayments
+      tags: [suppliers]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: Supplier payments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SupplierPayment"
+    post:
+      operationId: addSupplierPayment
+      tags: [suppliers]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SupplierPaymentInput"
+      responses:
+        "201":
+          description: Payment recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SupplierPayment"
+
+  # Quotations
+  /quotations:
+    get:
+      operationId: listQuotations
+      tags: [quotations]
+      summary: List quotations
+      parameters:
+        - { name: search, in: query, schema: { type: string } }
+        - { name: status, in: query, schema: { type: string } }
+        - { name: customerId, in: query, schema: { type: integer } }
+        - { name: from, in: query, schema: { type: string } }
+        - { name: to, in: query, schema: { type: string } }
+        - { name: page, in: query, schema: { type: integer } }
+        - { name: limit, in: query, schema: { type: integer } }
+      responses:
+        "200":
+          description: Quotations
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuotationsPage"
+    post:
+      operationId: createQuotation
+      tags: [quotations]
+      summary: Create quotation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QuotationInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Quotation"
+  /quotations/{id}:
+    get:
+      operationId: getQuotation
+      tags: [quotations]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: Quotation with items
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuotationDetail"
+    patch:
+      operationId: updateQuotation
+      tags: [quotations]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QuotationUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuotationDetail"
+    delete:
+      operationId: deleteQuotation
+      tags: [quotations]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: Deleted
+  /quotations/{id}/convert:
+    post:
+      operationId: convertQuotationToInvoice
+      tags: [quotations]
+      summary: Convert quotation to sales invoice
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QuotationConvertInput"
+      responses:
+        "201":
+          description: Sales invoice created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SalesInvoiceDetail"
+  /quotations/{id}/duplicate:
+    post:
+      operationId: duplicateQuotation
+      tags: [quotations]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "201":
+          description: Duplicated quotation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuotationDetail"
+
+  # Sales Invoices
+  /sales:
+    get:
+      operationId: listSalesInvoices
+      tags: [sales]
+      summary: List sales invoices
+      parameters:
+        - { name: search, in: query, schema: { type: string } }
+        - { name: status, in: query, schema: { type: string } }
+        - { name: customerId, in: query, schema: { type: integer } }
+        - { name: craftsmanId, in: query, schema: { type: integer } }
+        - { name: from, in: query, schema: { type: string } }
+        - { name: to, in: query, schema: { type: string } }
+        - { name: page, in: query, schema: { type: integer } }
+        - { name: limit, in: query, schema: { type: integer } }
+      responses:
+        "200":
+          description: Sales invoices
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SalesPage"
+    post:
+      operationId: createSalesInvoice
+      tags: [sales]
+      summary: Create/draft sales invoice
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SalesInvoiceInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SalesInvoiceDetail"
+  /sales/{id}:
+    get:
+      operationId: getSalesInvoice
+      tags: [sales]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: Sales invoice with items
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SalesInvoiceDetail"
+    patch:
+      operationId: updateSalesInvoice
+      tags: [sales]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SalesInvoiceUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SalesInvoiceDetail"
+    delete:
+      operationId: deleteSalesInvoice
+      tags: [sales]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: Deleted
+  /sales/{id}/finalize:
+    post:
+      operationId: finalizeSalesInvoice
+      tags: [sales]
+      summary: Finalize invoice - reduces stock and records debt
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FinalizeInvoiceInput"
+      responses:
+        "200":
+          description: Finalized invoice
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SalesInvoiceDetail"
+  /sales/{id}/cancel:
+    post:
+      operationId: cancelSalesInvoice
+      tags: [sales]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: Cancelled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SalesInvoiceDetail"
+  /sales/lookup/{serial}:
+    get:
+      operationId: lookupSalesInvoiceBySerial
+      tags: [sales]
+      summary: Lookup invoice by serial or barcode
+      parameters:
+        - { name: serial, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Found invoice
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SalesInvoiceDetail"
+        "404":
+          description: Not found
+
+  # Purchase Invoices
+  /purchases:
+    get:
+      operationId: listPurchaseInvoices
+      tags: [purchases]
+      summary: List purchase invoices
+      parameters:
+        - { name: search, in: query, schema: { type: string } }
+        - { name: status, in: query, schema: { type: string } }
+        - { name: supplierId, in: query, schema: { type: integer } }
+        - { name: from, in: query, schema: { type: string } }
+        - { name: to, in: query, schema: { type: string } }
+        - { name: page, in: query, schema: { type: integer } }
+        - { name: limit, in: query, schema: { type: integer } }
+      responses:
+        "200":
+          description: Purchase invoices
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PurchasesPage"
+    post:
+      operationId: createPurchaseInvoice
+      tags: [purchases]
+      summary: Create/draft purchase invoice
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PurchaseInvoiceInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PurchaseInvoiceDetail"
+  /purchases/{id}:
+    get:
+      operationId: getPurchaseInvoice
+      tags: [purchases]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: Purchase invoice with items
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PurchaseInvoiceDetail"
+    patch:
+      operationId: updatePurchaseInvoice
+      tags: [purchases]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PurchaseInvoiceUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PurchaseInvoiceDetail"
+    delete:
+      operationId: deletePurchaseInvoice
+      tags: [purchases]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: Deleted
+  /purchases/{id}/finalize:
+    post:
+      operationId: finalizePurchaseInvoice
+      tags: [purchases]
+      summary: Finalize purchase - increases stock and records supplier debt
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FinalizePurchaseInput"
+      responses:
+        "200":
+          description: Finalized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PurchaseInvoiceDetail"
+
+  # Stock
+  /stock/movements:
+    get:
+      operationId: listStockMovements
+      tags: [stock]
+      summary: List stock movements
+      parameters:
+        - { name: productId, in: query, schema: { type: integer } }
+        - { name: type, in: query, schema: { type: string } }
+        - { name: from, in: query, schema: { type: string } }
+        - { name: to, in: query, schema: { type: string } }
+        - { name: page, in: query, schema: { type: integer } }
+        - { name: limit, in: query, schema: { type: integer } }
+      responses:
+        "200":
+          description: Stock movements
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StockMovementsPage"
+  /stock/adjustment:
+    post:
+      operationId: createStockAdjustment
+      tags: [stock]
+      summary: Manual stock adjustment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StockAdjustmentInput"
+      responses:
+        "201":
+          description: Adjustment created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StockMovement"
+
+  # Stock Counts
+  /stock-counts:
+    get:
+      operationId: listStockCounts
+      tags: [stock]
+      summary: List stock count sessions
+      responses:
+        "200":
+          description: Stock count sessions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/StockCount"
+    post:
+      operationId: createStockCount
+      tags: [stock]
+      summary: Start new stock count session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StockCountInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StockCountDetail"
+  /stock-counts/{id}:
+    get:
+      operationId: getStockCount
+      tags: [stock]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: Stock count detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StockCountDetail"
+    patch:
+      operationId: updateStockCount
+      tags: [stock]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StockCountUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StockCountDetail"
+  /stock-counts/{id}/finalize:
+    post:
+      operationId: finalizeStockCount
+      tags: [stock]
+      summary: Finalize stock count and apply adjustments
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: Finalized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StockCountDetail"
+
+  # Debts
+  /debts/customers:
+    get:
+      operationId: listCustomerDebts
+      tags: [payments]
+      summary: List customers with outstanding debts
+      responses:
+        "200":
+          description: Customer debts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DebtSummary"
+  /debts/suppliers:
+    get:
+      operationId: listSupplierDebts
+      tags: [payments]
+      summary: List suppliers with outstanding balances
+      responses:
+        "200":
+          description: Supplier debts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DebtSummary"
+
+  # Drafts
+  /drafts:
+    get:
+      operationId: listDrafts
+      tags: [drafts]
+      parameters:
+        - { name: type, in: query, schema: { type: string } }
+      responses:
+        "200":
+          description: Drafts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Draft"
+    post:
+      operationId: saveDraft
+      tags: [drafts]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DraftInput"
+      responses:
+        "200":
+          description: Draft saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Draft"
+  /drafts/{type}/{entityId}:
+    get:
+      operationId: getDraft
+      tags: [drafts]
+      parameters:
+        - { name: type, in: path, required: true, schema: { type: string } }
+        - { name: entityId, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Draft
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Draft"
+        "404":
+          description: No draft found
+    delete:
+      operationId: deleteDraft
+      tags: [drafts]
+      parameters:
+        - { name: type, in: path, required: true, schema: { type: string } }
+        - { name: entityId, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Deleted
+
+  # Reports
+  /reports/sales:
+    get:
+      operationId: getSalesReport
+      tags: [reports]
+      parameters:
+        - { name: from, in: query, required: true, schema: { type: string } }
+        - { name: to, in: query, required: true, schema: { type: string } }
+        - { name: customerId, in: query, schema: { type: integer } }
+        - { name: craftsmanId, in: query, schema: { type: integer } }
+      responses:
+        "200":
+          description: Sales report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SalesReport"
+  /reports/inventory:
+    get:
+      operationId: getInventoryReport
+      tags: [reports]
+      parameters:
+        - { name: categoryId, in: query, schema: { type: integer } }
+        - { name: supplierId, in: query, schema: { type: integer } }
+        - { name: lowStock, in: query, schema: { type: boolean } }
+      responses:
+        "200":
+          description: Inventory report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InventoryReport"
+  /reports/best-sellers:
+    get:
+      operationId: getBestSellers
+      tags: [reports]
+      parameters:
+        - { name: from, in: query, schema: { type: string } }
+        - { name: to, in: query, schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer } }
+      responses:
+        "200":
+          description: Best selling products
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BestSellerItem"
+  /reports/purchases:
+    get:
+      operationId: getPurchasesReport
+      tags: [reports]
+      parameters:
+        - { name: from, in: query, required: true, schema: { type: string } }
+        - { name: to, in: query, required: true, schema: { type: string } }
+        - { name: supplierId, in: query, schema: { type: integer } }
+      responses:
+        "200":
+          description: Purchases report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PurchasesReport"
+  /reports/craftsman-commission:
+    get:
+      operationId: getCraftsmanCommissionReport
+      tags: [reports]
+      parameters:
+        - { name: from, in: query, schema: { type: string } }
+        - { name: to, in: query, schema: { type: string } }
+        - { name: craftsmanId, in: query, schema: { type: integer } }
+      responses:
+        "200":
+          description: Craftsman commission report
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CraftsmanCommissionItem"
+
+  # Settings
+  /settings:
+    get:
+      operationId: getSettings
+      tags: [settings]
+      responses:
+        "200":
+          description: Settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Settings"
+    patch:
+      operationId: updateSettings
+      tags: [settings]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SettingsUpdate"
+      responses:
+        "200":
+          description: Updated settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Settings"
+
+  # Backup
+  /backup/create:
+    post:
+      operationId: createBackup
+      tags: [backup]
+      summary: Create a database backup
+      responses:
+        "200":
+          description: Backup created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BackupInfo"
+  /backup/list:
+    get:
+      operationId: listBackups
+      tags: [backup]
+      summary: List available backups
+      responses:
+        "200":
+          description: Backups
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BackupInfo"
+  /backup/restore/{filename}:
+    post:
+      operationId: restoreBackup
+      tags: [backup]
+      summary: Restore from backup
+      parameters:
+        - { name: filename, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Restored
+
 components:
   schemas:
     HealthStatus:
       type: object
+      required: [status]
       properties:
-        status:
-          type: string
-      required:
-        - status
+        status: { type: string }
 
+    # Auth
+    LoginInput:
+      type: object
+      required: [username, password]
+      properties:
+        username: { type: string }
+        password: { type: string }
+    AuthUser:
+      type: object
+      required: [id, username, role, name]
+      properties:
+        id: { type: integer }
+        username: { type: string }
+        name: { type: string }
+        role: { type: string }
+
+    # Dashboard
+    DashboardSummary:
+      type: object
+      required: [todaySales, todayCash, todayCredit, totalReceivables, totalPayables, lowStockCount, pendingQuotations, todayInvoicesCount]
+      properties:
+        todaySales: { type: number }
+        todayCash: { type: number }
+        todayCredit: { type: number }
+        todayInvoicesCount: { type: integer }
+        totalReceivables: { type: number }
+        totalPayables: { type: number }
+        lowStockCount: { type: integer }
+        pendingQuotations: { type: integer }
+        stockValue: { type: number }
+
+    # Category
+    Category:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        nameEn: { type: ["string", "null"] }
+        productCount: { type: integer }
+        createdAt: { type: string }
+    CategoryInput:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+        nameEn: { type: string }
+    CategoryUpdate:
+      type: object
+      properties:
+        name: { type: string }
+        nameEn: { type: string }
+
+    # Brand
+    Brand:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        nameEn: { type: ["string", "null"] }
+        createdAt: { type: string }
+    BrandInput:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+        nameEn: { type: string }
+    BrandUpdate:
+      type: object
+      properties:
+        name: { type: string }
+        nameEn: { type: string }
+
+    # Unit
+    Unit:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        nameEn: { type: ["string", "null"] }
+    UnitInput:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+        nameEn: { type: string }
+    UnitUpdate:
+      type: object
+      properties:
+        name: { type: string }
+        nameEn: { type: string }
+
+    # Product
+    Product:
+      type: object
+      required: [id, nameAr, sku, currentStock, sellingPrice]
+      properties:
+        id: { type: integer }
+        nameAr: { type: string }
+        nameEn: { type: ["string", "null"] }
+        sku: { type: string }
+        barcode: { type: ["string", "null"] }
+        categoryId: { type: ["integer", "null"] }
+        categoryName: { type: ["string", "null"] }
+        brandId: { type: ["integer", "null"] }
+        brandName: { type: ["string", "null"] }
+        supplierId: { type: ["integer", "null"] }
+        supplierName: { type: ["string", "null"] }
+        unitId: { type: ["integer", "null"] }
+        unitName: { type: ["string", "null"] }
+        listPrice: { type: number }
+        supplierDiscount: { type: number }
+        netPurchasePrice: { type: number }
+        extraCost: { type: number }
+        trueCost: { type: number }
+        sellingPrice: { type: number }
+        minSellingPrice: { type: ["number", "null"] }
+        currentStock: { type: number }
+        minStock: { type: number }
+        location: { type: ["string", "null"] }
+        notes: { type: ["string", "null"] }
+        colorCode: { type: ["string", "null"] }
+        paintType: { type: ["string", "null"] }
+        packageSize: { type: ["string", "null"] }
+        isActive: { type: boolean }
+        isLowStock: { type: boolean }
+        createdAt: { type: string }
+    ProductInput:
+      type: object
+      required: [nameAr, sku, sellingPrice]
+      properties:
+        nameAr: { type: string }
+        nameEn: { type: string }
+        sku: { type: string }
+        barcode: { type: string }
+        categoryId: { type: integer }
+        brandId: { type: integer }
+        supplierId: { type: integer }
+        unitId: { type: integer }
+        listPrice: { type: number }
+        supplierDiscount: { type: number }
+        netPurchasePrice: { type: number }
+        extraCost: { type: number }
+        trueCost: { type: number }
+        sellingPrice: { type: number }
+        minSellingPrice: { type: number }
+        currentStock: { type: number }
+        minStock: { type: number }
+        location: { type: string }
+        notes: { type: string }
+        colorCode: { type: string }
+        paintType: { type: string }
+        packageSize: { type: string }
+        isActive: { type: boolean }
+    ProductUpdate:
+      type: object
+      properties:
+        nameAr: { type: string }
+        nameEn: { type: string }
+        sku: { type: string }
+        barcode: { type: string }
+        categoryId: { type: integer }
+        brandId: { type: integer }
+        supplierId: { type: integer }
+        unitId: { type: integer }
+        listPrice: { type: number }
+        supplierDiscount: { type: number }
+        netPurchasePrice: { type: number }
+        extraCost: { type: number }
+        trueCost: { type: number }
+        sellingPrice: { type: number }
+        minSellingPrice: { type: number }
+        minStock: { type: number }
+        location: { type: string }
+        notes: { type: string }
+        colorCode: { type: string }
+        paintType: { type: string }
+        packageSize: { type: string }
+        isActive: { type: boolean }
+    ProductsPage:
+      type: object
+      required: [data, total, page, limit]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Product"
+        total: { type: integer }
+        page: { type: integer }
+        limit: { type: integer }
+
+    # Stock Movement
+    StockMovement:
+      type: object
+      required: [id, productId, type, quantity, createdAt]
+      properties:
+        id: { type: integer }
+        productId: { type: integer }
+        productName: { type: ["string", "null"] }
+        type: { type: string }
+        quantity: { type: number }
+        balanceBefore: { type: number }
+        balanceAfter: { type: number }
+        referenceType: { type: ["string", "null"] }
+        referenceId: { type: ["integer", "null"] }
+        notes: { type: ["string", "null"] }
+        createdAt: { type: string }
+        createdBy: { type: ["string", "null"] }
+    StockMovementsPage:
+      type: object
+      required: [data, total, page, limit]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/StockMovement"
+        total: { type: integer }
+        page: { type: integer }
+        limit: { type: integer }
+    StockAdjustmentInput:
+      type: object
+      required: [productId, quantity, reason]
+      properties:
+        productId: { type: integer }
+        quantity: { type: number }
+        reason: { type: string }
+        notes: { type: string }
+
+    # Customer
+    Customer:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        phone: { type: ["string", "null"] }
+        phone2: { type: ["string", "null"] }
+        address: { type: ["string", "null"] }
+        area: { type: ["string", "null"] }
+        notes: { type: ["string", "null"] }
+        openingBalance: { type: number }
+        creditLimit: { type: ["number", "null"] }
+        totalDebt: { type: number }
+        isActive: { type: boolean }
+        createdAt: { type: string }
+    CustomerInput:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+        phone: { type: string }
+        phone2: { type: string }
+        address: { type: string }
+        area: { type: string }
+        notes: { type: string }
+        openingBalance: { type: number }
+        creditLimit: { type: number }
+        isActive: { type: boolean }
+    CustomerUpdate:
+      type: object
+      properties:
+        name: { type: string }
+        phone: { type: string }
+        phone2: { type: string }
+        address: { type: string }
+        area: { type: string }
+        notes: { type: string }
+        openingBalance: { type: number }
+        creditLimit: { type: number }
+        isActive: { type: boolean }
+    CustomerProfile:
+      type: object
+      required: [customer, invoices, totalDebt, totalPaid]
+      properties:
+        customer:
+          $ref: "#/components/schemas/Customer"
+        invoices:
+          type: array
+          items:
+            $ref: "#/components/schemas/SalesInvoice"
+        totalDebt: { type: number }
+        totalPaid: { type: number }
+        totalPurchases: { type: number }
+    CustomerStatement:
+      type: object
+      required: [customer, transactions, openingBalance, closingBalance]
+      properties:
+        customer:
+          $ref: "#/components/schemas/Customer"
+        transactions:
+          type: array
+          items:
+            $ref: "#/components/schemas/StatementEntry"
+        openingBalance: { type: number }
+        closingBalance: { type: number }
+    StatementEntry:
+      type: object
+      required: [date, type, amount, balance, description]
+      properties:
+        date: { type: string }
+        type: { type: string }
+        description: { type: string }
+        debit: { type: number }
+        credit: { type: number }
+        balance: { type: number }
+        referenceId: { type: ["integer", "null"] }
+        referenceSerial: { type: ["string", "null"] }
+        amount: { type: number }
+    CustomersPage:
+      type: object
+      required: [data, total, page, limit]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Customer"
+        total: { type: integer }
+        page: { type: integer }
+        limit: { type: integer }
+    CustomerPayment:
+      type: object
+      required: [id, customerId, amount, date]
+      properties:
+        id: { type: integer }
+        customerId: { type: integer }
+        customerName: { type: ["string", "null"] }
+        amount: { type: number }
+        date: { type: string }
+        notes: { type: ["string", "null"] }
+        createdAt: { type: string }
+        createdBy: { type: ["string", "null"] }
+    CustomerPaymentInput:
+      type: object
+      required: [amount, date]
+      properties:
+        amount: { type: number }
+        date: { type: string }
+        notes: { type: string }
+
+    # Craftsman
+    Craftsman:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        phone: { type: ["string", "null"] }
+        jobType: { type: ["string", "null"] }
+        address: { type: ["string", "null"] }
+        notes: { type: ["string", "null"] }
+        commissionPercent: { type: ["number", "null"] }
+        totalSales: { type: number }
+        totalCommission: { type: number }
+        isActive: { type: boolean }
+        createdAt: { type: string }
+    CraftsmanInput:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+        phone: { type: string }
+        jobType: { type: string }
+        address: { type: string }
+        notes: { type: string }
+        commissionPercent: { type: number }
+        isActive: { type: boolean }
+    CraftsmanUpdate:
+      type: object
+      properties:
+        name: { type: string }
+        phone: { type: string }
+        jobType: { type: string }
+        address: { type: string }
+        notes: { type: string }
+        commissionPercent: { type: number }
+        isActive: { type: boolean }
+    CraftsmanProfile:
+      type: object
+      required: [craftsman, invoices, totalSales, totalCommission]
+      properties:
+        craftsman:
+          $ref: "#/components/schemas/Craftsman"
+        invoices:
+          type: array
+          items:
+            $ref: "#/components/schemas/SalesInvoice"
+        totalSales: { type: number }
+        totalCommission: { type: number }
+    CraftsmenPage:
+      type: object
+      required: [data, total, page, limit]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Craftsman"
+        total: { type: integer }
+        page: { type: integer }
+        limit: { type: integer }
+
+    # Supplier
+    Supplier:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        phone: { type: ["string", "null"] }
+        address: { type: ["string", "null"] }
+        contactPerson: { type: ["string", "null"] }
+        notes: { type: ["string", "null"] }
+        openingBalance: { type: number }
+        totalDebt: { type: number }
+        isActive: { type: boolean }
+        createdAt: { type: string }
+    SupplierInput:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+        phone: { type: string }
+        address: { type: string }
+        contactPerson: { type: string }
+        notes: { type: string }
+        openingBalance: { type: number }
+        isActive: { type: boolean }
+    SupplierUpdate:
+      type: object
+      properties:
+        name: { type: string }
+        phone: { type: string }
+        address: { type: string }
+        contactPerson: { type: string }
+        notes: { type: string }
+        openingBalance: { type: number }
+        isActive: { type: boolean }
+    SupplierProfile:
+      type: object
+      required: [supplier, invoices, totalDebt, totalPaid]
+      properties:
+        supplier:
+          $ref: "#/components/schemas/Supplier"
+        invoices:
+          type: array
+          items:
+            $ref: "#/components/schemas/PurchaseInvoice"
+        totalDebt: { type: number }
+        totalPaid: { type: number }
+    SuppliersPage:
+      type: object
+      required: [data, total, page, limit]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Supplier"
+        total: { type: integer }
+        page: { type: integer }
+        limit: { type: integer }
+    SupplierPayment:
+      type: object
+      required: [id, supplierId, amount, date]
+      properties:
+        id: { type: integer }
+        supplierId: { type: integer }
+        supplierName: { type: ["string", "null"] }
+        amount: { type: number }
+        date: { type: string }
+        notes: { type: ["string", "null"] }
+        createdAt: { type: string }
+        createdBy: { type: ["string", "null"] }
+    SupplierPaymentInput:
+      type: object
+      required: [amount, date]
+      properties:
+        amount: { type: number }
+        date: { type: string }
+        notes: { type: string }
+
+    # Invoice Item (shared)
+    InvoiceItem:
+      type: object
+      required: [id, productId, quantity, unitPrice, total]
+      properties:
+        id: { type: integer }
+        productId: { type: integer }
+        productName: { type: string }
+        productSku: { type: ["string", "null"] }
+        productBarcode: { type: ["string", "null"] }
+        unitName: { type: ["string", "null"] }
+        quantity: { type: number }
+        unitPrice: { type: number }
+        discount: { type: number }
+        total: { type: number }
+        notes: { type: ["string", "null"] }
+    InvoiceItemInput:
+      type: object
+      required: [productId, quantity, unitPrice]
+      properties:
+        productId: { type: integer }
+        quantity: { type: number }
+        unitPrice: { type: number }
+        discount: { type: number }
+        notes: { type: string }
+
+    # Quotation
+    Quotation:
+      type: object
+      required: [id, serial, status, total, createdAt]
+      properties:
+        id: { type: integer }
+        serial: { type: string }
+        status: { type: string }
+        customerId: { type: ["integer", "null"] }
+        customerName: { type: ["string", "null"] }
+        craftsmanId: { type: ["integer", "null"] }
+        craftsmanName: { type: ["string", "null"] }
+        subtotal: { type: number }
+        discount: { type: number }
+        total: { type: number }
+        notes: { type: ["string", "null"] }
+        validUntil: { type: ["string", "null"] }
+        convertedInvoiceId: { type: ["integer", "null"] }
+        convertedInvoiceSerial: { type: ["string", "null"] }
+        createdAt: { type: string }
+        updatedAt: { type: string }
+    QuotationDetail:
+      type: object
+      required: [id, serial, status, items, total, createdAt]
+      properties:
+        id: { type: integer }
+        serial: { type: string }
+        status: { type: string }
+        customerId: { type: ["integer", "null"] }
+        customerName: { type: ["string", "null"] }
+        craftsmanId: { type: ["integer", "null"] }
+        craftsmanName: { type: ["string", "null"] }
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/InvoiceItem"
+        subtotal: { type: number }
+        discount: { type: number }
+        total: { type: number }
+        notes: { type: ["string", "null"] }
+        validUntil: { type: ["string", "null"] }
+        convertedInvoiceId: { type: ["integer", "null"] }
+        convertedInvoiceSerial: { type: ["string", "null"] }
+        createdAt: { type: string }
+        updatedAt: { type: string }
+    QuotationInput:
+      type: object
+      properties:
+        customerId: { type: integer }
+        craftsmanId: { type: integer }
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/InvoiceItemInput"
+        discount: { type: number }
+        notes: { type: string }
+        validUntil: { type: string }
+    QuotationUpdate:
+      type: object
+      properties:
+        customerId: { type: integer }
+        craftsmanId: { type: integer }
+        status: { type: string }
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/InvoiceItemInput"
+        discount: { type: number }
+        notes: { type: string }
+        validUntil: { type: string }
+    QuotationConvertInput:
+      type: object
+      required: [priceMode]
+      properties:
+        priceMode: { type: string, enum: [original, current, manual] }
+        paymentType: { type: string, enum: [cash, credit, partial] }
+        paidAmount: { type: number }
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/InvoiceItemInput"
+    QuotationsPage:
+      type: object
+      required: [data, total, page, limit]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Quotation"
+        total: { type: integer }
+        page: { type: integer }
+        limit: { type: integer }
+
+    # Sales Invoice
+    SalesInvoice:
+      type: object
+      required: [id, serial, status, total, createdAt]
+      properties:
+        id: { type: integer }
+        serial: { type: string }
+        status: { type: string }
+        paymentType: { type: string }
+        customerId: { type: ["integer", "null"] }
+        customerName: { type: ["string", "null"] }
+        craftsmanId: { type: ["integer", "null"] }
+        craftsmanName: { type: ["string", "null"] }
+        subtotal: { type: number }
+        discount: { type: number }
+        total: { type: number }
+        paidAmount: { type: number }
+        remainingAmount: { type: number }
+        craftsmanCommission: { type: number }
+        quotationId: { type: ["integer", "null"] }
+        notes: { type: ["string", "null"] }
+        createdAt: { type: string }
+        createdBy: { type: ["string", "null"] }
+    SalesInvoiceDetail:
+      type: object
+      required: [id, serial, status, items, total, createdAt]
+      properties:
+        id: { type: integer }
+        serial: { type: string }
+        status: { type: string }
+        paymentType: { type: string }
+        customerId: { type: ["integer", "null"] }
+        customerName: { type: ["string", "null"] }
+        customerPhone: { type: ["string", "null"] }
+        craftsmanId: { type: ["integer", "null"] }
+        craftsmanName: { type: ["string", "null"] }
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/InvoiceItem"
+        subtotal: { type: number }
+        discount: { type: number }
+        total: { type: number }
+        paidAmount: { type: number }
+        remainingAmount: { type: number }
+        craftsmanCommission: { type: number }
+        quotationId: { type: ["integer", "null"] }
+        notes: { type: ["string", "null"] }
+        barcode: { type: ["string", "null"] }
+        createdAt: { type: string }
+        updatedAt: { type: string }
+        createdBy: { type: ["string", "null"] }
+    SalesInvoiceInput:
+      type: object
+      properties:
+        customerId: { type: integer }
+        craftsmanId: { type: integer }
+        paymentType: { type: string, enum: [cash, credit, partial] }
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/InvoiceItemInput"
+        discount: { type: number }
+        paidAmount: { type: number }
+        craftsmanCommission: { type: number }
+        quotationId: { type: integer }
+        notes: { type: string }
+    SalesInvoiceUpdate:
+      type: object
+      properties:
+        customerId: { type: integer }
+        craftsmanId: { type: integer }
+        paymentType: { type: string }
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/InvoiceItemInput"
+        discount: { type: number }
+        paidAmount: { type: number }
+        craftsmanCommission: { type: number }
+        notes: { type: string }
+    FinalizeInvoiceInput:
+      type: object
+      required: [paymentType]
+      properties:
+        paymentType: { type: string, enum: [cash, credit, partial] }
+        paidAmount: { type: number }
+        craftsmanCommission: { type: number }
+        notes: { type: string }
+    SalesPage:
+      type: object
+      required: [data, total, page, limit]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/SalesInvoice"
+        total: { type: integer }
+        page: { type: integer }
+        limit: { type: integer }
+
+    # Purchase Invoice
+    PurchaseInvoice:
+      type: object
+      required: [id, serial, status, total, createdAt]
+      properties:
+        id: { type: integer }
+        serial: { type: string }
+        status: { type: string }
+        paymentType: { type: string }
+        supplierId: { type: ["integer", "null"] }
+        supplierName: { type: ["string", "null"] }
+        subtotal: { type: number }
+        total: { type: number }
+        paidAmount: { type: number }
+        remainingAmount: { type: number }
+        notes: { type: ["string", "null"] }
+        invoiceDate: { type: ["string", "null"] }
+        createdAt: { type: string }
+        createdBy: { type: ["string", "null"] }
+    PurchaseInvoiceDetail:
+      type: object
+      required: [id, serial, status, items, total, createdAt]
+      properties:
+        id: { type: integer }
+        serial: { type: string }
+        status: { type: string }
+        paymentType: { type: string }
+        supplierId: { type: ["integer", "null"] }
+        supplierName: { type: ["string", "null"] }
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/PurchaseItem"
+        subtotal: { type: number }
+        total: { type: number }
+        paidAmount: { type: number }
+        remainingAmount: { type: number }
+        notes: { type: ["string", "null"] }
+        invoiceDate: { type: ["string", "null"] }
+        createdAt: { type: string }
+        updatedAt: { type: string }
+        createdBy: { type: ["string", "null"] }
+    PurchaseItem:
+      type: object
+      required: [id, productId, quantity, listPrice, netPrice, total]
+      properties:
+        id: { type: integer }
+        productId: { type: integer }
+        productName: { type: string }
+        productSku: { type: ["string", "null"] }
+        unitName: { type: ["string", "null"] }
+        quantity: { type: number }
+        listPrice: { type: number }
+        supplierDiscount: { type: number }
+        netPrice: { type: number }
+        extraCost: { type: number }
+        trueCost: { type: number }
+        total: { type: number }
+    PurchaseItemInput:
+      type: object
+      required: [productId, quantity, netPrice]
+      properties:
+        productId: { type: integer }
+        quantity: { type: number }
+        listPrice: { type: number }
+        supplierDiscount: { type: number }
+        netPrice: { type: number }
+        extraCost: { type: number }
+        trueCost: { type: number }
+    PurchaseInvoiceInput:
+      type: object
+      properties:
+        supplierId: { type: integer }
+        paymentType: { type: string, enum: [cash, credit, partial] }
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/PurchaseItemInput"
+        paidAmount: { type: number }
+        notes: { type: string }
+        invoiceDate: { type: string }
+    PurchaseInvoiceUpdate:
+      type: object
+      properties:
+        supplierId: { type: integer }
+        paymentType: { type: string }
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/PurchaseItemInput"
+        paidAmount: { type: number }
+        notes: { type: string }
+        invoiceDate: { type: string }
+    FinalizePurchaseInput:
+      type: object
+      required: [paymentType]
+      properties:
+        paymentType: { type: string, enum: [cash, credit, partial] }
+        paidAmount: { type: number }
+        notes: { type: string }
+    PurchasesPage:
+      type: object
+      required: [data, total, page, limit]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/PurchaseInvoice"
+        total: { type: integer }
+        page: { type: integer }
+        limit: { type: integer }
+
+    # Stock Count
+    StockCount:
+      type: object
+      required: [id, status, createdAt]
+      properties:
+        id: { type: integer }
+        name: { type: ["string", "null"] }
+        status: { type: string }
+        notes: { type: ["string", "null"] }
+        itemCount: { type: integer }
+        createdAt: { type: string }
+        finalizedAt: { type: ["string", "null"] }
+    StockCountDetail:
+      type: object
+      required: [id, status, items, createdAt]
+      properties:
+        id: { type: integer }
+        name: { type: ["string", "null"] }
+        status: { type: string }
+        notes: { type: ["string", "null"] }
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/StockCountItem"
+        createdAt: { type: string }
+        finalizedAt: { type: ["string", "null"] }
+    StockCountItem:
+      type: object
+      required: [id, productId, systemQty, countedQty, difference]
+      properties:
+        id: { type: integer }
+        productId: { type: integer }
+        productName: { type: string }
+        productSku: { type: ["string", "null"] }
+        unitName: { type: ["string", "null"] }
+        systemQty: { type: number }
+        countedQty: { type: number }
+        difference: { type: number }
+        notes: { type: ["string", "null"] }
+    StockCountInput:
+      type: object
+      properties:
+        name: { type: string }
+        notes: { type: string }
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/StockCountItemInput"
+    StockCountItemInput:
+      type: object
+      required: [productId, countedQty]
+      properties:
+        productId: { type: integer }
+        countedQty: { type: number }
+        notes: { type: string }
+    StockCountUpdate:
+      type: object
+      properties:
+        name: { type: string }
+        notes: { type: string }
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/StockCountItemInput"
+
+    # Debts
+    DebtSummary:
+      type: object
+      required: [id, name, totalDebt, lastActivity]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        phone: { type: ["string", "null"] }
+        totalDebt: { type: number }
+        lastActivity: { type: ["string", "null"] }
+        overdueCount: { type: integer }
+
+    # Draft
+    Draft:
+      type: object
+      required: [id, type, entityId, data, savedAt]
+      properties:
+        id: { type: integer }
+        type: { type: string }
+        entityId: { type: string }
+        data: { type: string }
+        savedAt: { type: string }
+        savedBy: { type: ["string", "null"] }
+    DraftInput:
+      type: object
+      required: [type, entityId, data]
+      properties:
+        type: { type: string }
+        entityId: { type: string }
+        data: { type: string }
+        savedBy: { type: string }
+
+    # Reports
+    SalesReport:
+      type: object
+      required: [from, to, totalSales, totalCash, totalCredit, invoiceCount, totalDiscount, estimatedProfit]
+      properties:
+        from: { type: string }
+        to: { type: string }
+        totalSales: { type: number }
+        totalCash: { type: number }
+        totalCredit: { type: number }
+        invoiceCount: { type: integer }
+        totalDiscount: { type: number }
+        estimatedProfit: { type: number }
+        dailyBreakdown:
+          type: array
+          items:
+            $ref: "#/components/schemas/DailySalesItem"
+    DailySalesItem:
+      type: object
+      required: [date, sales, invoiceCount]
+      properties:
+        date: { type: string }
+        sales: { type: number }
+        invoiceCount: { type: integer }
+        cash: { type: number }
+        credit: { type: number }
+    InventoryReport:
+      type: object
+      required: [totalProducts, totalValue, lowStockCount]
+      properties:
+        totalProducts: { type: integer }
+        totalValue: { type: number }
+        lowStockCount: { type: integer }
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/InventoryItem"
+    InventoryItem:
+      type: object
+      required: [productId, productName, currentStock, sellingPrice, stockValue]
+      properties:
+        productId: { type: integer }
+        productName: { type: string }
+        sku: { type: ["string", "null"] }
+        unitName: { type: ["string", "null"] }
+        currentStock: { type: number }
+        sellingPrice: { type: number }
+        trueCost: { type: number }
+        stockValue: { type: number }
+        isLowStock: { type: boolean }
+    BestSellerItem:
+      type: object
+      required: [productId, productName, totalQty, totalRevenue]
+      properties:
+        productId: { type: integer }
+        productName: { type: string }
+        totalQty: { type: number }
+        totalRevenue: { type: number }
+        orderCount: { type: integer }
+    PurchasesReport:
+      type: object
+      required: [from, to, totalPurchases, invoiceCount]
+      properties:
+        from: { type: string }
+        to: { type: string }
+        totalPurchases: { type: number }
+        invoiceCount: { type: integer }
+        totalPaid: { type: number }
+        totalUnpaid: { type: number }
+    CraftsmanCommissionItem:
+      type: object
+      required: [craftsmanId, craftsmanName, totalSales, totalCommission]
+      properties:
+        craftsmanId: { type: integer }
+        craftsmanName: { type: string }
+        totalSales: { type: number }
+        invoiceCount: { type: integer }
+        totalCommission: { type: number }
+
+    # Settings
+    Settings:
+      type: object
+      required: [shopName, currency]
+      properties:
+        shopName: { type: string }
+        shopPhone: { type: ["string", "null"] }
+        shopAddress: { type: ["string", "null"] }
+        currency: { type: string }
+        defaultPrintTemplate: { type: string }
+        lowStockThreshold: { type: integer }
+        enableCraftsmanCommission: { type: boolean }
+        enableDarkMode: { type: boolean }
+        language: { type: string }
+        invoicePrefix: { type: string }
+        quotationPrefix: { type: string }
+        purchasePrefix: { type: string }
+        lastBackupAt: { type: ["string", "null"] }
+    SettingsUpdate:
+      type: object
+      properties:
+        shopName: { type: string }
+        shopPhone: { type: string }
+        shopAddress: { type: string }
+        currency: { type: string }
+        defaultPrintTemplate: { type: string }
+        lowStockThreshold: { type: integer }
+        enableCraftsmanCommission: { type: boolean }
+        enableDarkMode: { type: boolean }
+        language: { type: string }
+        invoicePrefix: { type: string }
+        quotationPrefix: { type: string }
+        purchasePrefix: { type: string }
+
+    # Backup
+    BackupInfo:
+      type: object
+      required: [filename, createdAt, sizeBytes]
+      properties:
+        filename: { type: string }
+        createdAt: { type: string }
+        sizeBytes: { type: integer }
+        path: { type: ["string", "null"] }

@@ -1,0 +1,146 @@
+import { Router } from "express";
+import db from "../lib/db.js";
+
+const router = Router();
+
+const PRODUCT_SELECT = `
+  SELECT p.*, 
+    c.name as categoryName, b.name as brandName, s.name as supplierName, u.name as unitName,
+    CASE WHEN p.currentStock <= p.minStock THEN 1 ELSE 0 END as isLowStock
+  FROM products p
+  LEFT JOIN categories c ON p.categoryId = c.id
+  LEFT JOIN brands b ON p.brandId = b.id
+  LEFT JOIN suppliers s ON p.supplierId = s.id
+  LEFT JOIN units u ON p.unitId = u.id
+`;
+
+router.get("/products", (req, res) => {
+  const { search, categoryId, brandId, supplierId, lowStock, isActive, limit = 100, offset = 0 } = req.query as any;
+  const conditions: string[] = [];
+  const params: any[] = [];
+
+  if (search) {
+    conditions.push("(p.nameAr LIKE ? OR p.nameEn LIKE ? OR p.sku LIKE ? OR p.barcode LIKE ?)");
+    const q = `%${search}%`;
+    params.push(q, q, q, q);
+  }
+  if (categoryId) { conditions.push("p.categoryId = ?"); params.push(Number(categoryId)); }
+  if (brandId) { conditions.push("p.brandId = ?"); params.push(Number(brandId)); }
+  if (supplierId) { conditions.push("p.supplierId = ?"); params.push(Number(supplierId)); }
+  if (lowStock === "true") { conditions.push("p.currentStock <= p.minStock"); }
+  if (isActive !== undefined) { conditions.push("p.isActive = ?"); params.push(isActive === "true" ? 1 : 0); }
+
+  const where = conditions.length ? "WHERE " + conditions.join(" AND ") : "";
+  const items = db.prepare(`${PRODUCT_SELECT} ${where} ORDER BY p.nameAr LIMIT ? OFFSET ?`).all(...params, Number(limit), Number(offset));
+  const total = (db.prepare(`SELECT COUNT(*) as c FROM products p ${where}`).get(...params) as any).c;
+  res.json({ items, total, limit: Number(limit), offset: Number(offset) });
+});
+
+router.get("/products/search", (req, res) => {
+  const { q } = req.query as any;
+  if (!q) return res.json([]);
+  const pattern = `%${q}%`;
+  const rows = db.prepare(`
+    ${PRODUCT_SELECT}
+    WHERE p.isActive = 1 AND (p.nameAr LIKE ? OR p.nameEn LIKE ? OR p.sku LIKE ? OR p.barcode = ?)
+    ORDER BY p.nameAr LIMIT 20
+  `).all(pattern, pattern, pattern, q);
+  res.json(rows);
+});
+
+router.post("/products", (req, res) => {
+  const {
+    nameAr, nameEn, sku, barcode, categoryId, brandId, supplierId, unitId,
+    listPrice = 0, supplierDiscount = 0, netPurchasePrice = 0, extraCost = 0,
+    trueCost = 0, sellingPrice = 0, minSellingPrice, currentStock = 0, minStock = 5,
+    location, notes, colorCode, paintType, packageSize, isActive = true,
+  } = req.body;
+
+  if (!nameAr || !sku) return res.status(400).json({ error: "الاسم والكود مطلوبان" });
+
+  const r = db.prepare(`
+    INSERT INTO products 
+    (nameAr, nameEn, sku, barcode, categoryId, brandId, supplierId, unitId, listPrice, supplierDiscount,
+     netPurchasePrice, extraCost, trueCost, sellingPrice, minSellingPrice, currentStock, minStock,
+     location, notes, colorCode, paintType, packageSize, isActive)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+  `).run(
+    nameAr, nameEn || null, sku, barcode || null,
+    categoryId || null, brandId || null, supplierId || null, unitId || null,
+    listPrice, supplierDiscount, netPurchasePrice, extraCost, trueCost,
+    sellingPrice, minSellingPrice || null, currentStock, minStock,
+    location || null, notes || null, colorCode || null, paintType || null, packageSize || null,
+    isActive ? 1 : 0,
+  );
+
+  if (currentStock > 0) {
+    db.prepare(`INSERT INTO stock_movements (productId, type, quantity, balanceBefore, balanceAfter, referenceType, notes) VALUES (?,?,?,?,?,?,?)`)
+      .run(r.lastInsertRowid, "opening", currentStock, 0, currentStock, "manual", "رصيد افتتاحي");
+  }
+
+  res.status(201).json(db.prepare(`${PRODUCT_SELECT} WHERE p.id = ?`).get(r.lastInsertRowid));
+});
+
+router.get("/products/:id", (req, res) => {
+  const row = db.prepare(`${PRODUCT_SELECT} WHERE p.id = ?`).get(Number(req.params.id));
+  if (!row) return res.status(404).json({ error: "غير موجود" });
+  res.json(row);
+});
+
+router.patch("/products/:id", (req, res) => {
+  const id = Number(req.params.id);
+  const existing = db.prepare("SELECT * FROM products WHERE id = ?").get(id) as any;
+  if (!existing) return res.status(404).json({ error: "غير موجود" });
+
+  const {
+    nameAr, nameEn, sku, barcode, categoryId, brandId, supplierId, unitId,
+    listPrice, supplierDiscount, netPurchasePrice, extraCost, trueCost,
+    sellingPrice, minSellingPrice, minStock, location, notes,
+    colorCode, paintType, packageSize, isActive,
+  } = req.body;
+
+  db.prepare(`
+    UPDATE products SET
+    nameAr = COALESCE(?, nameAr), nameEn = COALESCE(?, nameEn), sku = COALESCE(?, sku),
+    barcode = COALESCE(?, barcode), categoryId = COALESCE(?, categoryId), brandId = COALESCE(?, brandId),
+    supplierId = COALESCE(?, supplierId), unitId = COALESCE(?, unitId),
+    listPrice = COALESCE(?, listPrice), supplierDiscount = COALESCE(?, supplierDiscount),
+    netPurchasePrice = COALESCE(?, netPurchasePrice), extraCost = COALESCE(?, extraCost),
+    trueCost = COALESCE(?, trueCost), sellingPrice = COALESCE(?, sellingPrice),
+    minSellingPrice = COALESCE(?, minSellingPrice), minStock = COALESCE(?, minStock),
+    location = COALESCE(?, location), notes = COALESCE(?, notes),
+    colorCode = COALESCE(?, colorCode), paintType = COALESCE(?, paintType), packageSize = COALESCE(?, packageSize),
+    isActive = COALESCE(?, isActive), updatedAt = datetime('now')
+    WHERE id = ?
+  `).run(
+    nameAr || null, nameEn || null, sku || null, barcode || null,
+    categoryId || null, brandId || null, supplierId || null, unitId || null,
+    listPrice ?? null, supplierDiscount ?? null, netPurchasePrice ?? null,
+    extraCost ?? null, trueCost ?? null, sellingPrice ?? null, minSellingPrice ?? null,
+    minStock ?? null, location || null, notes || null, colorCode || null,
+    paintType || null, packageSize || null, isActive !== undefined ? (isActive ? 1 : 0) : null,
+    id,
+  );
+
+  res.json(db.prepare(`${PRODUCT_SELECT} WHERE p.id = ?`).get(id));
+});
+
+router.delete("/products/:id", (req, res) => {
+  db.prepare("UPDATE products SET isActive = 0 WHERE id = ?").run(Number(req.params.id));
+  res.json({ success: true });
+});
+
+router.get("/products/:id/movements", (req, res) => {
+  const { limit = 50, offset = 0 } = req.query as any;
+  const items = db.prepare(`
+    SELECT sm.*, p.nameAr as productName, p.sku 
+    FROM stock_movements sm 
+    LEFT JOIN products p ON sm.productId = p.id
+    WHERE sm.productId = ? 
+    ORDER BY sm.createdAt DESC LIMIT ? OFFSET ?
+  `).all(Number(req.params.id), Number(limit), Number(offset));
+  const total = (db.prepare("SELECT COUNT(*) as c FROM stock_movements WHERE productId = ?").get(Number(req.params.id)) as any).c;
+  res.json({ items, total });
+});
+
+export default router;

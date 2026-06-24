@@ -1,0 +1,1174 @@
+You are Replit Agent. Build a real, local-first POS, inventory, quotations, debts, and reporting system for an Egyptian retail shop that sells sanitary ware, paints, plumbing supplies, drainage tools, hardware items, and related products.
+
+This is not a demo cashier app. This is intended to become a real working system for a small/medium shop in Egypt, especially the common rural retail model where the shop sells to end customers, craftsmen/plumbers/painters, contractors, and sometimes on credit.
+
+The system must be Arabic-first, RTL-first, beautiful, smooth, and reliable.
+
+========================
+
+1. Main Goal
+   ========================
+
+Build a complete local-first shop management system with:
+
+* POS / cashier sales
+* Inventory and stock management
+* Quotations / price offers that can later be converted into invoices
+* Customers database
+* Craftsmen / plumbers / painters database
+* Suppliers database
+* Purchases and supplier credit
+* Customer debts and supplier debts
+* Accurate pricing and percentage calculations
+* Stock count and inventory reconciliation
+* Printable invoices with multiple paper sizes
+* Barcode / serial number lookup for invoices and products
+* Reports
+* Local SQLite database
+* Offline-first behavior
+* Autosave drafts to prevent data loss
+* Backup and restore
+* Arabic UI as the main language, with optional English support
+
+The app must run locally on a Windows computer inside the shop without paid hosting. I may develop it on a MacBook, but the final target is Windows.
+
+Do not require Vercel, Supabase, Neon, Firebase, Railway, Render, external cloud hosting, or any paid database service.
+
+========================
+2. Technical Requirements
+=========================
+
+Use this stack unless there is a strong reason not to:
+
+* Frontend: React + Vite + TypeScript
+* Backend: Node.js + Express + TypeScript
+* Database: Local SQLite database
+* ORM or database layer: Prisma with SQLite, or another clean SQLite layer if more reliable
+* Styling: Tailwind CSS or a clean modern CSS system
+* Icons: Use a modern icon library
+* Animations: Smooth subtle animations using CSS transitions or Framer Motion if suitable
+* Charts: Use a lightweight chart library for reports
+* Printing: Browser print layouts with CSS print styles
+* Barcode / QR: Generate barcode/QR for invoices and product codes
+
+Project should be structured clearly:
+
+* frontend app
+* backend API
+* local database
+* migrations/schema
+* seed data
+* backup scripts
+* Windows-friendly run scripts
+
+Suggested folders:
+
+* /client
+* /server
+* /database
+* /data
+* /backups
+* /docs
+
+Database file should be stored locally, for example:
+
+./data/store.db
+
+Backups should be stored locally, for example:
+
+./backups/
+
+Provide simple npm scripts:
+
+* npm run dev
+* npm run build
+* npm run start
+* npm run db:migrate
+* npm run db:seed
+* npm run backup
+* npm run restore
+
+The app must be easy to move from Mac development to Windows usage.
+
+Avoid OS-specific paths. Use cross-platform path handling.
+
+========================
+3. Local-First / Offline-First Requirement
+==========================================
+
+This system must work without internet after installation.
+
+Important rules:
+
+* The database must be local SQLite.
+* The app must not depend on cloud services.
+* The user should be able to open the system on the shop Windows computer and continue working even if internet is down.
+* All sales, quotations, products, customers, purchases, debts, reports, and settings must be saved locally.
+* Add automatic local backups.
+* Add manual backup and restore buttons in settings.
+* Add a warning if no backup has been made recently.
+* Backups should include the SQLite database and important local config files.
+* Keep database changes safe using transactions for critical operations.
+
+========================
+4. Language and Direction
+=========================
+
+Main language: Arabic.
+
+Requirements:
+
+* Arabic-first UI.
+* RTL layout by default.
+* English optional support through a language toggle if feasible.
+* All Arabic text must be natural Egyptian/business Arabic, not broken machine translation.
+* Keep labels short, clear, and understandable for shop workers.
+* Make numbers, money, dates, and tables readable.
+* Support Egyptian Pound currency: EGP / جنيه.
+* Use Arabic labels for the main navigation.
+
+Suggested Arabic sections:
+
+* لوحة التحكم
+* الكاشير
+* التسعيرات
+* الفواتير
+* المنتجات
+* المخزن
+* الجرد
+* العملاء
+* الصنايعية
+* الموردين
+* المشتريات
+* المديونيات
+* التقارير
+* الإعدادات
+
+========================
+5. UI / UX Design
+=================
+
+The design must be very beautiful, modern, smooth, and professional.
+
+Do not create a basic ugly admin panel.
+
+Design direction:
+
+* Clean modern dashboard
+* Arabic RTL layout
+* Smooth rounded cards
+* Soft shadows
+* Clear typography
+* Comfortable spacing
+* Professional colors suitable for a shop system
+* Animated page transitions
+* Smooth hover states
+* Animated buttons
+* Smooth modals and drawers
+* Beautiful tables with filters and search
+* Nice empty states
+* Nice loading states
+* Clear success/error toasts
+* Dark mode optional but preferred
+* Responsive layout for desktop first, but usable on tablet/mobile if opened from browser
+
+The shop worker should understand the system quickly.
+
+Every important action should have feedback:
+
+* Saving...
+* Saved automatically
+* Invoice finalized
+* Stock updated
+* Draft restored
+* Print ready
+* Error with clear explanation
+
+========================
+6. No Fake Buttons / Quality Requirement
+========================================
+
+Every button, action, page, and feature visible in the UI must be functional.
+
+Do not create decorative buttons, placeholder screens, fake alerts, or TODO features.
+
+Rules:
+
+* Every Add button must open a real form and save real data.
+* Every Edit button must update the correct record.
+* Every Delete button must ask for confirmation and then delete/soft-delete correctly.
+* Every Save button must validate and save.
+* Every Print button must generate the correct print layout.
+* Every Search field must filter real data.
+* Every Barcode/Serial search must open the correct invoice/product if found.
+* Every Convert button must perform the real conversion logic.
+* Every Report must calculate from real database data.
+* Every table must load real records from SQLite.
+* If a feature is not fully implemented, hide it instead of showing a broken button.
+* After implementing every feature, test it manually.
+* Add smoke tests or basic automated tests for critical flows where possible.
+
+Critical flows to test:
+
+* Add product
+* Edit product
+* Create quotation
+* Convert quotation to invoice
+* Create sale invoice
+* Sell on credit
+* Add customer payment
+* Add supplier purchase
+* Add supplier payment
+* Print invoice
+* Search invoice by barcode/serial
+* Create inventory count
+* Reconcile stock
+* Backup database
+* Restore database
+
+========================
+7. Autosave / Crash-Safe Drafts
+===============================
+
+This is a core requirement.
+
+The shop may lose electricity while the cashier is filling a long invoice, quotation, purchase invoice, stock count, product form, customer form, or supplier form.
+
+The system must not depend only on a final Save button.
+
+Implement autosave and crash-safe drafts.
+
+Requirements:
+
+* Autosave form data while the user is typing.
+* Use debounced autosave, for example every 1–2 seconds after changes.
+* Save drafts in the local SQLite database, not only in browser memory.
+* Show a visible state:
+
+  * Saving...
+  * Saved automatically
+  * Unsaved changes
+* If the app closes, browser crashes, or electricity cuts off, restore the last unfinished draft when the user opens the same page again.
+* Show a recovery message:
+  “تم العثور على مسودة غير مكتملة. هل تريد استكمالها أم حذفها؟”
+* Drafts must be separate from finalized records.
+* Drafts must not affect inventory quantities.
+* Drafts must not affect customer debt.
+* Drafts must not affect supplier debt.
+* Drafts must not affect cash balance.
+* Inventory, debt, and cash must only change when the user finalizes/submits the invoice.
+* Final submission must run inside a database transaction.
+* Allow user to discard a draft manually.
+* Store draft timestamps and user/cashier name when available.
+
+Important examples:
+
+* A quotation draft can autosave, but it must not reduce stock.
+* A sales invoice draft can autosave, but it must not reduce stock until finalized.
+* A purchase invoice draft can autosave, but it must not increase stock until finalized.
+* A stock count draft can autosave, but it must not adjust stock until reconciliation is confirmed.
+
+========================
+8. Main Business Model
+======================
+
+The shop sells:
+
+* Paints and coatings
+* Sanitary ware
+* Plumbing supplies
+* Drainage tools
+* Fittings
+* Hardware items
+* Bathroom accessories
+* Pipes
+* Valves
+* Mixers
+* Tools
+* Related products
+
+The system must support different real-life selling models:
+
+* Cash sale
+* Credit sale
+* Partial payment
+* Quotation first, invoice later
+* Price changes between quotation and invoice date
+* Customer discount
+* Company/trade discount
+* Craftsman commission
+* Supplier credit
+* Customer debt
+* Supplier debt
+* Returns later if possible
+
+========================
+9. Products and Inventory
+=========================
+
+Create a complete products module.
+
+Each product should support:
+
+* Product name Arabic
+* Product name English optional
+* SKU/internal code
+* Barcode optional
+* Category
+* Brand/company
+* Supplier
+* Unit
+* Alternative units if possible
+* List price
+* Supplier discount percentage
+* Net purchase price
+* Extra costs
+* True cost
+* Suggested selling price
+* Minimum selling price optional
+* Current selling price
+* Current stock quantity
+* Minimum stock alert
+* Location/shelf optional
+* Notes
+* Active/inactive status
+
+Units should support examples:
+
+* قطعة
+* كرتونة
+* علبة
+* متر
+* كيلو
+* لتر
+* جالون
+* جردل
+* عبوة
+* ماسورة
+* لفة
+
+Inventory requirements:
+
+* Add products
+* Edit products
+* Search products
+* Filter by category/brand/supplier/low stock
+* View current stock
+* View stock movement history
+* Low stock alerts
+* Stock adjustment
+* Stock count
+* Inventory reconciliation between system quantity and real physical quantity
+
+Stock movements must be recorded as a ledger:
+
+* Purchase increases stock
+* Sale decreases stock
+* Return adjusts stock
+* Manual adjustment
+* Stock reconciliation
+* Opening balance
+
+Do not only update a quantity number without recording the reason.
+
+========================
+10. Inventory Count and Reconciliation
+======================================
+
+The user wants to compare what is inside the system with what exists physically in the shop.
+
+Create a Stock Count module:
+
+* Start new stock count session
+* Add counted products manually or by barcode
+* Show system quantity
+* Enter actual counted quantity
+* Show difference
+* Add notes
+* Save as draft with autosave
+* Finalize reconciliation
+* On finalization, create stock adjustment movements
+* Generate inventory count report
+
+Reports:
+
+* Items matching
+* Items with shortage
+* Items with surplus
+* Items not counted
+* Total difference value
+* Printable stock count report
+* Export if possible
+
+========================
+11. Quotations / Price Offers
+=============================
+
+This is a very important core feature.
+
+In this business, the shop often creates a quotation for a customer first. The quotation lists all products and prices. After days or even a month, the customer may return and ask to convert that quotation into an actual sales invoice.
+
+Rules:
+
+* Creating a quotation must not reduce stock.
+* A quotation is a price offer, not a sale.
+* A quotation can be saved, printed, edited, duplicated, cancelled, or converted to invoice.
+* A quotation must have a serial number.
+* A quotation should have customer data.
+* A quotation can include discounts, notes, validity date, and optional craftsman.
+* A quotation must be autosaved as a draft while being edited.
+
+When converting quotation to sales invoice:
+
+The system must ask what to do about prices:
+
+1. Use original quotation prices.
+2. Update prices to current product prices.
+3. Let user manually review and edit prices before finalizing.
+
+Because prices can change during the month.
+
+Conversion must:
+
+* Check stock availability.
+* Warn about missing/low-stock items.
+* Allow partial conversion if needed.
+* Only reduce stock after finalizing the sales invoice.
+* Keep link between quotation and invoice.
+* Preserve quotation history.
+
+The quotation print layout should clearly say:
+
+“تسعيرة / عرض سعر”
+
+not “فاتورة بيع”.
+
+========================
+12. POS / Sales Invoice
+=======================
+
+Create a cashier/POS page for fast selling.
+
+Requirements:
+
+* Search product by name, SKU, or barcode
+* Add product to invoice quickly
+* Change quantity
+* Change unit if supported
+* Show price
+* Apply item discount
+* Apply invoice discount
+* Add customer
+* Add craftsman optional
+* Choose payment type:
+
+  * Cash
+  * Credit
+  * Partial payment
+* Show subtotal
+* Show discount
+* Show craftsman commission if any
+* Show total
+* Show paid amount
+* Show remaining amount
+* Finalize invoice
+* Print invoice
+* Save draft automatically
+
+Invoice finalization must:
+
+* Create invoice serial number
+* Create barcode/QR for the invoice
+* Reduce stock quantities
+* Record stock movements
+* Record customer debt if not fully paid
+* Record cash transaction if paid
+* Record craftsman commission if applicable
+* Run everything inside one database transaction
+
+Invoice statuses:
+
+* Draft
+* Finalized
+* Partially paid
+* Paid
+* Credit
+* Cancelled
+* Refunded/returned if implemented
+
+========================
+13. Serial Numbers and Barcode / QR
+===================================
+
+Every invoice and quotation must have a unique serial number.
+
+Examples:
+
+* INV-2026-000001
+* QUO-2026-000001
+* PUR-2026-000001
+
+Generate barcode or QR code for:
+
+* Sales invoices
+* Quotations
+* Purchase invoices if useful
+* Products if barcode exists or internal barcode is generated
+
+The user should be able to scan the invoice barcode using a laser scanner. Most barcode scanners act like keyboard input, so create a global or page-level barcode input/search field.
+
+When the barcode/serial is scanned:
+
+* Open the matching invoice/quotation/product directly.
+* If not found, show clear message.
+* Do not create duplicates.
+
+========================
+14. Printing
+============
+
+Printing is very important.
+
+Add print templates for different paper sizes:
+
+* A4 invoice
+* A5 invoice
+* Thermal receipt / small receipt
+* Custom compact invoice if possible
+
+Each template must have its own layout and formatting.
+
+Invoice print must include:
+
+* Shop name
+* Shop phone/address placeholders
+* Invoice serial number
+* Barcode/QR
+* Date/time
+* Cashier name
+* Customer name and phone
+* Craftsman name if available
+* Items table
+* Quantity
+* Unit
+* Unit price
+* Discount
+* Line total
+* Subtotal
+* Discount
+* Total
+* Paid amount
+* Remaining amount
+* Notes
+* Customer signature area
+* Cashier signature area
+
+Arabic labels must be clear.
+
+Add print preview.
+
+Add settings to choose default print template.
+
+Print CSS must be clean and not print unnecessary UI buttons.
+
+========================
+15. Customers Module
+====================
+
+Create a customers page.
+
+Customer fields:
+
+* Name
+* Phone
+* Alternative phone
+* Address
+* Area/village/city
+* Notes
+* Opening balance optional
+* Credit limit optional
+* Active/inactive
+
+Customer profile must show:
+
+* Customer data
+* Sales invoices
+* Quotations
+* Payments
+* Remaining debt
+* Previous completed transactions
+* Statement of account
+* Print customer statement
+
+Search by:
+
+* Name
+* Phone
+* Address
+* Invoice serial
+
+========================
+16. Craftsmen / Plumbers / Painters Module
+==========================================
+
+Create a separate module for craftsmen because in this market the craftsman often comes to buy on behalf of the customer.
+
+Craftsman examples:
+
+* سباك
+* نقاش
+* فني
+* مقاول
+* صنايعي
+
+Fields:
+
+* Name
+* Phone
+* Type/job
+* Address/area
+* Notes
+* Default commission percentage or fixed commission optional
+* Active/inactive
+
+Relationships:
+
+* A craftsman can be attached to a quotation.
+* A craftsman can be attached to a sales invoice.
+* A craftsman can bring a customer.
+* Track all invoices connected to a craftsman.
+* Track total commission due/paid if enabled.
+
+Important accounting rule:
+
+Craftsman commission is not the same as supplier trade discount or customer discount.
+
+Reports:
+
+* Craftsman sales
+* Craftsman commission due
+* Craftsman commission paid
+* Customers connected through each craftsman
+
+========================
+17. Suppliers and Purchases
+===========================
+
+Create suppliers module.
+
+Supplier fields:
+
+* Name/company
+* Phone
+* Address
+* Contact person
+* Notes
+* Opening balance optional
+* Active/inactive
+
+Purchase invoice module:
+
+* Create purchase invoice
+* Add products
+* Add new products from purchase screen if needed
+* Quantity
+* Unit
+* List price
+* Supplier discount
+* Net purchase price
+* Extra costs
+* True cost
+* Payment type:
+
+  * Cash
+  * Credit
+  * Partial payment
+* Finalize purchase
+* Increase stock only after finalization
+* Record supplier debt if unpaid
+* Record stock movements
+* Print purchase invoice if needed
+
+Supplier profile:
+
+* Purchase invoices
+* Payments
+* Remaining balance
+* Statement of account
+
+========================
+18. Debts / Accounts Receivable and Payable
+===========================================
+
+The system must manage money owed to the shop and money owed by the shop.
+
+Customer debts:
+
+* Credit sales
+* Partial payments
+* Customer payments
+* Remaining balance
+* Statement of account
+* Aging if possible
+
+Supplier debts:
+
+* Credit purchases
+* Partial payments
+* Supplier payments
+* Remaining balance
+* Statement of account
+
+Create a Debts page with:
+
+* Customers who owe money
+* Suppliers we owe money to
+* Total receivables
+* Total payables
+* Payment registration
+* Print statement
+* Search/filter
+
+Important:
+
+Do not mix customer debt and supplier debt.
+Do not change debt until invoice/purchase is finalized.
+Use transactions.
+
+========================
+19. Accurate Pricing and Percentage System
+==========================================
+
+This is critical for accounting accuracy.
+
+In this Egyptian market, the word “percentage / النسبة” can mean different things. The system must not confuse them.
+
+Support these different percentage types:
+
+1. Supplier trade discount from list price
+2. Customer discount
+3. Profit margin
+4. Markup on cost
+5. Craftsman commission
+6. Sequential discounts
+7. Optional tax/withholding fields if needed later
+
+Important concepts:
+
+Supplier trade discount:
+This is a discount from the company/list price, not the shop’s profit.
+
+Example:
+List price = 1000
+Supplier discount = 30%
+Net purchase price = 700
+
+But if sold for 900:
+Profit = 900 - 700 = 200
+Profit margin = 200 / 900 = 22.22%
+Markup = 200 / 700 = 28.57%
+
+So supplier discount is not equal to profit.
+
+Sequential discount:
+
+If discount is 20% + 10%, do not calculate as 30%.
+
+Correct calculation:
+1000 -> 20% discount = 800
+800 -> 10% discount = 720
+Effective discount = 28%
+
+Support sequential discounts as optional text/input like:
+20+10
+or separate discount fields.
+
+Product pricing fields:
+
+* List price
+* Supplier discount percentage
+* Supplier sequential discount optional
+* Net purchase price
+* Extra cost
+* True cost
+* Suggested selling price
+* Customer discount
+* Craftsman commission
+* Profit value
+* Profit margin
+* Markup
+
+Formula examples:
+
+Net purchase price = List price × (1 - Supplier discount)
+
+True cost = Net purchase price + extra costs
+
+Profit = Selling price - True cost - craftsman commission
+
+Profit margin = Profit / Selling price
+
+Markup = Profit / True cost
+
+When creating invoices, show warning if selling price is below true cost or below minimum price.
+
+Never treat supplier discount as profit.
+
+========================
+20. Reports
+===========
+
+Create reports based on real database data.
+
+Main dashboard:
+
+* Today sales
+* Today profit estimate
+* Today invoices count
+* Unpaid customer debts
+* Supplier debts
+* Low stock items
+* Recent invoices
+* Recent quotations
+* Stock value estimate
+
+Reports pages:
+
+* Daily sales
+* Date range sales
+* Profit report
+* Inventory report
+* Low stock report
+* Stock movement report
+* Customer debts
+* Supplier debts
+* Craftsman commission
+* Quotations not converted
+* Purchases report
+* Product sales report
+* Best-selling products
+* Inventory count difference report
+
+Allow filters:
+
+* Date range
+* Customer
+* Supplier
+* Craftsman
+* Product
+* Category
+* Payment status
+* Invoice status
+
+Allow print/export where possible.
+
+========================
+21. Dashboard
+=============
+
+Create a useful dashboard, not just decorative cards.
+
+Dashboard should include:
+
+* Sales today
+* Cash collected today
+* Credit sales today
+* Total receivables
+* Total payables
+* Low stock count
+* Pending quotations
+* Recent invoices
+* Recent stock movements
+* Quick actions:
+
+  * New sale
+  * New quotation
+  * Add product
+  * New purchase
+  * Stock count
+  * Add customer
+
+All quick action buttons must work.
+
+========================
+22. User Roles
+==============
+
+Add basic user system if feasible.
+
+Roles:
+
+* Owner/Admin
+* Cashier
+* Inventory user
+
+Admin can access everything.
+
+Cashier can:
+
+* Create sales
+* Create quotations
+* View products
+* Print invoices
+* Register payments if allowed
+
+Inventory user can:
+
+* Manage products
+* Purchases
+* Stock count
+* Inventory reports
+
+Add login if possible. For local first version, simple local authentication is enough.
+
+Track cashier name on invoices.
+
+========================
+23. Settings
+============
+
+Create settings page.
+
+Settings should include:
+
+* Shop name
+* Shop phone
+* Shop address
+* Logo upload optional
+* Default language
+* Default invoice print template
+* Currency
+* Backup location
+* Manual backup
+* Restore backup
+* Numbering format
+* Low stock default threshold
+* Enable/disable craftsman commission
+* Enable/disable English language
+* Enable/disable dark mode if implemented
+
+========================
+24. Data Integrity
+==================
+
+Use database transactions for all critical operations.
+
+Critical transactions:
+
+* Finalize sales invoice
+* Convert quotation to invoice
+* Finalize purchase invoice
+* Register customer payment
+* Register supplier payment
+* Finalize stock reconciliation
+* Cancel invoice if implemented
+
+Prevent:
+
+* Half-saved invoices
+* Stock reduced without invoice
+* Debt created without invoice
+* Payment recorded without ledger entry
+* Duplicate serial numbers
+* Negative stock unless explicitly allowed in settings
+
+Use soft delete for important records where appropriate.
+
+Keep audit fields:
+
+* createdAt
+* updatedAt
+* createdBy
+* updatedBy
+* status
+
+========================
+25. Database Entities
+=====================
+
+Design a clean database schema.
+
+Suggested entities:
+
+* users
+* settings
+* products
+* categories
+* brands
+* units
+* suppliers
+* customers
+* craftsmen
+* quotations
+* quotation_items
+* sales_invoices
+* sales_invoice_items
+* purchase_invoices
+* purchase_invoice_items
+* stock_movements
+* stock_counts
+* stock_count_items
+* customer_payments
+* supplier_payments
+* cash_transactions
+* drafts
+* print_templates optional
+* audit_logs optional
+* backups metadata optional
+
+Use relationships properly.
+
+========================
+26. Search and Speed
+====================
+
+The app must be fast for cashier usage.
+
+Requirements:
+
+* Fast product search
+* Keyboard-friendly POS
+* Barcode scanner friendly
+* Search by serial number
+* Search by customer phone
+* Search by product barcode/SKU/name
+* Pagination for large tables
+* Debounced search
+* Good indexes in SQLite for frequently searched fields
+
+========================
+27. Paint Shop Specific Notes
+=============================
+
+Because the shop includes paints, prepare the product model to support paint-related fields if possible:
+
+* Color name/code optional
+* Paint type optional
+* Package size
+* Brand/company
+* Notes for mixing/tinting optional
+
+Do not overcomplicate paint mixing in the first version unless simple, but make the product model flexible.
+
+========================
+28. Future Desktop Packaging
+============================
+
+Build the app now as a local web app, but keep it ready to be packaged later as a Windows desktop app using Tauri or Electron.
+
+Do not implement complex desktop packaging unless it is simple and stable.
+
+Priority now:
+
+* local web app
+* Windows-friendly
+* SQLite local database
+* easy run
+* no cloud cost
+
+========================
+29. Seed Data
+=============
+
+Add realistic seed data for testing:
+
+* Categories:
+
+  * دهانات
+  * أدوات صحية
+  * مواسير
+  * خلاطات
+  * محابس
+  * لوازم سباكة
+  * إكسسوارات حمام
+
+* Some sample products
+
+* Sample customer
+
+* Sample craftsman
+
+* Sample supplier
+
+* Sample quotation
+
+* Sample sale
+
+* Sample purchase
+
+Seed data must be clearly marked as sample data and removable.
+
+========================
+30. Final Deliverables
+======================
+
+After building, provide:
+
+1. Working project files.
+2. Clear setup instructions.
+3. How to run on Mac for development.
+4. How to run on Windows for the shop.
+5. How to locate the SQLite database file.
+6. How to backup and restore.
+7. A short list of completed features.
+8. A short list of any intentionally deferred features, but do not show deferred features as broken buttons in the UI.
+9. Manual test checklist results.
+
+========================
+31. Implementation Priority
+===========================
+
+Build the system in a stable way.
+
+Priority order:
+
+1. Project setup
+2. Database schema
+3. Arabic RTL layout
+4. Products and inventory
+5. Customers
+6. Craftsmen
+7. Suppliers
+8. POS sales invoice
+9. Quotations and conversion to invoice
+10. Purchases
+11. Debts/payments
+12. Stock count/reconciliation
+13. Printing templates
+14. Reports
+15. Backup/restore
+16. Polish UI and animations
+17. Testing and bug fixing
+
+Important:
+
+Do not move too fast by creating many fake screens.
+It is better to implement fewer features fully than many broken features.
+But for any feature you choose to display, it must work.
+
+========================
+32. Acceptance Criteria
+=======================
+
+The app is acceptable only if:
+
+* It runs locally.
+* It uses a local SQLite database.
+* Arabic RTL UI works.
+* Product add/edit/list works.
+* Sales invoice creation works.
+* Sales invoice finalization reduces stock.
+* Quotation creation works.
+* Quotation conversion to invoice works.
+* Purchase invoice finalization increases stock.
+* Customer debt works.
+* Supplier debt works.
+* Draft autosave works after refresh/reopen.
+* Print invoice works.
+* Barcode/serial lookup works.
+* Reports show real database data.
+* Backup creates a real backup file.
+* No visible broken buttons.
+* UI is polished, modern, and smooth.
+
+Build this as a serious real-world local POS/inventory system for an Egyptian sanitary ware, paints, and plumbing supplies shop.

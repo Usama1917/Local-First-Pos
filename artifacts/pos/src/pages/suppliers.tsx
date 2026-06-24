@@ -1,0 +1,171 @@
+import { useState } from "react";
+import {
+  useListSuppliers,
+  useCreateSupplier,
+  useGetSupplier,
+  useGetSupplierPayments,
+  useAddSupplierPayment,
+  getListSuppliersQueryKey,
+  getGetSupplierQueryKey,
+  getGetSupplierPaymentsQueryKey,
+} from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { formatCurrency } from "@/lib/format";
+import { Search, Plus, Truck, Eye, CreditCard } from "lucide-react";
+import { toast } from "sonner";
+
+function SupplierProfile({ id }: { id: number }) {
+  const [payAmount, setPayAmount] = useState("");
+  const [payNote, setPayNote] = useState("");
+  const qc = useQueryClient();
+  const { data: supplier } = useGetSupplier(id, { query: { queryKey: getGetSupplierQueryKey(id) } });
+  const { data: payments } = useGetSupplierPayments(id, { query: { queryKey: getGetSupplierPaymentsQueryKey(id) } });
+  const addPayment = useAddSupplierPayment();
+  const s = supplier as any;
+  if (!s) return null;
+
+  const handlePay = async () => {
+    if (!payAmount) { toast.error("أدخل المبلغ"); return; }
+    await addPayment.mutateAsync({ supplierId: id, data: { amount: parseFloat(payAmount), date: new Date().toISOString().split("T")[0], notes: payNote } });
+    qc.invalidateQueries({ queryKey: getGetSupplierPaymentsQueryKey(id) });
+    qc.invalidateQueries({ queryKey: getListSuppliersQueryKey({}) });
+    toast.success("تم تسجيل الدفعة");
+    setPayAmount(""); setPayNote("");
+  };
+
+  return (
+    <DialogContent className="max-w-lg">
+      <DialogHeader><DialogTitle>{s.name}</DialogTitle></DialogHeader>
+      <div className="grid grid-cols-2 gap-3 mb-4">
+        <Card><CardContent className="p-3 text-center">
+          <p className="text-xl font-bold text-destructive">{formatCurrency(s.totalDebt)}</p>
+          <p className="text-xs text-muted-foreground">المستحق للمورد</p>
+        </CardContent></Card>
+        <Card><CardContent className="p-3 text-center">
+          <p className="text-sm font-medium">{s.phone || "—"}</p>
+          <p className="text-xs text-muted-foreground">{s.contactPerson || ""}</p>
+        </CardContent></Card>
+      </div>
+      <div className="flex gap-2 p-3 bg-muted/50 rounded-lg mb-3">
+        <Input type="number" placeholder="المبلغ" value={payAmount} onChange={e => setPayAmount(e.target.value)} className="w-32" />
+        <Input placeholder="ملاحظات" value={payNote} onChange={e => setPayNote(e.target.value)} className="flex-1" />
+        <Button onClick={handlePay} disabled={addPayment.isPending}>
+          <CreditCard className="h-4 w-4 ml-2" />
+          سداد
+        </Button>
+      </div>
+      <h3 className="font-semibold mb-2">الدفعات</h3>
+      <table className="w-full text-sm">
+        <thead className="bg-muted/50"><tr>
+          <th className="p-2 text-right">التاريخ</th>
+          <th className="p-2 text-left">المبلغ</th>
+          <th className="p-2 text-right">ملاحظات</th>
+        </tr></thead>
+        <tbody>
+          {(payments as any[])?.map((p: any) => (
+            <tr key={p.id} className="border-b">
+              <td className="p-2">{new Date(p.date).toLocaleDateString("ar-EG")}</td>
+              <td className="p-2 text-left text-emerald-600 font-semibold">{formatCurrency(p.amount)}</td>
+              <td className="p-2 text-muted-foreground">{p.notes || "—"}</td>
+            </tr>
+          ))}
+          {!(payments as any[])?.length && <tr><td colSpan={3} className="p-4 text-center text-muted-foreground">لا توجد دفعات</td></tr>}
+        </tbody>
+      </table>
+    </DialogContent>
+  );
+}
+
+export default function SuppliersPage() {
+  const [search, setSearch] = useState("");
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [showAdd, setShowAdd] = useState(false);
+  const [form, setForm] = useState({ name: "", phone: "", address: "", contactPerson: "", openingBalance: "0", notes: "" });
+  const qc = useQueryClient();
+  const { data, isLoading } = useListSuppliers({ search: search || undefined }, { query: { queryKey: getListSuppliersQueryKey({ search }) } });
+  const createSupplier = useCreateSupplier();
+
+  const handleAdd = async () => {
+    if (!form.name) { toast.error("الاسم مطلوب"); return; }
+    await createSupplier.mutateAsync({ data: { ...form, openingBalance: parseFloat(form.openingBalance) || 0 } });
+    qc.invalidateQueries({ queryKey: getListSuppliersQueryKey({}) });
+    toast.success("تم إضافة المورد");
+    setShowAdd(false);
+  };
+
+  const suppliers = (data as any)?.items || [];
+
+  return (
+    <div className="space-y-4">
+      {selectedId && (
+        <Dialog open={!!selectedId} onOpenChange={() => setSelectedId(null)}>
+          <SupplierProfile id={selectedId} />
+        </Dialog>
+      )}
+      <Dialog open={showAdd} onOpenChange={setShowAdd}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>إضافة مورد</DialogTitle></DialogHeader>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="col-span-2 space-y-1"><Label>الاسم *</Label><Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} /></div>
+            <div className="space-y-1"><Label>هاتف</Label><Input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} /></div>
+            <div className="space-y-1"><Label>جهة الاتصال</Label><Input value={form.contactPerson} onChange={e => setForm(f => ({ ...f, contactPerson: e.target.value }))} /></div>
+            <div className="space-y-1"><Label>رصيد افتتاحي</Label><Input type="number" value={form.openingBalance} onChange={e => setForm(f => ({ ...f, openingBalance: e.target.value }))} /></div>
+            <div className="col-span-2 space-y-1"><Label>العنوان</Label><Input value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} /></div>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => setShowAdd(false)}>إلغاء</Button>
+            <Button onClick={handleAdd} disabled={createSupplier.isPending}>حفظ</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">الموردين</h1>
+        <Button onClick={() => setShowAdd(true)}><Plus className="h-4 w-4 ml-2" />إضافة مورد</Button>
+      </div>
+
+      <Card><CardContent className="p-4">
+        <div className="relative">
+          <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input className="pr-9" placeholder="بحث بالاسم..." value={search} onChange={e => setSearch(e.target.value)} />
+        </div>
+      </CardContent></Card>
+
+      <Card><CardContent className="p-0">
+        <table className="w-full text-sm">
+          <thead className="bg-muted/50">
+            <tr className="text-right">
+              <th className="p-3">المورد</th>
+              <th className="p-3">الهاتف</th>
+              <th className="p-3">جهة الاتصال</th>
+              <th className="p-3 text-left">المستحق</th>
+              <th className="p-3"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {isLoading ? <tr><td colSpan={5} className="p-8 text-center text-muted-foreground">جاري التحميل...</td></tr> :
+              suppliers.map((s: any) => (
+                <tr key={s.id} className="border-b hover:bg-muted/30">
+                  <td className="p-3 font-medium">{s.name}</td>
+                  <td className="p-3 text-muted-foreground">{s.phone || "—"}</td>
+                  <td className="p-3 text-muted-foreground">{s.contactPerson || "—"}</td>
+                  <td className="p-3 text-left">{s.totalDebt > 0 ? <span className="text-destructive font-bold">{formatCurrency(s.totalDebt)}</span> : <span className="text-muted-foreground">—</span>}</td>
+                  <td className="p-3"><Button variant="ghost" size="sm" onClick={() => setSelectedId(s.id)}><Eye className="h-4 w-4 ml-1" />عرض</Button></td>
+                </tr>
+              ))}
+            {!isLoading && suppliers.length === 0 && (
+              <tr><td colSpan={5} className="p-8 text-center text-muted-foreground">
+                <Truck className="h-10 w-10 mx-auto mb-2 opacity-30" />لا يوجد موردون
+              </td></tr>
+            )}
+          </tbody>
+        </table>
+      </CardContent></Card>
+    </div>
+  );
+}
