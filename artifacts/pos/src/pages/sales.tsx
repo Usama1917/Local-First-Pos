@@ -2,17 +2,19 @@ import { useState } from "react";
 import {
   useListSalesInvoices,
   useGetSalesInvoice,
+  useListCraftsmen,
   getListSalesInvoicesQueryKey,
   getGetSalesInvoiceQueryKey,
+  getListCraftsmenQueryKey,
 } from "@workspace/api-client-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatCurrency } from "@/lib/format";
-import { Search, Printer, Receipt, Eye } from "lucide-react";
+import { Search, Printer, Receipt, Eye, HardHat } from "lucide-react";
 
 const STATUS_LABELS: Record<string, { label: string; variant: any }> = {
   draft: { label: "مسودة", variant: "secondary" },
@@ -44,9 +46,18 @@ function InvoiceDetail({ invoiceId }: { invoiceId: number }) {
         <div className="grid grid-cols-2 gap-4 mb-4 text-sm">
           <div><span className="text-muted-foreground">التاريخ:</span> <span className="font-medium">{new Date(inv.createdAt).toLocaleDateString("ar-EG")}</span></div>
           <div><span className="text-muted-foreground">الحالة:</span> <Badge variant={STATUS_LABELS[inv.status]?.variant}>{STATUS_LABELS[inv.status]?.label}</Badge></div>
-          <div><span className="text-muted-foreground">العميل:</span> <span className="font-medium">{inv.customerName || "عميل نقدي"}</span></div>
+          <div>
+            <span className="text-muted-foreground">العميل:</span>{" "}
+            <span className="font-medium">{inv.customerName || "عميل نقدي"}</span>
+          </div>
           <div><span className="text-muted-foreground">الدفع:</span> <span>{PAYMENT_LABELS[inv.paymentType] || inv.paymentType}</span></div>
-          {inv.craftsmanName && <div><span className="text-muted-foreground">الصنايعي:</span> <span>{inv.craftsmanName}</span></div>}
+          {inv.craftsmanName && (
+            <div className="col-span-2 flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-md p-2">
+              <HardHat className="h-4 w-4 text-amber-600 flex-shrink-0" />
+              <span className="text-muted-foreground">الصنايعي / الفني:</span>
+              <span className="font-semibold text-amber-800">{inv.craftsmanName}</span>
+            </div>
+          )}
         </div>
         <table className="w-full text-sm border rounded-lg overflow-hidden">
           <thead className="bg-muted/50">
@@ -75,7 +86,12 @@ function InvoiceDetail({ invoiceId }: { invoiceId: number }) {
           {inv.discount > 0 && <div className="flex justify-between text-destructive"><span>الخصم:</span><span>- {formatCurrency(inv.discount)}</span></div>}
           <div className="flex justify-between font-bold text-base border-t pt-2"><span>الإجمالي:</span><span className="text-primary">{formatCurrency(inv.total)}</span></div>
           {inv.paidAmount > 0 && <div className="flex justify-between text-emerald-600"><span>المدفوع:</span><span>{formatCurrency(inv.paidAmount)}</span></div>}
-          {inv.remainingAmount > 0 && <div className="flex justify-between text-destructive font-semibold"><span>المتبقي:</span><span>{formatCurrency(inv.remainingAmount)}</span></div>}
+          {inv.remainingAmount > 0 && <div className="flex justify-between text-destructive font-semibold"><span>المتبقي (على العميل):</span><span>{formatCurrency(inv.remainingAmount)}</span></div>}
+          {inv.craftsmanCommission > 0 && (
+            <div className="flex justify-between text-amber-600 border-t pt-2 mt-2">
+              <span>عمولة الصنايعي:</span><span>{formatCurrency(inv.craftsmanCommission)}</span>
+            </div>
+          )}
         </div>
       </div>
     </DialogContent>
@@ -86,9 +102,20 @@ export default function SalesPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [paymentFilter, setPaymentFilter] = useState("");
+  const [craftsmanFilter, setCraftsmanFilter] = useState("");
   const [selectedId, setSelectedId] = useState<number | null>(null);
 
-  const params = { search: search || undefined, status: statusFilter || undefined, paymentType: paymentFilter || undefined, limit: 100 };
+  const craftsmenParams = {};
+  const { data: craftsmenData } = useListCraftsmen(craftsmenParams, { query: { queryKey: getListCraftsmenQueryKey(craftsmenParams) } });
+  const craftsmen = (craftsmenData as any)?.items || [];
+
+  const params = {
+    search: search || undefined,
+    status: statusFilter || undefined,
+    paymentType: paymentFilter || undefined,
+    craftsmanId: craftsmanFilter ? Number(craftsmanFilter) : undefined,
+    limit: 100,
+  };
   const { data, isLoading } = useListSalesInvoices(params, { query: { queryKey: getListSalesInvoicesQueryKey(params) } });
   const invoices = (data as any)?.items || [];
 
@@ -107,8 +134,8 @@ export default function SalesPage() {
 
       <Card>
         <CardContent className="p-4">
-          <div className="flex gap-3">
-            <div className="relative flex-1">
+          <div className="flex gap-3 flex-wrap">
+            <div className="relative flex-1 min-w-48">
               <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input className="pr-9" placeholder="رقم الفاتورة أو اسم العميل..." value={search} onChange={e => setSearch(e.target.value)} />
             </div>
@@ -128,6 +155,13 @@ export default function SalesPage() {
                 <SelectItem value="partial">جزئي</SelectItem>
               </SelectContent>
             </Select>
+            <Select value={craftsmanFilter || "__none__"} onValueChange={(v) => setCraftsmanFilter(v === "__none__" ? "" : v)}>
+              <SelectTrigger className="w-40"><SelectValue placeholder="كل الصنايعية" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">كل الصنايعية</SelectItem>
+                {craftsmen.map((c: any) => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>
@@ -140,6 +174,7 @@ export default function SalesPage() {
                 <th className="p-3">الرقم</th>
                 <th className="p-3">التاريخ</th>
                 <th className="p-3">العميل</th>
+                <th className="p-3">الصنايعي</th>
                 <th className="p-3">الحالة</th>
                 <th className="p-3">الدفع</th>
                 <th className="p-3 text-left">الإجمالي</th>
@@ -148,12 +183,17 @@ export default function SalesPage() {
               </tr>
             </thead>
             <tbody>
-              {isLoading ? <tr><td colSpan={8} className="p-8 text-center text-muted-foreground">جاري التحميل...</td></tr> :
+              {isLoading ? <tr><td colSpan={9} className="p-8 text-center text-muted-foreground">جاري التحميل...</td></tr> :
                 invoices.map((inv: any) => (
                   <tr key={inv.id} className="border-b hover:bg-muted/30">
                     <td className="p-3 font-mono font-medium text-primary">{inv.serial}</td>
                     <td className="p-3 text-muted-foreground">{new Date(inv.createdAt).toLocaleDateString("ar-EG")}</td>
                     <td className="p-3">{inv.customerName || <span className="text-muted-foreground">نقدي</span>}</td>
+                    <td className="p-3">
+                      {inv.craftsmanName
+                        ? <span className="flex items-center gap-1 text-amber-700 text-xs"><HardHat className="h-3 w-3" />{inv.craftsmanName}</span>
+                        : <span className="text-muted-foreground">—</span>}
+                    </td>
                     <td className="p-3"><Badge variant={STATUS_LABELS[inv.status]?.variant}>{STATUS_LABELS[inv.status]?.label}</Badge></td>
                     <td className="p-3">{PAYMENT_LABELS[inv.paymentType] || inv.paymentType}</td>
                     <td className="p-3 text-left font-semibold">{formatCurrency(inv.total)}</td>
@@ -167,7 +207,7 @@ export default function SalesPage() {
                 ))
               }
               {!isLoading && invoices.length === 0 && (
-                <tr><td colSpan={8} className="p-8 text-center text-muted-foreground">
+                <tr><td colSpan={9} className="p-8 text-center text-muted-foreground">
                   <Receipt className="h-10 w-10 mx-auto mb-2 opacity-30" />
                   لا توجد فواتير
                 </td></tr>

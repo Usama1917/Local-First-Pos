@@ -35,6 +35,8 @@ router.get("/quotations", (req, res) => {
   }
   if (status) { conditions.push("q.status = ?"); params.push(status); }
   if (customerId) { conditions.push("q.customerId = ?"); params.push(Number(customerId)); }
+  const { craftsmanId } = req.query as any;
+  if (craftsmanId) { conditions.push("q.craftsmanId = ?"); params.push(Number(craftsmanId)); }
   const where = conditions.length ? "WHERE " + conditions.join(" AND ") : "";
   const items = db.prepare(`${QUOTATION_SELECT} ${where} ORDER BY q.createdAt DESC LIMIT ? OFFSET ?`).all(...params, Number(limit), Number(offset));
   const total = (db.prepare(`SELECT COUNT(*) as c FROM quotations q LEFT JOIN customers c ON q.customerId = c.id ${where}`).get(...params) as any).c;

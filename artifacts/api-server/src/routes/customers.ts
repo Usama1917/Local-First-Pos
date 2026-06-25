@@ -116,4 +116,34 @@ router.post("/customers/:id/payments", (req, res) => {
   res.status(201).json(db.prepare("SELECT * FROM customer_payments WHERE id = ?").get(r.lastInsertRowid));
 });
 
+router.get("/customers/:id/invoices", (req, res) => {
+  const id = Number(req.params.id);
+  const items = db.prepare(`
+    SELECT si.id, si.serial, si.status, si.paymentType, si.total, si.paidAmount,
+           si.remainingAmount, si.craftsmanCommission, si.createdAt,
+           cr.id as craftsmanId, cr.name as craftsmanName
+    FROM sales_invoices si
+    LEFT JOIN craftsmen cr ON si.craftsmanId = cr.id
+    WHERE si.customerId = ? AND si.status != 'draft'
+    ORDER BY si.createdAt DESC
+  `).all(id);
+  res.json({ items, total: items.length });
+});
+
+router.get("/customers/:id/quotations", (req, res) => {
+  const id = Number(req.params.id);
+  const items = db.prepare(`
+    SELECT q.id, q.serial, q.status, q.total, q.createdAt, q.validUntil,
+           q.convertedInvoiceId,
+           cr.id as craftsmanId, cr.name as craftsmanName,
+           si.serial as convertedInvoiceSerial
+    FROM quotations q
+    LEFT JOIN craftsmen cr ON q.craftsmanId = cr.id
+    LEFT JOIN sales_invoices si ON q.convertedInvoiceId = si.id
+    WHERE q.customerId = ?
+    ORDER BY q.createdAt DESC
+  `).all(id);
+  res.json({ items, total: items.length });
+});
+
 export default router;

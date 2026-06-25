@@ -10,7 +10,7 @@ import {
   getGetCustomerStatementQueryKey,
   getGetCustomerPaymentsQueryKey,
 } from "@workspace/api-client-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -19,8 +19,24 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatCurrency } from "@/lib/format";
-import { Search, Plus, Users, Eye, CreditCard } from "lucide-react";
+import { Search, Plus, Users, Eye, CreditCard, Receipt, FileText, HardHat } from "lucide-react";
 import { toast } from "sonner";
+
+const STATUS_LABELS: Record<string, { label: string; variant: any }> = {
+  draft: { label: "مسودة", variant: "secondary" },
+  finalized: { label: "مكتملة", variant: "default" },
+  partially_paid: { label: "جزئي", variant: "outline" },
+  paid: { label: "مدفوعة", variant: "default" },
+  credit: { label: "آجل", variant: "destructive" },
+  cancelled: { label: "ملغية", variant: "secondary" },
+};
+const Q_STATUS: Record<string, { label: string; variant: any }> = {
+  draft: { label: "مسودة", variant: "secondary" },
+  confirmed: { label: "مؤكدة", variant: "outline" },
+  converted: { label: "محولة", variant: "default" },
+  cancelled: { label: "ملغية", variant: "destructive" },
+};
+const PAYMENT_LABELS: Record<string, string> = { cash: "نقدي", credit: "آجل", partial: "جزئي" };
 
 function CustomerProfile({ customerId, onClose }: { customerId: number; onClose: () => void }) {
   const [payAmount, setPayAmount] = useState("");
@@ -30,6 +46,15 @@ function CustomerProfile({ customerId, onClose }: { customerId: number; onClose:
   const { data: statement } = useGetCustomerStatement(customerId, { query: { queryKey: getGetCustomerStatementQueryKey(customerId) } });
   const { data: payments } = useGetCustomerPayments(customerId, { query: { queryKey: getGetCustomerPaymentsQueryKey(customerId) } });
   const addPayment = useAddCustomerPayment();
+
+  const { data: invoicesData } = useQuery({
+    queryKey: ["customer-invoices", customerId],
+    queryFn: () => fetch(`/api/customers/${customerId}/invoices`).then(r => r.json()),
+  });
+  const { data: quotationsData } = useQuery({
+    queryKey: ["customer-quotations", customerId],
+    queryFn: () => fetch(`/api/customers/${customerId}/quotations`).then(r => r.json()),
+  });
 
   const handlePay = async () => {
     if (!payAmount) { toast.error("أدخل المبلغ"); return; }
@@ -42,6 +67,8 @@ function CustomerProfile({ customerId, onClose }: { customerId: number; onClose:
 
   if (!customer) return null;
   const stmt = statement as any;
+  const invoices = (invoicesData as any)?.items || [];
+  const quotations = (quotationsData as any)?.items || [];
 
   return (
     <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
@@ -74,11 +101,106 @@ function CustomerProfile({ customerId, onClose }: { customerId: number; onClose:
           تسجيل دفعة
         </Button>
       </div>
-      <Tabs defaultValue="statement">
+      <Tabs defaultValue="invoices">
         <TabsList>
+          <TabsTrigger value="invoices">
+            <Receipt className="h-3.5 w-3.5 ml-1" />
+            الفواتير ({invoices.length})
+          </TabsTrigger>
+          <TabsTrigger value="quotations">
+            <FileText className="h-3.5 w-3.5 ml-1" />
+            التسعيرات ({quotations.length})
+          </TabsTrigger>
           <TabsTrigger value="statement">كشف الحساب</TabsTrigger>
           <TabsTrigger value="payments">الدفعات</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="invoices">
+          {invoices.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <Receipt className="h-10 w-10 mx-auto mb-2 opacity-30" />
+              <p>لا توجد فواتير لهذا العميل</p>
+            </div>
+          ) : (
+            <table className="w-full text-sm">
+              <thead className="bg-muted/50">
+                <tr>
+                  <th className="p-2 text-right">الفاتورة</th>
+                  <th className="p-2 text-right">التاريخ</th>
+                  <th className="p-2 text-right">الصنايعي</th>
+                  <th className="p-2 text-right">الحالة</th>
+                  <th className="p-2 text-left">الإجمالي</th>
+                  <th className="p-2 text-left">المتبقي</th>
+                </tr>
+              </thead>
+              <tbody>
+                {invoices.map((inv: any) => (
+                  <tr key={inv.id} className="border-b hover:bg-muted/30">
+                    <td className="p-2 font-mono font-medium text-primary">{inv.serial}</td>
+                    <td className="p-2 text-muted-foreground text-xs">{new Date(inv.createdAt).toLocaleDateString("ar-EG")}</td>
+                    <td className="p-2">
+                      {inv.craftsmanName
+                        ? <span className="flex items-center gap-1 text-amber-700"><HardHat className="h-3 w-3" />{inv.craftsmanName}</span>
+                        : <span className="text-muted-foreground">—</span>}
+                    </td>
+                    <td className="p-2">
+                      <Badge variant={STATUS_LABELS[inv.status]?.variant}>{STATUS_LABELS[inv.status]?.label}</Badge>
+                    </td>
+                    <td className="p-2 text-left font-semibold">{formatCurrency(inv.total)}</td>
+                    <td className="p-2 text-left">
+                      {inv.remainingAmount > 0
+                        ? <span className="text-destructive font-semibold">{formatCurrency(inv.remainingAmount)}</span>
+                        : <span className="text-emerald-600 text-xs">مسدد</span>}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </TabsContent>
+
+        <TabsContent value="quotations">
+          {quotations.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <FileText className="h-10 w-10 mx-auto mb-2 opacity-30" />
+              <p>لا توجد تسعيرات لهذا العميل</p>
+            </div>
+          ) : (
+            <table className="w-full text-sm">
+              <thead className="bg-muted/50">
+                <tr>
+                  <th className="p-2 text-right">التسعيرة</th>
+                  <th className="p-2 text-right">التاريخ</th>
+                  <th className="p-2 text-right">الصنايعي</th>
+                  <th className="p-2 text-right">الحالة</th>
+                  <th className="p-2 text-left">الإجمالي</th>
+                  <th className="p-2 text-right">الفاتورة</th>
+                </tr>
+              </thead>
+              <tbody>
+                {quotations.map((q: any) => (
+                  <tr key={q.id} className="border-b hover:bg-muted/30">
+                    <td className="p-2 font-mono font-medium text-primary">{q.serial}</td>
+                    <td className="p-2 text-muted-foreground text-xs">{new Date(q.createdAt).toLocaleDateString("ar-EG")}</td>
+                    <td className="p-2">
+                      {q.craftsmanName
+                        ? <span className="flex items-center gap-1 text-amber-700"><HardHat className="h-3 w-3" />{q.craftsmanName}</span>
+                        : <span className="text-muted-foreground">—</span>}
+                    </td>
+                    <td className="p-2">
+                      <Badge variant={Q_STATUS[q.status]?.variant}>{Q_STATUS[q.status]?.label}</Badge>
+                    </td>
+                    <td className="p-2 text-left font-semibold">{formatCurrency(q.total)}</td>
+                    <td className="p-2 text-xs text-muted-foreground font-mono">
+                      {q.convertedInvoiceSerial || "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </TabsContent>
+
         <TabsContent value="statement">
           <table className="w-full text-sm">
             <thead className="bg-muted/50"><tr>
@@ -101,6 +223,7 @@ function CustomerProfile({ customerId, onClose }: { customerId: number; onClose:
             </tbody>
           </table>
         </TabsContent>
+
         <TabsContent value="payments">
           <table className="w-full text-sm">
             <thead className="bg-muted/50"><tr>

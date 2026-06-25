@@ -1,0 +1,209 @@
+Continue from the current working checkpoint. Do not restart the project from scratch.
+
+The system is now running and the main pages are working. I want you to add and polish an important real-world business workflow for Egyptian sanitary ware / paints / plumbing shops:
+
+Craftsman-to-Customer invoice linking.
+
+Business meaning:
+In this type of shop, a craftsman/plumber/painter may come to the shop and buy items on behalf of a specific customer. I may already have the craftsman saved in the Craftsmen page, and I may also have the customer saved in the Customers page. When creating a quotation or sales invoice, I need to link both:
+
+* The craftsman who brought or handled the purchase
+* The actual customer who owns the job/invoice
+
+Example:
+I have a craftsman called “أحمد السباك”.
+He brings a customer called “محمد علي”.
+The customer takes an invoice.
+I want the invoice to show that it belongs to customer “محمد علي” and was brought/handled by craftsman “أحمد السباك”.
+
+This must be implemented as real database logic, not just UI.
+
+Required behavior:
+
+1. Sales Invoice
+   On the POS / sales invoice screen:
+
+* Allow selecting a customer.
+* Allow selecting a craftsman.
+* Both fields should be optional, but can be used together.
+* If both are selected, save both customerId and craftsmanId on the invoice.
+* The invoice details page should clearly show:
+
+  * العميل
+  * الصنايعي / الفني
+* The printed invoice should also show both customer and craftsman if available.
+
+2. Quotation
+   On the quotation screen:
+
+* Allow selecting a customer.
+* Allow selecting a craftsman.
+* Save both on the quotation.
+* When converting a quotation to a sales invoice, carry both customerId and craftsmanId into the new invoice.
+* Keep the link between quotation and invoice.
+
+3. Customer Profile
+   On the customer details/profile page:
+   Show all invoices linked to this customer, including invoices that also have a craftsman.
+
+For each invoice row, show:
+
+* Invoice serial
+* Date
+* Total
+* Paid/remaining
+* Craftsman name if linked
+
+Also show quotations linked to this customer.
+
+4. Craftsman Profile
+   On the craftsman details/profile page:
+   Show all invoices linked to this craftsman.
+
+For each invoice row, show:
+
+* Invoice serial
+* Date
+* Customer name if linked
+* Total
+* Paid/remaining
+* Commission if implemented
+
+Also show quotations linked to this craftsman.
+
+5. Customers Brought by Craftsman
+   In the craftsman profile, add a section/table called:
+   “العملاء المرتبطين بالصنايعي”
+   or
+   “العملاء اللي اتعاملوا عن طريقه”
+
+This should list unique customers who had invoices or quotations linked to this craftsman.
+
+Columns:
+
+* Customer name
+* Phone
+* Number of invoices
+* Total sales amount
+* Remaining debt if available
+* Last transaction date
+
+6. Invoice Search and Tables
+   In invoices tables and quotation tables:
+
+* Add customer name column.
+* Add craftsman name column.
+* Add filters by customer and craftsman if easy.
+* Keep search working.
+
+7. Debt Logic
+   Debt must belong to the customer if a customer is selected.
+
+Important:
+A craftsman being linked to an invoice does not automatically mean the debt is on the craftsman.
+
+Default rule:
+
+* If customer is selected and invoice is credit/partial, remaining debt goes to the customer.
+* Craftsman is only a reference/introducer/worker unless a separate commission system is enabled.
+
+Do not mix customer debt with craftsman commission.
+
+8. Commission Optional
+   If the current system already has craftsman commission fields, keep them working.
+   If not fully implemented yet, do not overcomplicate it now.
+
+But prepare the data model so an invoice can optionally store:
+
+* craftsmanCommissionType: percentage / fixed / none
+* craftsmanCommissionValue
+* craftsmanCommissionAmount
+
+Only show commission UI if it is implemented and working.
+
+9. Database Requirements
+   Inspect the current database schema first.
+
+If sales invoices and quotations already have customerId and craftsmanId fields, use them.
+
+If not, add them safely:
+
+* sales_invoices.customerId nullable
+* sales_invoices.craftsmanId nullable
+* quotations.customerId nullable
+* quotations.craftsmanId nullable
+
+Add indexes for:
+
+* customerId
+* craftsmanId
+* invoice serial
+* quotation serial
+
+Do not delete existing data.
+Do not reset the database unless absolutely necessary.
+If migration is needed, write a safe migration.
+
+10. API Requirements
+    Add or update API endpoints so the frontend can:
+
+* Create invoice with customerId and craftsmanId
+* Update invoice with customerId and craftsmanId if allowed
+* Create quotation with customerId and craftsmanId
+* Convert quotation to invoice while preserving both
+* Fetch customer profile with related invoices/quotations
+* Fetch craftsman profile with related invoices/quotations/customers
+* Search/filter invoices by customer/craftsman
+* Search/filter quotations by customer/craftsman
+
+11. UI Requirements
+    Keep Arabic RTL as the main UI.
+
+Use clear Arabic labels:
+
+* العميل
+* اختر العميل
+* الصنايعي
+* اختر الصنايعي
+* مرتبط بالصنايعي
+* العملاء المرتبطين بالصنايعي
+* الفواتير المرتبطة
+* التسعيرات المرتبطة
+
+The UI must remain beautiful, smooth, and polished.
+Do not make the design ugly or basic.
+Keep the same visual style, animations, spacing, cards, and tables.
+
+12. Quality Rules
+    Every visible button must work.
+
+Do not add fake buttons.
+Do not add placeholder screens.
+Do not break any page that is currently working.
+
+After implementation, manually test:
+
+* Open POS page.
+* Create invoice with customer only.
+* Create invoice with craftsman only.
+* Create invoice with both customer and craftsman.
+* Confirm the invoice appears in customer profile.
+* Confirm the invoice appears in craftsman profile.
+* Confirm the customer appears under “customers linked to this craftsman”.
+* Create quotation with both customer and craftsman.
+* Convert quotation to invoice.
+* Confirm customer and craftsman links are preserved after conversion.
+* Print invoice and verify both names appear.
+* Check debts page and confirm remaining debt is assigned to customer, not craftsman.
+* Check all main pages still load without console/API errors.
+
+13. Final Response
+    When done, report exactly:
+
+* What database fields were added/used.
+* What API endpoints were added/updated.
+* What UI pages were updated.
+* What manual tests you performed.
+* Whether any feature is intentionally deferred.
+
+Do not suggest unrelated features like camera barcode scanning now. Focus only on fixing and completing this craftsman-customer invoice linking workflow.

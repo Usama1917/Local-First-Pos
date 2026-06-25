@@ -10,9 +10,10 @@ import {
   useSearchProducts,
   getListQuotationsQueryKey,
   getGetQuotationQueryKey,
+  getListCraftsmenQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -20,7 +21,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { formatCurrency } from "@/lib/format";
-import { Search, Plus, FileText, ArrowRight, Copy, Trash2, Minus } from "lucide-react";
+import { Search, Plus, FileText, ArrowRight, Copy, Trash2, Minus, HardHat } from "lucide-react";
 import { toast } from "sonner";
 
 const STATUS_LABELS: Record<string, { label: string; variant: any }> = {
@@ -87,11 +88,17 @@ function NewQuotationDialog({ onClose }: { onClose: () => void }) {
           <SelectTrigger className="flex-1"><SelectValue placeholder="الصنايعي (اختياري)" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="__none__">بدون صنايعي</SelectItem>
-            {(craftsmen as any)?.items?.map((c: any) => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
+            {(craftsmen as any)?.items?.map((c: any) => <SelectItem key={c.id} value={String(c.id)}>{c.name} {c.jobType ? `(${c.jobType})` : ""}</SelectItem>)}
           </SelectContent>
         </Select>
         <Input type="date" className="w-36" value={validUntil} onChange={e => setValidUntil(e.target.value)} title="صالحة حتى" />
       </div>
+      {(customerId || craftsmanId) && (
+        <div className="flex gap-2 text-xs text-muted-foreground bg-muted/40 px-3 py-2 rounded-md">
+          {customerId && <span>✓ العميل: {(customers as any)?.items?.find((c: any) => String(c.id) === customerId)?.name}</span>}
+          {craftsmanId && <span>✓ الصنايعي: {(craftsmen as any)?.items?.find((c: any) => String(c.id) === craftsmanId)?.name}</span>}
+        </div>
+      )}
       <div className="relative">
         <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input className="pr-9" placeholder="ابحث عن منتج..." value={productSearch} onChange={e => setProductSearch(e.target.value)} />
@@ -158,9 +165,20 @@ function NewQuotationDialog({ onClose }: { onClose: () => void }) {
 export default function QuotationsPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [craftsmanFilter, setCraftsmanFilter] = useState("");
   const [showAdd, setShowAdd] = useState(false);
   const qc = useQueryClient();
-  const params = { search: search || undefined, status: statusFilter || undefined, limit: 100 };
+
+  const craftsmenParams = {};
+  const { data: craftsmenData } = useListCraftsmen(craftsmenParams, { query: { queryKey: getListCraftsmenQueryKey(craftsmenParams) } });
+  const craftsmen = (craftsmenData as any)?.items || [];
+
+  const params = {
+    search: search || undefined,
+    status: statusFilter || undefined,
+    craftsmanId: craftsmanFilter ? Number(craftsmanFilter) : undefined,
+    limit: 100,
+  };
   const { data, isLoading } = useListQuotations(params, { query: { queryKey: getListQuotationsQueryKey(params) } });
   const convertToInvoice = useConvertQuotationToInvoice();
   const duplicate = useDuplicateQuotation();
@@ -195,8 +213,8 @@ export default function QuotationsPage() {
 
       <Card>
         <CardContent className="p-4">
-          <div className="flex gap-3">
-            <div className="relative flex-1">
+          <div className="flex gap-3 flex-wrap">
+            <div className="relative flex-1 min-w-48">
               <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input className="pr-9" placeholder="رقم التسعيرة أو اسم العميل..." value={search} onChange={e => setSearch(e.target.value)} />
             </div>
@@ -205,6 +223,13 @@ export default function QuotationsPage() {
               <SelectContent>
                 <SelectItem value="__none__">كل الحالات</SelectItem>
                 {Object.entries(STATUS_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={craftsmanFilter || "__none__"} onValueChange={(v) => setCraftsmanFilter(v === "__none__" ? "" : v)}>
+              <SelectTrigger className="w-40"><SelectValue placeholder="كل الصنايعية" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">كل الصنايعية</SelectItem>
+                {craftsmen.map((c: any) => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
@@ -219,18 +244,24 @@ export default function QuotationsPage() {
                 <th className="p-3">الرقم</th>
                 <th className="p-3">التاريخ</th>
                 <th className="p-3">العميل</th>
+                <th className="p-3">الصنايعي</th>
                 <th className="p-3">الحالة</th>
                 <th className="p-3 text-left">الإجمالي</th>
                 <th className="p-3">إجراءات</th>
               </tr>
             </thead>
             <tbody>
-              {isLoading ? <tr><td colSpan={6} className="p-8 text-center text-muted-foreground">جاري التحميل...</td></tr> :
+              {isLoading ? <tr><td colSpan={7} className="p-8 text-center text-muted-foreground">جاري التحميل...</td></tr> :
                 quotations.map((q: any) => (
                   <tr key={q.id} className="border-b hover:bg-muted/30">
                     <td className="p-3 font-mono font-medium text-primary">{q.serial}</td>
                     <td className="p-3 text-muted-foreground">{new Date(q.createdAt).toLocaleDateString("ar-EG")}</td>
                     <td className="p-3">{q.customerName || <span className="text-muted-foreground">غير محدد</span>}</td>
+                    <td className="p-3">
+                      {q.craftsmanName
+                        ? <span className="flex items-center gap-1 text-amber-700 text-xs"><HardHat className="h-3 w-3" />{q.craftsmanName}</span>
+                        : <span className="text-muted-foreground">—</span>}
+                    </td>
                     <td className="p-3"><Badge variant={STATUS_LABELS[q.status]?.variant}>{STATUS_LABELS[q.status]?.label}</Badge></td>
                     <td className="p-3 text-left font-semibold">{formatCurrency(q.total)}</td>
                     <td className="p-3">
@@ -249,7 +280,7 @@ export default function QuotationsPage() {
                 ))
               }
               {!isLoading && quotations.length === 0 && (
-                <tr><td colSpan={6} className="p-8 text-center text-muted-foreground">
+                <tr><td colSpan={7} className="p-8 text-center text-muted-foreground">
                   <FileText className="h-10 w-10 mx-auto mb-2 opacity-30" />
                   لا توجد تسعيرات
                 </td></tr>

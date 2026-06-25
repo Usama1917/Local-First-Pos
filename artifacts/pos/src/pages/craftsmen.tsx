@@ -6,24 +6,61 @@ import {
   getListCraftsmenQueryKey,
   getGetCraftsmanQueryKey,
 } from "@workspace/api-client-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatCurrency } from "@/lib/format";
-import { Search, Plus, HardHat, Eye } from "lucide-react";
+import { Search, Plus, HardHat, Eye, Users, Receipt, FileText } from "lucide-react";
 import { toast } from "sonner";
+
+const STATUS_LABELS: Record<string, { label: string; variant: any }> = {
+  draft: { label: "مسودة", variant: "secondary" },
+  finalized: { label: "مكتملة", variant: "default" },
+  partially_paid: { label: "جزئي", variant: "outline" },
+  paid: { label: "مدفوعة", variant: "default" },
+  credit: { label: "آجل", variant: "destructive" },
+  cancelled: { label: "ملغية", variant: "secondary" },
+};
+const Q_STATUS: Record<string, { label: string; variant: any }> = {
+  draft: { label: "مسودة", variant: "secondary" },
+  confirmed: { label: "مؤكدة", variant: "outline" },
+  converted: { label: "محولة", variant: "default" },
+  cancelled: { label: "ملغية", variant: "destructive" },
+};
 
 function CraftsmanProfile({ id, onClose }: { id: number; onClose: () => void }) {
   const { data } = useGetCraftsman(id, { query: { queryKey: getGetCraftsmanQueryKey(id) } });
+  const { data: linkedCustomers } = useQuery({
+    queryKey: ["craftsman-customers", id],
+    queryFn: () => fetch(`/api/craftsmen/${id}/customers`).then(r => r.json()),
+  });
+
   const craftsman = data as any;
   if (!craftsman) return null;
+
+  const invoices = craftsman.recentSales || [];
+  const quotations = craftsman.recentQuotations || [];
+  const customers = (linkedCustomers as any)?.items || [];
+
   return (
-    <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-      <DialogHeader><DialogTitle>{craftsman.name}</DialogTitle></DialogHeader>
-      <div className="grid grid-cols-3 gap-3 mb-4">
+    <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogHeader>
+        <DialogTitle className="flex items-center gap-2">
+          <HardHat className="h-5 w-5 text-amber-600" />
+          {craftsman.name}
+        </DialogTitle>
+        <div className="flex gap-4 text-sm text-muted-foreground">
+          {craftsman.phone && <span>📞 {craftsman.phone}</span>}
+          {craftsman.jobType && <span>🔧 {craftsman.jobType}</span>}
+        </div>
+      </DialogHeader>
+
+      <div className="grid grid-cols-4 gap-3 mb-2">
         <Card><CardContent className="p-3 text-center">
           <p className="text-xl font-bold">{formatCurrency(craftsman.totalSales)}</p>
           <p className="text-xs text-muted-foreground">إجمالي المبيعات</p>
@@ -36,32 +73,153 @@ function CraftsmanProfile({ id, onClose }: { id: number; onClose: () => void }) 
           <p className="text-xl font-bold">{craftsman.commissionPercent || 0}%</p>
           <p className="text-xs text-muted-foreground">نسبة العمولة</p>
         </CardContent></Card>
+        <Card><CardContent className="p-3 text-center">
+          <p className="text-xl font-bold text-primary">{craftsman.uniqueCustomers || 0}</p>
+          <p className="text-xs text-muted-foreground">عدد العملاء</p>
+        </CardContent></Card>
       </div>
-      <div className="text-sm text-muted-foreground mb-3 space-x-4 space-x-reverse">
-        {craftsman.phone && <span>هاتف: {craftsman.phone}</span>}
-        {craftsman.jobType && <span>التخصص: {craftsman.jobType}</span>}
-      </div>
-      <h3 className="font-semibold mb-2">آخر الفواتير</h3>
-      <table className="w-full text-sm">
-        <thead className="bg-muted/50"><tr>
-          <th className="p-2 text-right">الفاتورة</th>
-          <th className="p-2 text-right">العميل</th>
-          <th className="p-2 text-left">الإجمالي</th>
-          <th className="p-2 text-left">العمولة</th>
-          <th className="p-2 text-right">التاريخ</th>
-        </tr></thead>
-        <tbody>
-          {craftsman.recentSales?.map((inv: any) => (
-            <tr key={inv.id} className="border-b">
-              <td className="p-2 font-mono">{inv.serial}</td>
-              <td className="p-2">{inv.customerName || "—"}</td>
-              <td className="p-2 text-left">{formatCurrency(inv.total)}</td>
-              <td className="p-2 text-left text-amber-600">{formatCurrency(inv.craftsmanCommission)}</td>
-              <td className="p-2 text-muted-foreground">{new Date(inv.createdAt).toLocaleDateString("ar-EG")}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+
+      <Tabs defaultValue="invoices">
+        <TabsList className="w-full">
+          <TabsTrigger value="invoices" className="flex-1">
+            <Receipt className="h-3.5 w-3.5 ml-1" />
+            الفواتير ({invoices.length})
+          </TabsTrigger>
+          <TabsTrigger value="quotations" className="flex-1">
+            <FileText className="h-3.5 w-3.5 ml-1" />
+            التسعيرات ({quotations.length})
+          </TabsTrigger>
+          <TabsTrigger value="customers" className="flex-1">
+            <Users className="h-3.5 w-3.5 ml-1" />
+            العملاء ({customers.length})
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="invoices">
+          {invoices.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <Receipt className="h-10 w-10 mx-auto mb-2 opacity-30" />
+              <p>لا توجد فواتير لهذا الصنايعي</p>
+            </div>
+          ) : (
+            <table className="w-full text-sm">
+              <thead className="bg-muted/50">
+                <tr>
+                  <th className="p-2 text-right">الفاتورة</th>
+                  <th className="p-2 text-right">العميل</th>
+                  <th className="p-2 text-right">الحالة</th>
+                  <th className="p-2 text-left">الإجمالي</th>
+                  <th className="p-2 text-left">المتبقي</th>
+                  <th className="p-2 text-left">العمولة</th>
+                  <th className="p-2 text-right">التاريخ</th>
+                </tr>
+              </thead>
+              <tbody>
+                {invoices.map((inv: any) => (
+                  <tr key={inv.id} className="border-b hover:bg-muted/30">
+                    <td className="p-2 font-mono font-medium text-primary">{inv.serial}</td>
+                    <td className="p-2">{inv.customerName || <span className="text-muted-foreground">نقدي</span>}</td>
+                    <td className="p-2">
+                      <Badge variant={STATUS_LABELS[inv.status]?.variant}>{STATUS_LABELS[inv.status]?.label}</Badge>
+                    </td>
+                    <td className="p-2 text-left font-semibold">{formatCurrency(inv.total)}</td>
+                    <td className="p-2 text-left">
+                      {inv.remainingAmount > 0
+                        ? <span className="text-destructive font-semibold">{formatCurrency(inv.remainingAmount)}</span>
+                        : <span className="text-emerald-600 text-xs">مسدد</span>}
+                    </td>
+                    <td className="p-2 text-left text-amber-600">{inv.craftsmanCommission ? formatCurrency(inv.craftsmanCommission) : "—"}</td>
+                    <td className="p-2 text-muted-foreground text-xs">{new Date(inv.createdAt).toLocaleDateString("ar-EG")}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </TabsContent>
+
+        <TabsContent value="quotations">
+          {quotations.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <FileText className="h-10 w-10 mx-auto mb-2 opacity-30" />
+              <p>لا توجد تسعيرات لهذا الصنايعي</p>
+            </div>
+          ) : (
+            <table className="w-full text-sm">
+              <thead className="bg-muted/50">
+                <tr>
+                  <th className="p-2 text-right">التسعيرة</th>
+                  <th className="p-2 text-right">العميل</th>
+                  <th className="p-2 text-right">الحالة</th>
+                  <th className="p-2 text-left">الإجمالي</th>
+                  <th className="p-2 text-right">تحولت إلى</th>
+                  <th className="p-2 text-right">التاريخ</th>
+                </tr>
+              </thead>
+              <tbody>
+                {quotations.map((q: any) => (
+                  <tr key={q.id} className="border-b hover:bg-muted/30">
+                    <td className="p-2 font-mono font-medium text-primary">{q.serial}</td>
+                    <td className="p-2">{q.customerName || <span className="text-muted-foreground">غير محدد</span>}</td>
+                    <td className="p-2">
+                      <Badge variant={Q_STATUS[q.status]?.variant}>{Q_STATUS[q.status]?.label}</Badge>
+                    </td>
+                    <td className="p-2 text-left font-semibold">{formatCurrency(q.total)}</td>
+                    <td className="p-2 text-xs font-mono text-muted-foreground">{q.convertedInvoiceSerial || "—"}</td>
+                    <td className="p-2 text-muted-foreground text-xs">{new Date(q.createdAt).toLocaleDateString("ar-EG")}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </TabsContent>
+
+        <TabsContent value="customers">
+          <div className="mb-3 text-sm text-muted-foreground">
+            العملاء الذين تعاملوا عن طريق هذا الصنايعي
+          </div>
+          {customers.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <Users className="h-10 w-10 mx-auto mb-2 opacity-30" />
+              <p>لا يوجد عملاء مرتبطين بهذا الصنايعي</p>
+            </div>
+          ) : (
+            <table className="w-full text-sm">
+              <thead className="bg-muted/50">
+                <tr>
+                  <th className="p-2 text-right">العميل</th>
+                  <th className="p-2 text-right">الهاتف</th>
+                  <th className="p-2 text-right">المنطقة</th>
+                  <th className="p-2 text-center">الفواتير</th>
+                  <th className="p-2 text-left">إجمالي المبيعات</th>
+                  <th className="p-2 text-left">المتبقي</th>
+                  <th className="p-2 text-right">آخر تعامل</th>
+                </tr>
+              </thead>
+              <tbody>
+                {customers.map((c: any) => (
+                  <tr key={c.id} className="border-b hover:bg-muted/30">
+                    <td className="p-2 font-medium">{c.name}</td>
+                    <td className="p-2 text-muted-foreground">{c.phone || "—"}</td>
+                    <td className="p-2 text-muted-foreground">{c.area || "—"}</td>
+                    <td className="p-2 text-center">
+                      <Badge variant="outline">{c.invoiceCount}</Badge>
+                    </td>
+                    <td className="p-2 text-left font-semibold">{formatCurrency(c.totalSales)}</td>
+                    <td className="p-2 text-left">
+                      {c.totalRemaining > 0
+                        ? <span className="text-destructive font-semibold">{formatCurrency(c.totalRemaining)}</span>
+                        : <span className="text-muted-foreground text-xs">—</span>}
+                    </td>
+                    <td className="p-2 text-muted-foreground text-xs">
+                      {c.lastInvoiceDate ? new Date(c.lastInvoiceDate).toLocaleDateString("ar-EG") : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </TabsContent>
+      </Tabs>
     </DialogContent>
   );
 }

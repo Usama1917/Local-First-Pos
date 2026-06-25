@@ -40,17 +40,55 @@ router.get("/craftsmen/:id", (req, res) => {
   const row = db.prepare(`
     SELECT cr.*,
       COALESCE((SELECT SUM(si.total) FROM sales_invoices si WHERE si.craftsmanId = cr.id AND si.status != 'draft' AND si.status != 'cancelled'), 0) as totalSales,
-      COALESCE((SELECT SUM(si.craftsmanCommission) FROM sales_invoices si WHERE si.craftsmanId = cr.id AND si.status != 'draft' AND si.status != 'cancelled'), 0) as totalCommission
+      COALESCE((SELECT SUM(si.craftsmanCommission) FROM sales_invoices si WHERE si.craftsmanId = cr.id AND si.status != 'draft' AND si.status != 'cancelled'), 0) as totalCommission,
+      COALESCE((SELECT COUNT(DISTINCT si.customerId) FROM sales_invoices si WHERE si.craftsmanId = cr.id AND si.customerId IS NOT NULL AND si.status != 'draft'), 0) as uniqueCustomers,
+      COALESCE((SELECT COUNT(*) FROM quotations q WHERE q.craftsmanId = cr.id), 0) as totalQuotations
     FROM craftsmen cr WHERE cr.id = ?
   `).get(id);
   if (!row) return res.status(404).json({ error: "غير موجود" });
+
   const recentSales = db.prepare(`
-    SELECT si.*, c.name as customerName FROM sales_invoices si
+    SELECT si.id, si.serial, si.status, si.paymentType, si.total, si.paidAmount,
+           si.remainingAmount, si.craftsmanCommission, si.createdAt,
+           c.id as customerId, c.name as customerName
+    FROM sales_invoices si
     LEFT JOIN customers c ON si.customerId = c.id
     WHERE si.craftsmanId = ? AND si.status != 'draft'
-    ORDER BY si.createdAt DESC LIMIT 20
+    ORDER BY si.createdAt DESC LIMIT 50
   `).all(id);
-  res.json({ ...row as any, recentSales });
+
+  const recentQuotations = db.prepare(`
+    SELECT q.id, q.serial, q.status, q.total, q.createdAt, q.validUntil, q.convertedInvoiceId,
+           c.id as customerId, c.name as customerName,
+           si.serial as convertedInvoiceSerial
+    FROM quotations q
+    LEFT JOIN customers c ON q.customerId = c.id
+    LEFT JOIN sales_invoices si ON q.convertedInvoiceId = si.id
+    WHERE q.craftsmanId = ?
+    ORDER BY q.createdAt DESC LIMIT 50
+  `).all(id);
+
+  res.json({ ...row as any, recentSales, recentQuotations });
+});
+
+router.get("/craftsmen/:id/customers", (req, res) => {
+  const id = Number(req.params.id);
+  const customers = db.prepare(`
+    SELECT
+      c.id, c.name, c.phone, c.area,
+      COUNT(DISTINCT si.id) as invoiceCount,
+      COALESCE(SUM(si.total), 0) as totalSales,
+      COALESCE(SUM(si.remainingAmount), 0) as totalRemaining,
+      MAX(si.createdAt) as lastInvoiceDate,
+      COUNT(DISTINCT q.id) as quotationCount
+    FROM customers c
+    LEFT JOIN sales_invoices si ON si.customerId = c.id AND si.craftsmanId = ? AND si.status != 'draft'
+    LEFT JOIN quotations q ON q.customerId = c.id AND q.craftsmanId = ?
+    WHERE (si.id IS NOT NULL OR q.id IS NOT NULL)
+    GROUP BY c.id, c.name, c.phone, c.area
+    ORDER BY totalSales DESC
+  `).all(id, id);
+  res.json({ items: customers, total: customers.length });
 });
 
 router.patch("/craftsmen/:id", (req, res) => {
