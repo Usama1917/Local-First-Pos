@@ -18,6 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { formatCurrency } from "@/lib/format";
+import { useBarcodeScanner, findProductByCode } from "@/hooks/use-barcode-scanner";
 import { Search, Plus, Minus, Trash2, ShoppingCart, CheckCircle, X, Package } from "lucide-react";
 import { toast } from "sonner";
 
@@ -106,6 +107,16 @@ export default function POSPage() {
     });
     setSearchQuery("");
   };
+
+  // Hardware laser scanner: scan a product barcode anywhere on the page → adds it to the cart.
+  useBarcodeScanner(
+    async (code) => {
+      const p = await findProductByCode(code);
+      if (p) addToCart(p);
+      else toast.error(`منتج غير موجود بالباركود: ${code}`);
+    },
+    { enabled: !showFinalizeDialog && !showDraftDialog },
+  );
 
   const updateQty = (idx: number, delta: number) => {
     setCart(prev => prev.map((item, i) => {

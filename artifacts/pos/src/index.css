@@ -200,7 +200,38 @@
     display: block !important;
   }
   body {
-    background: white;
-    color: black;
+    background: white !important;
+    color: black !important;
+  }
+
+  /* Hide the whole app; printable dialogs are portaled to <body> and stay visible. */
+  #root {
+    display: none !important;
+  }
+
+  /* Neutralize the Radix dialog so the invoice prints as a clean full page. */
+  [role="dialog"] {
+    position: static !important;
+    transform: none !important;
+    max-width: none !important;
+    max-height: none !important;
+    width: 100% !important;
+    overflow: visible !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    background: white !important;
+  }
+
+  .invoice-print {
+    color: black !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  @page {
+    size: A4;
+    margin: 12mm;
   }
 }

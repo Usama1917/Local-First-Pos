@@ -1,20 +1,25 @@
-import { useState } from "react";
+import { useState, useEffect, useRef, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import {
   useListSalesInvoices,
   useGetSalesInvoice,
   useListCraftsmen,
+  useGetSettings,
+  lookupSalesInvoiceBySerial,
   getListSalesInvoicesQueryKey,
   getGetSalesInvoiceQueryKey,
   getListCraftsmenQueryKey,
 } from "@workspace/api-client-react";
+import JsBarcode from "jsbarcode";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatCurrency } from "@/lib/format";
+import { useBarcodeScanner } from "@/hooks/use-barcode-scanner";
 import { Search, Printer, Receipt, Eye, HardHat } from "lucide-react";
+import { toast } from "sonner";
 
 const STATUS_LABELS: Record<string, { label: string; variant: any }> = {
   draft: { label: "مسودة", variant: "secondary" },
@@ -26,73 +31,151 @@ const STATUS_LABELS: Record<string, { label: string; variant: any }> = {
 };
 const PAYMENT_LABELS: Record<string, string> = { cash: "نقدي", credit: "آجل", partial: "جزئي" };
 
+function Barcode({ value }: { value: string }) {
+  const ref = useRef<SVGSVGElement>(null);
+  useEffect(() => {
+    if (ref.current && value) {
+      try {
+        JsBarcode(ref.current, value, {
+          format: "CODE128",
+          width: 1.6,
+          height: 44,
+          displayValue: true,
+          fontSize: 13,
+          textMargin: 2,
+          margin: 0,
+        });
+      } catch {
+        /* ignore invalid barcode values */
+      }
+    }
+  }, [value]);
+  return <svg ref={ref} className="max-w-full" />;
+}
+
 function InvoiceDetail({ invoiceId }: { invoiceId: number }) {
   const { data: invoice } = useGetSalesInvoice(invoiceId, { query: { queryKey: getGetSalesInvoiceQueryKey(invoiceId) } });
+  const { data: settings } = useGetSettings();
   const inv = invoice as any;
-  if (!inv) return <div className="p-8 text-center">جاري التحميل...</div>;
+  const shop = settings as any;
+
+  if (!inv) {
+    return (
+      <DialogContent>
+        <DialogTitle className="sr-only">فاتورة</DialogTitle>
+        <div className="p-8 text-center">جاري التحميل...</div>
+      </DialogContent>
+    );
+  }
+
+  const items: any[] = inv.items || [];
+  const grossSubtotal = items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
+  const itemsDiscount = items.reduce((s, i) => s + (i.discount || 0), 0);
+  const totalDiscount = itemsDiscount + (inv.discount || 0);
 
   return (
-    <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto print-area">
-      <DialogHeader>
-        <div className="flex items-center justify-between">
-          <DialogTitle>فاتورة {inv.serial}</DialogTitle>
-          <Button variant="outline" size="sm" onClick={() => window.print()}>
-            <Printer className="h-4 w-4 ml-2" />
-            طباعة
-          </Button>
-        </div>
-      </DialogHeader>
-      <div className="print:block">
-        <div className="grid grid-cols-2 gap-4 mb-4 text-sm">
-          <div><span className="text-muted-foreground">التاريخ:</span> <span className="font-medium">{new Date(inv.createdAt).toLocaleDateString("ar-EG")}</span></div>
-          <div><span className="text-muted-foreground">الحالة:</span> <Badge variant={STATUS_LABELS[inv.status]?.variant}>{STATUS_LABELS[inv.status]?.label}</Badge></div>
-          <div>
-            <span className="text-muted-foreground">العميل:</span>{" "}
-            <span className="font-medium">{inv.customerName || "عميل نقدي"}</span>
+    <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto gap-0 p-0">
+      {/* Toolbar — not printed */}
+      <div className="no-print flex items-center justify-between border-b px-6 py-3">
+        <DialogTitle>فاتورة {inv.serial}</DialogTitle>
+        <Button variant="outline" size="sm" onClick={() => window.print()}>
+          <Printer className="h-4 w-4 ml-2" />
+          طباعة
+        </Button>
+      </div>
+
+      {/* Printable invoice document */}
+      <div className="invoice-print px-8 py-6">
+        {/* Header: shop info + barcode of the serial */}
+        <div className="flex items-start justify-between gap-6 border-b-2 border-foreground/70 pb-4">
+          <div className="space-y-0.5">
+            <h2 className="text-2xl font-extrabold leading-tight">{shop?.shopName || "المحل"}</h2>
+            {shop?.shopAddress && <p className="text-xs text-muted-foreground">{shop.shopAddress}</p>}
+            {shop?.shopPhone && <p className="text-xs text-muted-foreground">☎ {shop.shopPhone}</p>}
           </div>
-          <div><span className="text-muted-foreground">الدفع:</span> <span>{PAYMENT_LABELS[inv.paymentType] || inv.paymentType}</span></div>
-          {inv.craftsmanName && (
-            <div className="col-span-2 flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-md p-2">
-              <HardHat className="h-4 w-4 text-amber-600 flex-shrink-0" />
-              <span className="text-muted-foreground">الصنايعي / الفني:</span>
-              <span className="font-semibold text-amber-800">{inv.craftsmanName}</span>
-            </div>
-          )}
+          <div className="shrink-0 text-center">
+            <Barcode value={inv.serial} />
+          </div>
         </div>
-        <table className="w-full text-sm border rounded-lg overflow-hidden">
-          <thead className="bg-muted/50">
-            <tr>
-              <th className="p-2 text-right">المنتج</th>
-              <th className="p-2 text-center">الكمية</th>
-              <th className="p-2 text-left">السعر</th>
-              <th className="p-2 text-left">الخصم</th>
-              <th className="p-2 text-left">الإجمالي</th>
+
+        {/* Title row */}
+        <div className="flex items-center justify-between py-3">
+          <h3 className="text-lg font-bold">فاتورة مبيعات</h3>
+          <Badge variant={STATUS_LABELS[inv.status]?.variant}>{STATUS_LABELS[inv.status]?.label}</Badge>
+        </div>
+
+        {/* Meta box */}
+        <div className="grid grid-cols-2 gap-x-8 gap-y-2 rounded-lg border bg-muted/20 p-4 text-sm">
+          <div><span className="text-muted-foreground">العميل:</span> <span className="font-semibold">{inv.customerName || "عميل نقدي"}</span></div>
+          <div><span className="text-muted-foreground">رقم الفاتورة:</span> <span className="font-mono font-bold">{inv.serial}</span></div>
+          <div>
+            <span className="text-muted-foreground">الصنايعي / الفني:</span>{" "}
+            <span className="font-semibold">{inv.craftsmanName || "—"}</span>
+          </div>
+          <div><span className="text-muted-foreground">التاريخ:</span> <span className="font-medium">{new Date(inv.createdAt).toLocaleDateString("ar-EG")}</span></div>
+          <div><span className="text-muted-foreground">طريقة الدفع:</span> <span>{PAYMENT_LABELS[inv.paymentType] || inv.paymentType}</span></div>
+        </div>
+
+        {/* Line items */}
+        <table className="mt-4 w-full border-collapse text-sm">
+          <thead>
+            <tr className="bg-muted/60">
+              <th className="w-8 border border-foreground/20 p-2 text-center">#</th>
+              <th className="border border-foreground/20 p-2 text-right">المنتج</th>
+              <th className="border border-foreground/20 p-2 text-center">الكمية</th>
+              <th className="border border-foreground/20 p-2 text-center">السعر</th>
+              <th className="border border-foreground/20 p-2 text-center">الخصم</th>
+              <th className="border border-foreground/20 p-2 text-center">الإجمالي</th>
             </tr>
           </thead>
           <tbody>
-            {inv.items?.map((item: any) => (
-              <tr key={item.id} className="border-t">
-                <td className="p-2">{item.productName}</td>
-                <td className="p-2 text-center">{item.quantity} {item.unitName}</td>
-                <td className="p-2 text-left">{formatCurrency(item.unitPrice)}</td>
-                <td className="p-2 text-left">{item.discount ? formatCurrency(item.discount) : "—"}</td>
-                <td className="p-2 text-left font-semibold">{formatCurrency(item.total)}</td>
+            {items.map((item, idx) => (
+              <tr key={item.id}>
+                <td className="border border-foreground/20 p-2 text-center text-muted-foreground">{idx + 1}</td>
+                <td className="border border-foreground/20 p-2">
+                  <span className="font-medium">{item.productName}</span>
+                  {item.sku && <span className="text-xs text-muted-foreground"> ({item.sku})</span>}
+                </td>
+                <td className="border border-foreground/20 p-2 text-center">{item.quantity} {item.unitName || ""}</td>
+                <td className="border border-foreground/20 p-2 text-center">{formatCurrency(item.unitPrice)}</td>
+                <td className="border border-foreground/20 p-2 text-center">{item.discount ? formatCurrency(item.discount) : "—"}</td>
+                <td className="border border-foreground/20 p-2 text-center font-semibold">{formatCurrency(item.total)}</td>
               </tr>
             ))}
+            {items.length === 0 && (
+              <tr><td colSpan={6} className="border border-foreground/20 p-4 text-center text-muted-foreground">لا توجد أصناف</td></tr>
+            )}
           </tbody>
         </table>
-        <div className="mt-4 space-y-1 text-sm bg-muted/30 p-4 rounded-lg">
-          <div className="flex justify-between"><span>الإجمالي الفرعي:</span><span>{formatCurrency(inv.subtotal)}</span></div>
-          {inv.discount > 0 && <div className="flex justify-between text-destructive"><span>الخصم:</span><span>- {formatCurrency(inv.discount)}</span></div>}
-          <div className="flex justify-between font-bold text-base border-t pt-2"><span>الإجمالي:</span><span className="text-primary">{formatCurrency(inv.total)}</span></div>
-          {inv.paidAmount > 0 && <div className="flex justify-between text-emerald-600"><span>المدفوع:</span><span>{formatCurrency(inv.paidAmount)}</span></div>}
-          {inv.remainingAmount > 0 && <div className="flex justify-between text-destructive font-semibold"><span>المتبقي (على العميل):</span><span>{formatCurrency(inv.remainingAmount)}</span></div>}
-          {inv.craftsmanCommission > 0 && (
-            <div className="flex justify-between text-amber-600 border-t pt-2 mt-2">
-              <span>عمولة الصنايعي:</span><span>{formatCurrency(inv.craftsmanCommission)}</span>
-            </div>
-          )}
+
+        {/* Totals */}
+        <div className="mt-4 flex justify-end">
+          <div className="w-72 space-y-1 text-sm">
+            <div className="flex justify-between"><span className="text-muted-foreground">الإجمالي الفرعي:</span><span>{formatCurrency(grossSubtotal)}</span></div>
+            {totalDiscount > 0 && <div className="flex justify-between text-destructive"><span>إجمالي الخصم:</span><span>- {formatCurrency(totalDiscount)}</span></div>}
+            <div className="flex justify-between border-t border-foreground/40 pt-1 text-base font-bold"><span>الإجمالي:</span><span>{formatCurrency(inv.total)}</span></div>
+            {inv.paidAmount > 0 && <div className="flex justify-between text-emerald-700"><span>المدفوع:</span><span>{formatCurrency(inv.paidAmount)}</span></div>}
+            {inv.remainingAmount > 0 && <div className="flex justify-between font-semibold text-destructive"><span>المتبقي (على العميل):</span><span>{formatCurrency(inv.remainingAmount)}</span></div>}
+          </div>
         </div>
+
+        {inv.notes && <p className="mt-4 text-sm"><span className="text-muted-foreground">ملاحظات:</span> {inv.notes}</p>}
+
+        {/* Signatures */}
+        <div className="mt-12 grid grid-cols-2 gap-12 text-sm">
+          <div className="text-center">
+            <div className="mx-auto w-48 border-t border-foreground/60 pt-1">توقيع صاحب المحل</div>
+          </div>
+          <div className="text-center">
+            <div className="mx-auto w-48 border-t border-foreground/60 pt-1">
+              توقيع {inv.craftsmanName ? "العميل / الصنايعي" : "العميل"}
+            </div>
+          </div>
+        </div>
+
+        <p className="mt-8 text-center text-xs text-muted-foreground">
+          شكراً لتعاملكم معنا{shop?.shopPhone ? ` — للاستفسار: ${shop.shopPhone}` : ""}
+        </p>
       </div>
     </DialogContent>
   );
@@ -119,6 +202,30 @@ export default function SalesPage() {
   const { data, isLoading } = useListSalesInvoices(params, { query: { queryKey: getListSalesInvoicesQueryKey(params) } });
   const invoices = (data as any)?.items || [];
 
+  // Open an invoice by its serial / scanned barcode.
+  const openInvoiceBySerial = async (code: string, notify = false) => {
+    try {
+      const found = await lookupSalesInvoiceBySerial(code);
+      if ((found as any)?.id) { setSelectedId((found as any).id); return true; }
+    } catch {
+      /* not found */
+    }
+    if (notify) toast.error(`لا توجد فاتورة بالرقم: ${code}`);
+    return false;
+  };
+
+  // Manual: type a serial in the box + Enter.
+  const handleScanOpen = async (e: ReactKeyboardEvent<HTMLInputElement>) => {
+    if (e.key !== "Enter") return;
+    const code = search.trim();
+    if (!code) return;
+    if (await openInvoiceBySerial(code)) return;
+    if (invoices.length === 1) setSelectedId(invoices[0].id);
+  };
+
+  // Hardware laser scanner: scan an invoice barcode anywhere on the page → opens it.
+  useBarcodeScanner((code) => { void openInvoiceBySerial(code, true); });
+
   return (
     <div className="space-y-4">
       {selectedId && (
@@ -137,7 +244,13 @@ export default function SalesPage() {
           <div className="flex gap-3 flex-wrap">
             <div className="relative flex-1 min-w-48">
               <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input className="pr-9" placeholder="رقم الفاتورة أو اسم العميل..." value={search} onChange={e => setSearch(e.target.value)} />
+              <Input
+                className="pr-9"
+                placeholder="رقم الفاتورة / باركود / اسم العميل... (امسح الباركود واضغط Enter)"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                onKeyDown={handleScanOpen}
+              />
             </div>
             <Select value={statusFilter || "__none__"} onValueChange={(v) => setStatusFilter(v === "__none__" ? "" : v)}>
               <SelectTrigger className="w-36"><SelectValue placeholder="كل الحالات" /></SelectTrigger>

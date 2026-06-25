@@ -18,6 +18,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { formatCurrency } from "@/lib/format";
+import { useBarcodeScanner, findProductByCode } from "@/hooks/use-barcode-scanner";
 import { Search, Plus, ShoppingBag, CheckCircle, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -35,7 +36,7 @@ interface PurchaseItem {
   listPrice: number; supplierDiscount: number; netPrice: number; extraCost: number; trueCost: number; total: number;
 }
 
-function NewPurchaseDialog({ onClose }: { onClose: () => void }) {
+function NewPurchaseDialog({ onClose, open }: { onClose: () => void; open: boolean }) {
   const [supplierId, setSupplierId] = useState("");
   const [paymentType, setPaymentType] = useState("cash");
   const [paidAmount, setPaidAmount] = useState("");
@@ -63,6 +64,16 @@ function NewPurchaseDialog({ onClose }: { onClose: () => void }) {
     });
     setProductSearch("");
   };
+
+  // Hardware laser scanner: scan a product → adds it to the purchase invoice.
+  useBarcodeScanner(
+    async (code) => {
+      const p = await findProductByCode(code);
+      if (p) addProduct(p);
+      else toast.error(`منتج غير موجود بالباركود: ${code}`);
+    },
+    { enabled: open },
+  );
 
   const updateItem = (idx: number, key: keyof PurchaseItem, val: number) => {
     setItems(prev => prev.map((item, i) => {
@@ -203,7 +214,7 @@ export default function PurchasesPage() {
   return (
     <div className="space-y-4">
       <Dialog open={showAdd} onOpenChange={setShowAdd}>
-        <NewPurchaseDialog onClose={() => setShowAdd(false)} />
+        <NewPurchaseDialog open={showAdd} onClose={() => setShowAdd(false)} />
       </Dialog>
 
       <div className="flex items-center justify-between">

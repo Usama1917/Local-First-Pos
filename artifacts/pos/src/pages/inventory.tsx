@@ -208,7 +208,7 @@ export default function InventoryPage() {
                     <tr key={c.id} className="border-b hover:bg-muted/30">
                       <td className="p-3 font-medium">{c.name}</td>
                       <td className="p-3"><Badge variant={c.status === "finalized" ? "default" : "secondary"}>{c.status === "finalized" ? "منتهي" : "قيد الجرد"}</Badge></td>
-                      <td className="p-3 text-center">{c.itemCount} صنف</td>
+                      <td className="p-3">{c.itemCount} صنف</td>
                       <td className="p-3 text-muted-foreground">{new Date(c.createdAt).toLocaleDateString("ar-EG")}</td>
                       <td className="p-3">
                         <Button variant="ghost" size="sm" onClick={() => setSelectedCountId(c.id)}>

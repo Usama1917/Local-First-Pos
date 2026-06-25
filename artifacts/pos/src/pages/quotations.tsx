@@ -22,6 +22,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { formatCurrency } from "@/lib/format";
+import { useBarcodeScanner, findProductByCode } from "@/hooks/use-barcode-scanner";
 import { Search, Plus, FileText, ArrowRight, Copy, Trash2, Minus, HardHat } from "lucide-react";
 import { toast } from "sonner";
 
@@ -34,7 +35,7 @@ const STATUS_LABELS: Record<string, { label: string; variant: any }> = {
 
 interface CartItem { productId: number; productName: string; quantity: number; unitPrice: number; discount: number; total: number; }
 
-function NewQuotationDialog({ onClose }: { onClose: () => void }) {
+function NewQuotationDialog({ onClose, open }: { onClose: () => void; open: boolean }) {
   const [productSearch, setProductSearch] = useState("");
   const [cart, setCart] = useState<CartItem[]>([]);
   const [customerId, setCustomerId] = useState("");
@@ -55,6 +56,16 @@ function NewQuotationDialog({ onClose }: { onClose: () => void }) {
     });
     setProductSearch("");
   };
+
+  // Hardware laser scanner: scan a product → adds it to the quotation.
+  useBarcodeScanner(
+    async (code) => {
+      const p = await findProductByCode(code);
+      if (p) addToCart(p);
+      else toast.error(`منتج غير موجود بالباركود: ${code}`);
+    },
+    { enabled: open },
+  );
 
   const subtotal = cart.reduce((s, i) => s + i.total, 0);
   const total = subtotal - discount;
@@ -201,7 +212,7 @@ export default function QuotationsPage() {
   return (
     <div className="space-y-4">
       <Dialog open={showAdd} onOpenChange={setShowAdd}>
-        <NewQuotationDialog onClose={() => setShowAdd(false)} />
+        <NewQuotationDialog open={showAdd} onClose={() => setShowAdd(false)} />
       </Dialog>
 
       <div className="flex items-center justify-between">
