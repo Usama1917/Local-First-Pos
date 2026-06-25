@@ -1,5 +1,6 @@
 import { LayoutDashboard, ShoppingCart, FileText, Receipt, ShoppingBag, Package, ClipboardList, Users, HardHat, Truck, CreditCard, BarChart3, Settings } from "lucide-react";
 import { Link, useLocation } from "wouter";
+import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 const navigation = [
@@ -35,14 +36,21 @@ export function Layout({ children }: { children: React.ReactNode }) {
               <Link key={item.name} href={item.href}>
                 <div
                   className={cn(
-                    "flex items-center gap-3 px-3 py-2 rounded-md cursor-pointer transition-colors",
+                    "relative flex items-center gap-3 px-3 py-2 rounded-md cursor-pointer transition-colors",
                     isActive
-                      ? "bg-primary text-primary-foreground"
+                      ? "text-primary-foreground"
                       : "hover:bg-muted text-muted-foreground hover:text-foreground"
                   )}
                 >
-                  <item.icon className="h-5 w-5" />
-                  <span className="font-medium">{item.name}</span>
+                  {isActive && (
+                    <motion.div
+                      layoutId="activeNavHighlight"
+                      className="absolute inset-0 rounded-md bg-primary"
+                      transition={{ type: "spring", stiffness: 380, damping: 32 }}
+                    />
+                  )}
+                  <item.icon className="relative z-10 h-5 w-5" />
+                  <span className="relative z-10 font-medium">{item.name}</span>
                 </div>
               </Link>
             );
