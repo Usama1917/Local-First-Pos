@@ -8,8 +8,6 @@
 import type { Craftsman } from './craftsman';
 
 export interface CraftsmenPage {
-  data: Craftsman[];
+  items: Craftsman[];
   total: number;
-  page: number;
-  limit: number;
 }

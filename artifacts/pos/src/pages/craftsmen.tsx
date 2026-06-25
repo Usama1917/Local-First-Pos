@@ -3,10 +3,12 @@ import {
   useListCraftsmen,
   useCreateCraftsman,
   useGetCraftsman,
+  useGetCraftsmanCustomers,
   getListCraftsmenQueryKey,
   getGetCraftsmanQueryKey,
+  getGetCraftsmanCustomersQueryKey,
 } from "@workspace/api-client-react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -35,10 +37,7 @@ const Q_STATUS: Record<string, { label: string; variant: any }> = {
 
 function CraftsmanProfile({ id, onClose }: { id: number; onClose: () => void }) {
   const { data } = useGetCraftsman(id, { query: { queryKey: getGetCraftsmanQueryKey(id) } });
-  const { data: linkedCustomers } = useQuery({
-    queryKey: ["craftsman-customers", id],
-    queryFn: () => fetch(`/api/craftsmen/${id}/customers`).then(r => r.json()),
-  });
+  const { data: linkedCustomers } = useGetCraftsmanCustomers(id, { query: { queryKey: getGetCraftsmanCustomersQueryKey(id) } });
 
   const craftsman = data as any;
   if (!craftsman) return null;

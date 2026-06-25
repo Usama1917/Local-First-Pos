@@ -7,8 +7,8 @@
  */
 
 export type GetSalesReportParams = {
-from: string;
-to: string;
+dateFrom?: string;
+dateTo?: string;
 customerId?: number;
 craftsmanId?: number;
 };

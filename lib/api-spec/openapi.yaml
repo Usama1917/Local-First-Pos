@@ -562,6 +562,32 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/CustomerPayment"
+  /customers/{id}/invoices:
+    get:
+      operationId: getCustomerInvoices
+      tags: [customers]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: Sales invoices linked to this customer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SalesPage"
+  /customers/{id}/quotations:
+    get:
+      operationId: getCustomerQuotations
+      tags: [customers]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: Quotations linked to this customer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuotationsPage"
 
   # Craftsmen
   /craftsmen:
@@ -636,6 +662,19 @@ paths:
       responses:
         "200":
           description: Deleted
+  /craftsmen/{id}/customers:
+    get:
+      operationId: getCraftsmanCustomers
+      tags: [craftsmen]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: Customers linked to this craftsman via invoices or quotations
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CraftsmanCustomersPage"
 
   # Suppliers
   /suppliers:
@@ -1292,8 +1331,8 @@ paths:
       operationId: getSalesReport
       tags: [reports]
       parameters:
-        - { name: from, in: query, required: true, schema: { type: string } }
-        - { name: to, in: query, required: true, schema: { type: string } }
+        - { name: dateFrom, in: query, schema: { type: string } }
+        - { name: dateTo, in: query, schema: { type: string } }
         - { name: customerId, in: query, schema: { type: integer } }
         - { name: craftsmanId, in: query, schema: { type: integer } }
       responses:
@@ -1323,8 +1362,8 @@ paths:
       operationId: getBestSellers
       tags: [reports]
       parameters:
-        - { name: from, in: query, schema: { type: string } }
-        - { name: to, in: query, schema: { type: string } }
+        - { name: dateFrom, in: query, schema: { type: string } }
+        - { name: dateTo, in: query, schema: { type: string } }
         - { name: limit, in: query, schema: { type: integer } }
       responses:
         "200":
@@ -1340,8 +1379,8 @@ paths:
       operationId: getPurchasesReport
       tags: [reports]
       parameters:
-        - { name: from, in: query, required: true, schema: { type: string } }
-        - { name: to, in: query, required: true, schema: { type: string } }
+        - { name: dateFrom, in: query, schema: { type: string } }
+        - { name: dateTo, in: query, schema: { type: string } }
         - { name: supplierId, in: query, schema: { type: integer } }
       responses:
         "200":
@@ -1355,8 +1394,8 @@ paths:
       operationId: getCraftsmanCommissionReport
       tags: [reports]
       parameters:
-        - { name: from, in: query, schema: { type: string } }
-        - { name: to, in: query, schema: { type: string } }
+        - { name: dateFrom, in: query, schema: { type: string } }
+        - { name: dateTo, in: query, schema: { type: string } }
         - { name: craftsmanId, in: query, schema: { type: integer } }
       responses:
         "200":
@@ -1626,15 +1665,13 @@ components:
         isActive: { type: boolean }
     ProductsPage:
       type: object
-      required: [data, total, page, limit]
+      required: [items, total]
       properties:
-        data:
+        items:
           type: array
           items:
             $ref: "#/components/schemas/Product"
         total: { type: integer }
-        page: { type: integer }
-        limit: { type: integer }
 
     # Stock Movement
     StockMovement:
@@ -1655,22 +1692,20 @@ components:
         createdBy: { type: ["string", "null"] }
     StockMovementsPage:
       type: object
-      required: [data, total, page, limit]
+      required: [items, total]
       properties:
-        data:
+        items:
           type: array
           items:
             $ref: "#/components/schemas/StockMovement"
         total: { type: integer }
-        page: { type: integer }
-        limit: { type: integer }
     StockAdjustmentInput:
       type: object
-      required: [productId, quantity, reason]
+      required: [productId, quantity]
       properties:
         productId: { type: integer }
         quantity: { type: number }
-        reason: { type: string }
+        type: { type: string }
         notes: { type: string }
 
     # Customer
@@ -1755,15 +1790,13 @@ components:
         amount: { type: number }
     CustomersPage:
       type: object
-      required: [data, total, page, limit]
+      required: [items, total]
       properties:
-        data:
+        items:
           type: array
           items:
             $ref: "#/components/schemas/Customer"
         total: { type: integer }
-        page: { type: integer }
-        limit: { type: integer }
     CustomerPayment:
       type: object
       required: [id, customerId, amount, date]
@@ -1835,15 +1868,35 @@ components:
         totalCommission: { type: number }
     CraftsmenPage:
       type: object
-      required: [data, total, page, limit]
+      required: [items, total]
       properties:
-        data:
+        items:
           type: array
           items:
             $ref: "#/components/schemas/Craftsman"
         total: { type: integer }
-        page: { type: integer }
-        limit: { type: integer }
+    CraftsmanLinkedCustomer:
+      type: object
+      required: [id, name, invoiceCount, totalSales, totalRemaining, quotationCount]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        phone: { type: ["string", "null"] }
+        area: { type: ["string", "null"] }
+        invoiceCount: { type: integer }
+        totalSales: { type: number }
+        totalRemaining: { type: number }
+        lastInvoiceDate: { type: ["string", "null"] }
+        quotationCount: { type: integer }
+    CraftsmanCustomersPage:
+      type: object
+      required: [items, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CraftsmanLinkedCustomer"
+        total: { type: integer }
 
     # Supplier
     Supplier:
@@ -1895,15 +1948,13 @@ components:
         totalPaid: { type: number }
     SuppliersPage:
       type: object
-      required: [data, total, page, limit]
+      required: [items, total]
       properties:
-        data:
+        items:
           type: array
           items:
             $ref: "#/components/schemas/Supplier"
         total: { type: integer }
-        page: { type: integer }
-        limit: { type: integer }
     SupplierPayment:
       type: object
       required: [id, supplierId, amount, date]
@@ -2000,6 +2051,7 @@ components:
       properties:
         customerId: { type: integer }
         craftsmanId: { type: integer }
+        status: { type: string }
         items:
           type: array
           items:
@@ -2022,7 +2074,6 @@ components:
         validUntil: { type: string }
     QuotationConvertInput:
       type: object
-      required: [priceMode]
       properties:
         priceMode: { type: string, enum: [original, current, manual] }
         paymentType: { type: string, enum: [cash, credit, partial] }
@@ -2033,15 +2084,13 @@ components:
             $ref: "#/components/schemas/InvoiceItemInput"
     QuotationsPage:
       type: object
-      required: [data, total, page, limit]
+      required: [items, total]
       properties:
-        data:
+        items:
           type: array
           items:
             $ref: "#/components/schemas/Quotation"
         total: { type: integer }
-        page: { type: integer }
-        limit: { type: integer }
 
     # Sales Invoice
     SalesInvoice:
@@ -2134,15 +2183,13 @@ components:
         notes: { type: string }
     SalesPage:
       type: object
-      required: [data, total, page, limit]
+      required: [items, total]
       properties:
-        data:
+        items:
           type: array
           items:
             $ref: "#/components/schemas/SalesInvoice"
         total: { type: integer }
-        page: { type: integer }
-        limit: { type: integer }
 
     # Purchase Invoice
     PurchaseInvoice:
@@ -2218,6 +2265,7 @@ components:
       properties:
         supplierId: { type: integer }
         paymentType: { type: string, enum: [cash, credit, partial] }
+        status: { type: string }
         items:
           type: array
           items:
@@ -2246,15 +2294,13 @@ components:
         notes: { type: string }
     PurchasesPage:
       type: object
-      required: [data, total, page, limit]
+      required: [items, total]
       properties:
-        data:
+        items:
           type: array
           items:
             $ref: "#/components/schemas/PurchaseInvoice"
         total: { type: integer }
-        page: { type: integer }
-        limit: { type: integer }
 
     # Stock Count
     StockCount:

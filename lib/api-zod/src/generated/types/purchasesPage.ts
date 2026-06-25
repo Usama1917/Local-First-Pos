@@ -8,8 +8,6 @@
 import type { PurchaseInvoice } from './purchaseInvoice';
 
 export interface PurchasesPage {
-  data: PurchaseInvoice[];
+  items: PurchaseInvoice[];
   total: number;
-  page: number;
-  limit: number;
 }

@@ -5,9 +5,9 @@
  * POS System API for Egyptian retail shop
  * OpenAPI spec version: 0.1.0
  */
-import type { SalesInvoice } from './salesInvoice';
+import type { CraftsmanLinkedCustomer } from './craftsmanLinkedCustomer';
 
-export interface SalesPage {
-  items: SalesInvoice[];
+export interface CraftsmanCustomersPage {
+  items: CraftsmanLinkedCustomer[];
   total: number;
 }

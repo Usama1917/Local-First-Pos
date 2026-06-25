@@ -7,7 +7,7 @@
  */
 
 export type GetPurchasesReportParams = {
-from: string;
-to: string;
+dateFrom?: string;
+dateTo?: string;
 supplierId?: number;
 };

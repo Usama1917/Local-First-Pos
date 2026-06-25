@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import {
   useSearchProducts,
+  getSearchProductsQueryKey,
   useCreateSalesInvoice,
   useFinalizeSalesInvoice,
   useListCustomers,
@@ -44,7 +45,7 @@ export default function POSPage() {
   const [draftData, setDraftData] = useState<any>(null);
   const draftSaved = useRef(false);
 
-  const { data: searchResults } = useSearchProducts({ q: searchQuery }, { query: { enabled: searchQuery.length >= 1 } });
+  const { data: searchResults } = useSearchProducts({ q: searchQuery }, { query: { enabled: searchQuery.length >= 1, queryKey: getSearchProductsQueryKey({ q: searchQuery }) } });
   const { data: customersData } = useListCustomers({});
   const { data: craftsmenData } = useListCraftsmen({});
   const createInvoice = useCreateSalesInvoice();

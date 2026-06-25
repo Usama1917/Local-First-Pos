@@ -10,6 +10,7 @@ import type { InvoiceItemInput } from './invoiceItemInput';
 export interface QuotationInput {
   customerId?: number;
   craftsmanId?: number;
+  status?: string;
   items?: InvoiceItemInput[];
   discount?: number;
   notes?: string;

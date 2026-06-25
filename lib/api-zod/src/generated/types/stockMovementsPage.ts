@@ -8,8 +8,6 @@
 import type { StockMovement } from './stockMovement';
 
 export interface StockMovementsPage {
-  data: StockMovement[];
+  items: StockMovement[];
   total: number;
-  page: number;
-  limit: number;
 }

@@ -8,8 +8,6 @@
 import type { Supplier } from './supplier';
 
 export interface SuppliersPage {
-  data: Supplier[];
+  items: Supplier[];
   total: number;
-  page: number;
-  limit: number;
 }

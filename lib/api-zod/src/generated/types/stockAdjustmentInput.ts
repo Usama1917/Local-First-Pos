@@ -9,6 +9,6 @@
 export interface StockAdjustmentInput {
   productId: number;
   quantity: number;
-  reason: string;
+  type?: string;
   notes?: string;
 }

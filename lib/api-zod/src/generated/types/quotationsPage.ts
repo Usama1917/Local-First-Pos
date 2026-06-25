@@ -8,8 +8,6 @@
 import type { Quotation } from './quotation';
 
 export interface QuotationsPage {
-  data: Quotation[];
+  items: Quotation[];
   total: number;
-  page: number;
-  limit: number;
 }

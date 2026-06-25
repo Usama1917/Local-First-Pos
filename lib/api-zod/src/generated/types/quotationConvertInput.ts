@@ -10,7 +10,7 @@ import type { QuotationConvertInputPaymentType } from './quotationConvertInputPa
 import type { QuotationConvertInputPriceMode } from './quotationConvertInputPriceMode';
 
 export interface QuotationConvertInput {
-  priceMode: QuotationConvertInputPriceMode;
+  priceMode?: QuotationConvertInputPriceMode;
   paymentType?: QuotationConvertInputPaymentType;
   paidAmount?: number;
   items?: InvoiceItemInput[];

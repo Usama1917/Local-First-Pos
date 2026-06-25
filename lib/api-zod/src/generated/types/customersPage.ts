@@ -8,8 +8,6 @@
 import type { Customer } from './customer';
 
 export interface CustomersPage {
-  data: Customer[];
+  items: Customer[];
   total: number;
-  page: number;
-  limit: number;
 }

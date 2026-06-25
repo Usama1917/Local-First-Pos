@@ -11,6 +11,7 @@ import type { PurchaseItemInput } from './purchaseItemInput';
 export interface PurchaseInvoiceInput {
   supplierId?: number;
   paymentType?: PurchaseInvoiceInputPaymentType;
+  status?: string;
   items?: PurchaseItemInput[];
   paidAmount?: number;
   notes?: string;

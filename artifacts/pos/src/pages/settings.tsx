@@ -58,7 +58,7 @@ export default function SettingsPage() {
   };
 
   const handleBackup = async () => {
-    await createBackup.mutateAsync({});
+    await createBackup.mutateAsync();
     qc.invalidateQueries();
     toast.success("تم إنشاء النسخة الاحتياطية");
   };

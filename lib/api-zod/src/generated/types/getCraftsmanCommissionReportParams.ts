@@ -7,7 +7,7 @@
  */
 
 export type GetCraftsmanCommissionReportParams = {
-from?: string;
-to?: string;
+dateFrom?: string;
+dateTo?: string;
 craftsmanId?: number;
 };

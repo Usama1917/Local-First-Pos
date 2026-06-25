@@ -6,11 +6,15 @@ import {
   useGetCustomerStatement,
   useGetCustomerPayments,
   useAddCustomerPayment,
+  useGetCustomerInvoices,
+  useGetCustomerQuotations,
   getListCustomersQueryKey,
   getGetCustomerStatementQueryKey,
   getGetCustomerPaymentsQueryKey,
+  getGetCustomerInvoicesQueryKey,
+  getGetCustomerQuotationsQueryKey,
 } from "@workspace/api-client-react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -47,14 +51,8 @@ function CustomerProfile({ customerId, onClose }: { customerId: number; onClose:
   const { data: payments } = useGetCustomerPayments(customerId, { query: { queryKey: getGetCustomerPaymentsQueryKey(customerId) } });
   const addPayment = useAddCustomerPayment();
 
-  const { data: invoicesData } = useQuery({
-    queryKey: ["customer-invoices", customerId],
-    queryFn: () => fetch(`/api/customers/${customerId}/invoices`).then(r => r.json()),
-  });
-  const { data: quotationsData } = useQuery({
-    queryKey: ["customer-quotations", customerId],
-    queryFn: () => fetch(`/api/customers/${customerId}/quotations`).then(r => r.json()),
-  });
+  const { data: invoicesData } = useGetCustomerInvoices(customerId, { query: { queryKey: getGetCustomerInvoicesQueryKey(customerId) } });
+  const { data: quotationsData } = useGetCustomerQuotations(customerId, { query: { queryKey: getGetCustomerQuotationsQueryKey(customerId) } });
 
   const handlePay = async () => {
     if (!payAmount) { toast.error("أدخل المبلغ"); return; }

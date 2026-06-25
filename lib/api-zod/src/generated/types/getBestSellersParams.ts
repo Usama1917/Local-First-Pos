@@ -7,7 +7,7 @@
  */
 
 export type GetBestSellersParams = {
-from?: string;
-to?: string;
+dateFrom?: string;
+dateTo?: string;
 limit?: number;
 };

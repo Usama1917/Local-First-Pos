@@ -6,6 +6,7 @@ import {
   useListSuppliers,
   useListProducts,
   useSearchProducts,
+  getSearchProductsQueryKey,
   getListPurchaseInvoicesQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -44,7 +45,7 @@ function NewPurchaseDialog({ onClose }: { onClose: () => void }) {
   const [productSearch, setProductSearch] = useState("");
   const qc = useQueryClient();
   const { data: suppliers } = useListSuppliers({});
-  const { data: searchResults } = useSearchProducts({ q: productSearch }, { query: { enabled: productSearch.length >= 1 } });
+  const { data: searchResults } = useSearchProducts({ q: productSearch }, { query: { enabled: productSearch.length >= 1, queryKey: getSearchProductsQueryKey({ q: productSearch }) } });
   const createPurchase = useCreatePurchaseInvoice();
   const finalizePurchase = useFinalizePurchaseInvoice();
 

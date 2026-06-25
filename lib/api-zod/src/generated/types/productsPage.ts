@@ -8,8 +8,6 @@
 import type { Product } from './product';
 
 export interface ProductsPage {
-  data: Product[];
+  items: Product[];
   total: number;
-  page: number;
-  limit: number;
 }

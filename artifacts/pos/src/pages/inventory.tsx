@@ -37,7 +37,7 @@ function StockCountDetail({ countId, onClose }: { countId: number; onClose: () =
       // The GET already has count data, we just finalize
     }
     await finalize.mutateAsync({ id: countId });
-    qc.invalidateQueries({ queryKey: getListStockCountsQueryKey({}) });
+    qc.invalidateQueries({ queryKey: getListStockCountsQueryKey() });
     toast.success("تم إنهاء الجرد وتحديث المخزون");
     onClose();
   };
@@ -121,14 +121,14 @@ export default function InventoryPage() {
   const [adjQty, setAdjQty] = useState("");
   const [adjNotes, setAdjNotes] = useState("");
   const qc = useQueryClient();
-  const { data, isLoading } = useListStockCounts({}, { query: { queryKey: getListStockCountsQueryKey({}) } });
+  const { data, isLoading } = useListStockCounts({ query: { queryKey: getListStockCountsQueryKey() } });
   const { data: movements } = useListStockMovements({ limit: 50 }, { query: { queryKey: getListStockMovementsQueryKey({ limit: 50 }) } });
   const createCount = useCreateStockCount();
   const createAdjustment = useCreateStockAdjustment();
 
   const handleNewCount = async () => {
     const r = await createCount.mutateAsync({ data: {} });
-    qc.invalidateQueries({ queryKey: getListStockCountsQueryKey({}) });
+    qc.invalidateQueries({ queryKey: getListStockCountsQueryKey() });
     toast.success("تم إنشاء جلسة جرد جديدة");
     setSelectedCountId((r as any).id);
   };

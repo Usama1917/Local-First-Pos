@@ -188,10 +188,8 @@ export interface ProductUpdate {
 }
 
 export interface ProductsPage {
-  data: Product[];
+  items: Product[];
   total: number;
-  page: number;
-  limit: number;
 }
 
 export interface StockMovement {
@@ -215,16 +213,14 @@ export interface StockMovement {
 }
 
 export interface StockMovementsPage {
-  data: StockMovement[];
+  items: StockMovement[];
   total: number;
-  page: number;
-  limit: number;
 }
 
 export interface StockAdjustmentInput {
   productId: number;
   quantity: number;
-  reason: string;
+  type?: string;
   notes?: string;
 }
 
@@ -331,10 +327,8 @@ export interface CustomerStatement {
 }
 
 export interface CustomersPage {
-  data: Customer[];
+  items: Customer[];
   total: number;
-  page: number;
-  limit: number;
 }
 
 export interface CustomerPayment {
@@ -404,10 +398,28 @@ export interface CraftsmanProfile {
 }
 
 export interface CraftsmenPage {
-  data: Craftsman[];
+  items: Craftsman[];
   total: number;
-  page: number;
-  limit: number;
+}
+
+export interface CraftsmanLinkedCustomer {
+  id: number;
+  name: string;
+  /** @nullable */
+  phone?: string | null;
+  /** @nullable */
+  area?: string | null;
+  invoiceCount: number;
+  totalSales: number;
+  totalRemaining: number;
+  /** @nullable */
+  lastInvoiceDate?: string | null;
+  quotationCount: number;
+}
+
+export interface CraftsmanCustomersPage {
+  items: CraftsmanLinkedCustomer[];
+  total: number;
 }
 
 export interface Supplier {
@@ -477,10 +489,8 @@ export interface SupplierProfile {
 }
 
 export interface SuppliersPage {
-  data: Supplier[];
+  items: Supplier[];
   total: number;
-  page: number;
-  limit: number;
 }
 
 export interface SupplierPayment {
@@ -587,6 +597,7 @@ export interface QuotationDetail {
 export interface QuotationInput {
   customerId?: number;
   craftsmanId?: number;
+  status?: string;
   items?: InvoiceItemInput[];
   discount?: number;
   notes?: string;
@@ -622,17 +633,15 @@ export const QuotationConvertInputPaymentType = {
 } as const;
 
 export interface QuotationConvertInput {
-  priceMode: QuotationConvertInputPriceMode;
+  priceMode?: QuotationConvertInputPriceMode;
   paymentType?: QuotationConvertInputPaymentType;
   paidAmount?: number;
   items?: InvoiceItemInput[];
 }
 
 export interface QuotationsPage {
-  data: Quotation[];
+  items: Quotation[];
   total: number;
-  page: number;
-  limit: number;
 }
 
 export interface SalesInvoiceDetail {
@@ -718,10 +727,8 @@ export interface FinalizeInvoiceInput {
 }
 
 export interface SalesPage {
-  data: SalesInvoice[];
+  items: SalesInvoice[];
   total: number;
-  page: number;
-  limit: number;
 }
 
 export interface PurchaseItem {
@@ -787,6 +794,7 @@ export const PurchaseInvoiceInputPaymentType = {
 export interface PurchaseInvoiceInput {
   supplierId?: number;
   paymentType?: PurchaseInvoiceInputPaymentType;
+  status?: string;
   items?: PurchaseItemInput[];
   paidAmount?: number;
   notes?: string;
@@ -818,10 +826,8 @@ export interface FinalizePurchaseInput {
 }
 
 export interface PurchasesPage {
-  data: PurchaseInvoice[];
+  items: PurchaseInvoice[];
   total: number;
-  page: number;
-  limit: number;
 }
 
 export interface StockCount {
@@ -1098,8 +1104,8 @@ type?: string;
 };
 
 export type GetSalesReportParams = {
-from: string;
-to: string;
+dateFrom?: string;
+dateTo?: string;
 customerId?: number;
 craftsmanId?: number;
 };
@@ -1111,20 +1117,20 @@ lowStock?: boolean;
 };
 
 export type GetBestSellersParams = {
-from?: string;
-to?: string;
+dateFrom?: string;
+dateTo?: string;
 limit?: number;
 };
 
 export type GetPurchasesReportParams = {
-from: string;
-to: string;
+dateFrom?: string;
+dateTo?: string;
 supplierId?: number;
 };
 
 export type GetCraftsmanCommissionReportParams = {
-from?: string;
-to?: string;
+dateFrom?: string;
+dateTo?: string;
 craftsmanId?: number;
 };
 

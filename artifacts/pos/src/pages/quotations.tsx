@@ -8,6 +8,7 @@ import {
   useListCustomers,
   useListCraftsmen,
   useSearchProducts,
+  getSearchProductsQueryKey,
   getListQuotationsQueryKey,
   getGetQuotationQueryKey,
   getListCraftsmenQueryKey,
@@ -41,7 +42,7 @@ function NewQuotationDialog({ onClose }: { onClose: () => void }) {
   const [discount, setDiscount] = useState(0);
   const [validUntil, setValidUntil] = useState("");
   const qc = useQueryClient();
-  const { data: searchResults } = useSearchProducts({ q: productSearch }, { query: { enabled: productSearch.length >= 1 } });
+  const { data: searchResults } = useSearchProducts({ q: productSearch }, { query: { enabled: productSearch.length >= 1, queryKey: getSearchProductsQueryKey({ q: productSearch }) } });
   const { data: customers } = useListCustomers({});
   const { data: craftsmen } = useListCraftsmen({});
   const createQuotation = useCreateQuotation();
