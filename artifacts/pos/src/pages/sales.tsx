@@ -112,17 +112,17 @@ export default function SalesPage() {
               <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input className="pr-9" placeholder="رقم الفاتورة أو اسم العميل..." value={search} onChange={e => setSearch(e.target.value)} />
             </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <Select value={statusFilter || "__none__"} onValueChange={(v) => setStatusFilter(v === "__none__" ? "" : v)}>
               <SelectTrigger className="w-36"><SelectValue placeholder="كل الحالات" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="">كل الحالات</SelectItem>
+                <SelectItem value="__none__">كل الحالات</SelectItem>
                 {Object.entries(STATUS_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v.label}</SelectItem>)}
               </SelectContent>
             </Select>
-            <Select value={paymentFilter} onValueChange={setPaymentFilter}>
+            <Select value={paymentFilter || "__none__"} onValueChange={(v) => setPaymentFilter(v === "__none__" ? "" : v)}>
               <SelectTrigger className="w-32"><SelectValue placeholder="طريقة الدفع" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="">الكل</SelectItem>
+                <SelectItem value="__none__">الكل</SelectItem>
                 <SelectItem value="cash">نقدي</SelectItem>
                 <SelectItem value="credit">آجل</SelectItem>
                 <SelectItem value="partial">جزئي</SelectItem>

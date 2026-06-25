@@ -278,21 +278,21 @@ export default function POSPage() {
       {/* Cart Panel */}
       <div className="flex-1 flex flex-col gap-3">
         <div className="flex gap-2">
-          <Select value={customerId} onValueChange={setCustomerId}>
+          <Select value={customerId || "__none__"} onValueChange={(v) => setCustomerId(v === "__none__" ? "" : v)}>
             <SelectTrigger className="flex-1">
               <SelectValue placeholder="اختر العميل (اختياري)" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">عميل نقدي</SelectItem>
+              <SelectItem value="__none__">عميل نقدي</SelectItem>
               {customers.map((c: any) => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
             </SelectContent>
           </Select>
-          <Select value={craftsmanId} onValueChange={setCraftsmanId}>
+          <Select value={craftsmanId || "__none__"} onValueChange={(v) => setCraftsmanId(v === "__none__" ? "" : v)}>
             <SelectTrigger className="flex-1">
               <SelectValue placeholder="صنايعي (اختياري)" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">بدون صنايعي</SelectItem>
+              <SelectItem value="__none__">بدون صنايعي</SelectItem>
               {craftsmen.map((c: any) => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
             </SelectContent>
           </Select>

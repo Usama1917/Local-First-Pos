@@ -216,10 +216,10 @@ export default function PurchasesPage() {
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input className="pr-9" placeholder="رقم الفاتورة أو المورد..." value={search} onChange={e => setSearch(e.target.value)} />
           </div>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <Select value={statusFilter || "__none__"} onValueChange={(v) => setStatusFilter(v === "__none__" ? "" : v)}>
             <SelectTrigger className="w-36"><SelectValue placeholder="كل الحالات" /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="">كل الحالات</SelectItem>
+              <SelectItem value="__none__">كل الحالات</SelectItem>
               {Object.entries(STATUS_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v.label}</SelectItem>)}
             </SelectContent>
           </Select>

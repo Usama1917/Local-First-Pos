@@ -1,0 +1,163 @@
+Before you start implementation, please strictly follow these important project rules:
+
+1. Application Model
+   This is a local-first Windows POS and inventory system for a real Egyptian shop that sells sanitary ware, paints, plumbing supplies, and related products.
+
+The final target machine is a Windows computer inside the shop.
+Development may happen on MacBook, but the app must run correctly on Windows.
+
+Do not build this as a cloud-only app.
+Do not require paid hosting.
+Use a local SQLite database stored on the shop computer.
+
+2. System Type
+   This is not just a simple cashier screen.
+   It is a complete local shop management system:
+
+* POS / cashier
+* Inventory
+* Quotations
+* Sales invoices
+* Purchase invoices
+* Customers
+* Craftsmen / plumbers / painters
+* Suppliers
+* Customer debts
+* Supplier debts
+* Stock count and reconciliation
+* Reports
+* Printing
+* Barcode / serial search
+* Backup and restore
+
+3. Arabic First
+   The main language must be Arabic.
+   The UI must be RTL-first.
+   English support is optional, but Arabic is the primary language.
+
+Use clear Arabic labels suitable for Egyptian shop workers.
+
+4. Font Requirement
+   Use SF Arabic as the preferred Arabic font in the UI.
+
+Use this font stack:
+
+font-family: "SF Arabic", "SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Cairo", "Tajawal", "Segoe UI", sans-serif;
+
+Do not include or ship proprietary Apple font files.
+Just use SF Arabic if it exists on the system, and use clean Arabic fallbacks like Cairo or Tajawal when it is not available.
+
+5. Design Requirement
+   The design must be beautiful, modern, polished, and distinctive.
+
+Do not make a plain ugly admin dashboard.
+
+The UI should include:
+
+* Smooth subtle animations
+* Clean RTL layout
+* Beautiful dashboard cards
+* Modern sidebar/topbar
+* Rounded components
+* Nice hover effects
+* Smooth modals/drawers
+* Elegant tables
+* Clear forms
+* Toast notifications
+* Loading states
+* Empty states
+* Good spacing
+* Professional colors
+* User-friendly cashier workflow
+
+The system should feel premium and easy to use.
+
+6. Every Button Must Work
+   Do not create fake buttons, placeholder actions, or unfinished screens.
+
+Any button that appears in the UI must be fully functional.
+
+This includes:
+
+* Add
+* Edit
+* Delete
+* Save
+* Print
+* Search
+* Filter
+* Convert quotation to invoice
+* Finalize invoice
+* Finalize purchase
+* Register payment
+* Backup
+* Restore
+* Open by barcode/serial
+* Export/print reports if shown
+
+If a feature is not implemented yet, hide it from the UI instead of showing a broken button.
+
+7. Real Data Only
+   Do not use fake UI data except clearly marked seed/demo data.
+
+All tables, reports, invoices, products, customers, suppliers, debts, and stock movements must be connected to the local SQLite database.
+
+8. Autosave Requirement
+   Important forms must autosave drafts while the user is typing, because electricity may cut off in the shop.
+
+Autosave must apply to:
+
+* Sales invoice
+* Quotation
+* Purchase invoice
+* Stock count
+* Product form
+* Customer form
+* Supplier form
+
+Drafts must be stored in SQLite, not only in browser memory.
+
+Drafts must not affect stock, debt, or cash until the user finalizes the record.
+
+9. Accounting Accuracy
+   Handle percentages correctly.
+
+Do not confuse:
+
+* Supplier trade discount from list price
+* Customer discount
+* Profit margin
+* Markup
+* Craftsman commission
+* Sequential discounts like 20% + 10%
+* Extra costs such as transport/loading
+
+The system must calculate true cost and real profit accurately.
+
+10. Testing Requirement
+    After implementing every feature, manually test it inside the app.
+
+Critical flows that must work:
+
+* Add product
+* Create sale invoice
+* Finalize sale and reduce stock
+* Create quotation
+* Convert quotation to invoice
+* Create purchase invoice
+* Finalize purchase and increase stock
+* Add customer payment
+* Add supplier payment
+* Search invoice by barcode/serial
+* Print invoice
+* Create stock count
+* Reconcile inventory
+* Backup database
+* Restore database
+
+Do not finish the task until the visible features are working correctly.
+
+11. Priority
+    Build fewer features correctly rather than many broken screens.
+
+This project is for real shop usage, not a design mockup.

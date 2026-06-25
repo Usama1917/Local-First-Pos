@@ -1,0 +1,2 @@
+- [POS System route conventions](pos-route-conventions.md) — generated client uses `/api/stock-counts` (hyphen); backend originally had `/api/stock/counts` (slash). Both paths now served as aliases in stock.ts.
+- [SelectItem empty-value fix](selectitem-empty-value.md) — shadcn Select forbids value="". Use sentinel `"__none__"` on SelectItem + `value={state || "__none__"}` on Select + onValueChange converts `"__none__"` back to `""`.

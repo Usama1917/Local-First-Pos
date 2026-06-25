@@ -1,6 +1,6 @@
 import { LayoutDashboard, ShoppingCart, FileText, Receipt, ShoppingBag, Package, ClipboardList, Users, HardHat, Truck, CreditCard, BarChart3, Settings } from "lucide-react";
 import { Link, useLocation } from "wouter";
-import { cn } from "./utils";
+import { cn } from "@/lib/utils";
 
 const navigation = [
   { name: "لوحة التحكم", href: "/", icon: LayoutDashboard },

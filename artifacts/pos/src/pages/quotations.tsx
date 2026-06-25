@@ -76,17 +76,17 @@ function NewQuotationDialog({ onClose }: { onClose: () => void }) {
     <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
       <DialogHeader><DialogTitle>تسعيرة جديدة</DialogTitle></DialogHeader>
       <div className="flex gap-2">
-        <Select value={customerId} onValueChange={setCustomerId}>
+        <Select value={customerId || "__none__"} onValueChange={(v) => setCustomerId(v === "__none__" ? "" : v)}>
           <SelectTrigger className="flex-1"><SelectValue placeholder="اختر العميل (اختياري)" /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="">بدون عميل</SelectItem>
+            <SelectItem value="__none__">بدون عميل</SelectItem>
             {(customers as any)?.items?.map((c: any) => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
           </SelectContent>
         </Select>
-        <Select value={craftsmanId} onValueChange={setCraftsmanId}>
+        <Select value={craftsmanId || "__none__"} onValueChange={(v) => setCraftsmanId(v === "__none__" ? "" : v)}>
           <SelectTrigger className="flex-1"><SelectValue placeholder="الصنايعي (اختياري)" /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="">بدون صنايعي</SelectItem>
+            <SelectItem value="__none__">بدون صنايعي</SelectItem>
             {(craftsmen as any)?.items?.map((c: any) => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
           </SelectContent>
         </Select>
@@ -200,10 +200,10 @@ export default function QuotationsPage() {
               <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input className="pr-9" placeholder="رقم التسعيرة أو اسم العميل..." value={search} onChange={e => setSearch(e.target.value)} />
             </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <Select value={statusFilter || "__none__"} onValueChange={(v) => setStatusFilter(v === "__none__" ? "" : v)}>
               <SelectTrigger className="w-36"><SelectValue placeholder="كل الحالات" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="">كل الحالات</SelectItem>
+                <SelectItem value="__none__">كل الحالات</SelectItem>
                 {Object.entries(STATUS_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v.label}</SelectItem>)}
               </SelectContent>
             </Select>

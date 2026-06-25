@@ -178,12 +178,12 @@ export default function ProductsPage() {
               <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input className="pr-9" placeholder="بحث بالاسم أو الكود..." value={search} onChange={e => setSearch(e.target.value)} />
             </div>
-            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+            <Select value={categoryFilter || "__none__"} onValueChange={(v) => setCategoryFilter(v === "__none__" ? "" : v)}>
               <SelectTrigger className="w-44">
                 <SelectValue placeholder="كل التصنيفات" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">كل التصنيفات</SelectItem>
+                <SelectItem value="__none__">كل التصنيفات</SelectItem>
                 {(cats as any[])?.map((c: any) => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
               </SelectContent>
             </Select>

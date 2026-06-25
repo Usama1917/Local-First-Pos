@@ -40,12 +40,12 @@ router.post("/stock/adjustment", (req, res) => {
   res.status(201).json(db.prepare("SELECT * FROM stock_movements WHERE id = ?").get(r.lastInsertRowid));
 });
 
-router.get("/stock/counts", (req, res) => {
+function listStockCounts(req: any, res: any) {
   const items = db.prepare("SELECT sc.*, COUNT(sci.id) as itemCount FROM stock_counts sc LEFT JOIN stock_count_items sci ON sc.id = sci.stockCountId GROUP BY sc.id ORDER BY sc.createdAt DESC").all();
   res.json({ items, total: items.length });
-});
+}
 
-router.post("/stock/counts", (req, res) => {
+function createStockCount(req: any, res: any) {
   const { name, notes } = req.body;
   const products = db.prepare("SELECT id, currentStock FROM products WHERE isActive = 1").all() as any[];
   const r = db.prepare("INSERT INTO stock_counts (name, notes, status) VALUES (?,?,'draft')").run(name || `جرد ${new Date().toLocaleDateString("ar-EG")}`, notes || null);
@@ -53,9 +53,9 @@ router.post("/stock/counts", (req, res) => {
   const insertItem = db.prepare("INSERT INTO stock_count_items (stockCountId, productId, systemQty, countedQty) VALUES (?,?,?,?)");
   for (const p of products) insertItem.run(countId, p.id, p.currentStock, p.currentStock);
   res.status(201).json(db.prepare("SELECT * FROM stock_counts WHERE id = ?").get(countId));
-});
+}
 
-router.get("/stock/counts/:id", (req, res) => {
+function getStockCount(req: any, res: any) {
   const id = Number(req.params.id);
   const count = db.prepare("SELECT * FROM stock_counts WHERE id = ?").get(id);
   if (!count) return res.status(404).json({ error: "غير موجود" });
@@ -68,9 +68,9 @@ router.get("/stock/counts/:id", (req, res) => {
     WHERE sci.stockCountId = ? ORDER BY p.nameAr
   `).all(id);
   res.json({ ...count as any, items });
-});
+}
 
-router.patch("/stock/counts/:id", (req, res) => {
+function patchStockCount(req: any, res: any) {
   const id = Number(req.params.id);
   const { name, notes, items } = req.body;
 
@@ -84,9 +84,9 @@ router.patch("/stock/counts/:id", (req, res) => {
     db.prepare("UPDATE stock_counts SET name = COALESCE(?, name), notes = COALESCE(?, notes) WHERE id = ?").run(name || null, notes || null, id);
   }
   res.json(db.prepare("SELECT * FROM stock_counts WHERE id = ?").get(id));
-});
+}
 
-router.post("/stock/counts/:id/finalize", (req, res) => {
+function finalizeStockCount(req: any, res: any) {
   const id = Number(req.params.id);
   const count = db.prepare("SELECT * FROM stock_counts WHERE id = ?").get(id) as any;
   if (!count) return res.status(404).json({ error: "غير موجود" });
@@ -112,6 +112,18 @@ router.post("/stock/counts/:id/finalize", (req, res) => {
   }
 
   res.json(db.prepare("SELECT * FROM stock_counts WHERE id = ?").get(id));
-});
+}
+
+router.get("/stock/counts", listStockCounts);
+router.post("/stock/counts", createStockCount);
+router.get("/stock/counts/:id", getStockCount);
+router.patch("/stock/counts/:id", patchStockCount);
+router.post("/stock/counts/:id/finalize", finalizeStockCount);
+
+router.get("/stock-counts", listStockCounts);
+router.post("/stock-counts", createStockCount);
+router.get("/stock-counts/:id", getStockCount);
+router.patch("/stock-counts/:id", patchStockCount);
+router.post("/stock-counts/:id/finalize", finalizeStockCount);
 
 export default router;
