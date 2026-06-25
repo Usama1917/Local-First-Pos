@@ -23,6 +23,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { formatCurrency } from "@/lib/format";
 import { useBarcodeScanner, findProductByCode } from "@/hooks/use-barcode-scanner";
+import { useDraftAutosave } from "@/hooks/use-draft-autosave";
 import { Search, Plus, FileText, ArrowRight, Copy, Trash2, Minus, HardHat } from "lucide-react";
 import { toast } from "sonner";
 
@@ -67,6 +68,28 @@ function NewQuotationDialog({ onClose, open }: { onClose: () => void; open: bool
     { enabled: open },
   );
 
+  const [restored, setRestored] = useState(false);
+  const resetForm = () => {
+    setCart([]); setCustomerId(""); setCraftsmanId(""); setDiscount(0); setValidUntil(""); setRestored(false);
+  };
+  // Periodic auto-save → a power cut / refresh mid-quotation won't lose the work.
+  const { clearDraft } = useDraftAutosave({
+    type: "quotation",
+    entityId: "new",
+    enabled: open,
+    hasContent: cart.length > 0,
+    data: { cart, customerId, craftsmanId, discount, validUntil },
+    onRestore: (p) => {
+      if (!p?.cart?.length) return;
+      setCart(p.cart);
+      setCustomerId(p.customerId || "");
+      setCraftsmanId(p.craftsmanId || "");
+      setDiscount(p.discount || 0);
+      setValidUntil(p.validUntil || "");
+      setRestored(true);
+    },
+  });
+
   const subtotal = cart.reduce((s, i) => s + i.total, 0);
   const total = subtotal - discount;
 
@@ -82,12 +105,20 @@ function NewQuotationDialog({ onClose, open }: { onClose: () => void; open: bool
     });
     qc.invalidateQueries({ queryKey: getListQuotationsQueryKey({}) });
     toast.success("تم حفظ التسعيرة");
+    clearDraft();
+    resetForm();
     onClose();
   };
 
   return (
     <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
       <DialogHeader><DialogTitle>تسعيرة جديدة</DialogTitle></DialogHeader>
+      {restored && (
+        <div className="flex items-center justify-between rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+          <span>↩️ تم استرجاع مسودة محفوظة تلقائيًا</span>
+          <Button variant="ghost" size="sm" className="h-6 text-amber-800" onClick={() => { resetForm(); clearDraft(); }}>ابدأ من جديد</Button>
+        </div>
+      )}
       <div className="flex gap-2">
         <Select value={customerId || "__none__"} onValueChange={(v) => setCustomerId(v === "__none__" ? "" : v)}>
           <SelectTrigger className="flex-1"><SelectValue placeholder="اختر العميل (اختياري)" /></SelectTrigger>

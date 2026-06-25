@@ -1,6 +1,7 @@
-import { LayoutDashboard, ShoppingCart, FileText, Receipt, ShoppingBag, Package, ClipboardList, Users, HardHat, Truck, CreditCard, BarChart3, Settings } from "lucide-react";
+import { LayoutDashboard, ShoppingCart, FileText, Receipt, ShoppingBag, Package, ClipboardList, Users, HardHat, Truck, CreditCard, BarChart3, Settings, LogOut } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { motion } from "framer-motion";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 const navigation = [
@@ -19,7 +20,7 @@ const navigation = [
   { name: "الإعدادات", href: "/settings", icon: Settings },
 ];
 
-export function Layout({ children }: { children: React.ReactNode }) {
+export function Layout({ children, userName, onLogout }: { children: React.ReactNode; userName?: string; onLogout?: () => void }) {
   const [location] = useLocation();
 
   return (
@@ -60,12 +61,22 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        <header className="h-16 border-b bg-card flex items-center px-6 no-print">
-          {/* Header content like user profile can go here */}
-          <div className="flex-1" />
+        <header className="h-16 border-b bg-card flex items-center gap-4 px-6 no-print">
           <div className="text-sm font-medium text-muted-foreground">
             {new Date().toLocaleDateString("ar-EG", { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
           </div>
+          <div className="flex-1" />
+          {userName && (
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium">{userName}</span>
+              {onLogout && (
+                <Button variant="ghost" size="sm" onClick={onLogout}>
+                  <LogOut className="h-4 w-4 ml-1" />
+                  خروج
+                </Button>
+              )}
+            </div>
+          )}
         </header>
         <main className="flex-1 overflow-y-auto p-6">
           {children}

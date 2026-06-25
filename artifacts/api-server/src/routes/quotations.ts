@@ -111,7 +111,6 @@ router.post("/quotations/:id/convert", (req, res) => {
   if (q.status === "converted") return res.status(400).json({ error: "تم تحويل هذه التسعيرة مسبقاً" });
 
   const s = getSettings();
-  const serial = nextSerial(s?.invoicePrefix || "INV");
   const { paymentType = "cash", paidAmount } = req.body;
 
   const items = getItems(id) as any[];
@@ -126,25 +125,36 @@ router.post("/quotations/:id/convert", (req, res) => {
     if (craftsman?.commissionPercent) commission = (q.total * craftsman.commissionPercent) / 100;
   }
 
-  const r = db.prepare(`
-    INSERT INTO sales_invoices (serial, status, paymentType, customerId, craftsmanId, subtotal, discount, total, paidAmount, remainingAmount, craftsmanCommission, quotationId)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
-  `).run(serial, invoiceStatus, paymentType, q.customerId, q.craftsmanId, q.subtotal, q.discount, q.total, finalPaid, remaining, commission, id);
-  const invId = r.lastInsertRowid as number;
+  // Wrap the whole conversion (serial, invoice, items, stock movements, quotation
+  // update) in a transaction so a crash/power-cut can't leave a half-converted state.
+  let invId = 0;
+  db.exec("BEGIN");
+  try {
+    const serial = nextSerial(s?.invoicePrefix || "INV");
+    const r = db.prepare(`
+      INSERT INTO sales_invoices (serial, status, paymentType, customerId, craftsmanId, subtotal, discount, total, paidAmount, remainingAmount, craftsmanCommission, quotationId)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
+    `).run(serial, invoiceStatus, paymentType, q.customerId, q.craftsmanId, q.subtotal, q.discount, q.total, finalPaid, remaining, commission, id);
+    invId = r.lastInsertRowid as number;
 
-  const insertItem = db.prepare("INSERT INTO sales_invoice_items (invoiceId, productId, quantity, unitPrice, discount, total) VALUES (?,?,?,?,?,?)");
-  const updateStock = db.prepare("UPDATE products SET currentStock = currentStock - ?, updatedAt = datetime('now') WHERE id = ?");
-  const insertMove = db.prepare("INSERT INTO stock_movements (productId, type, quantity, balanceBefore, balanceAfter, referenceType, referenceId, notes) VALUES (?,?,?,?,?,?,?,?)");
+    const insertItem = db.prepare("INSERT INTO sales_invoice_items (invoiceId, productId, quantity, unitPrice, discount, total) VALUES (?,?,?,?,?,?)");
+    const updateStock = db.prepare("UPDATE products SET currentStock = currentStock - ?, updatedAt = datetime('now') WHERE id = ?");
+    const insertMove = db.prepare("INSERT INTO stock_movements (productId, type, quantity, balanceBefore, balanceAfter, referenceType, referenceId, notes) VALUES (?,?,?,?,?,?,?,?)");
 
-  for (const item of items) {
-    insertItem.run(invId, item.productId, item.quantity, item.unitPrice, item.discount, item.total);
-    const prod = db.prepare("SELECT currentStock FROM products WHERE id = ?").get(item.productId) as any;
-    const before = prod?.currentStock || 0;
-    updateStock.run(item.quantity, item.productId);
-    insertMove.run(item.productId, "sale", item.quantity, before, before - item.quantity, "sales_invoice", invId, `فاتورة ${serial}`);
+    for (const item of items) {
+      insertItem.run(invId, item.productId, item.quantity, item.unitPrice, item.discount, item.total);
+      const prod = db.prepare("SELECT currentStock FROM products WHERE id = ?").get(item.productId) as any;
+      const before = prod?.currentStock || 0;
+      updateStock.run(item.quantity, item.productId);
+      insertMove.run(item.productId, "sale", item.quantity, before, before - item.quantity, "sales_invoice", invId, `فاتورة ${serial}`);
+    }
+
+    db.prepare("UPDATE quotations SET status = 'converted', convertedInvoiceId = ?, updatedAt = datetime('now') WHERE id = ?").run(invId, id);
+    db.exec("COMMIT");
+  } catch (e) {
+    db.exec("ROLLBACK");
+    throw e;
   }
-
-  db.prepare("UPDATE quotations SET status = 'converted', convertedInvoiceId = ?, updatedAt = datetime('now') WHERE id = ?").run(invId, id);
 
   const invoice = db.prepare(`
     SELECT si.*, c.name as customerName, cr.name as craftsmanName

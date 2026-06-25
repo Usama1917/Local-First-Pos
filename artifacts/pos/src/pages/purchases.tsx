@@ -19,6 +19,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { formatCurrency } from "@/lib/format";
 import { useBarcodeScanner, findProductByCode } from "@/hooks/use-barcode-scanner";
+import { useDraftAutosave } from "@/hooks/use-draft-autosave";
 import { Search, Plus, ShoppingBag, CheckCircle, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -75,6 +76,29 @@ function NewPurchaseDialog({ onClose, open }: { onClose: () => void; open: boole
     { enabled: open },
   );
 
+  const [restored, setRestored] = useState(false);
+  const resetForm = () => {
+    setItems([]); setSupplierId(""); setPaymentType("cash"); setPaidAmount(""); setNotes(""); setRestored(false);
+  };
+  // Periodic auto-save → a power cut / refresh mid-purchase won't lose the work.
+  const { clearDraft } = useDraftAutosave({
+    type: "purchase",
+    entityId: "new",
+    enabled: open,
+    hasContent: items.length > 0,
+    data: { items, supplierId, paymentType, paidAmount, invoiceDate, notes },
+    onRestore: (p) => {
+      if (!p?.items?.length) return;
+      setItems(p.items);
+      setSupplierId(p.supplierId || "");
+      setPaymentType(p.paymentType || "cash");
+      setPaidAmount(p.paidAmount || "");
+      setInvoiceDate(p.invoiceDate || invoiceDate);
+      setNotes(p.notes || "");
+      setRestored(true);
+    },
+  });
+
   const updateItem = (idx: number, key: keyof PurchaseItem, val: number) => {
     setItems(prev => prev.map((item, i) => {
       if (i !== idx) return item;
@@ -108,6 +132,8 @@ function NewPurchaseDialog({ onClose, open }: { onClose: () => void; open: boole
         toast.success("تم حفظ الفاتورة كمسودة");
       }
       qc.invalidateQueries({ queryKey: getListPurchaseInvoicesQueryKey({}) });
+      clearDraft();
+      resetForm();
       onClose();
     } catch (e: any) { toast.error(e.message || "خطأ"); }
   };
@@ -115,6 +141,12 @@ function NewPurchaseDialog({ onClose, open }: { onClose: () => void; open: boole
   return (
     <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
       <DialogHeader><DialogTitle>فاتورة مشتريات جديدة</DialogTitle></DialogHeader>
+      {restored && (
+        <div className="flex items-center justify-between rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+          <span>↩️ تم استرجاع مسودة محفوظة تلقائيًا</span>
+          <Button variant="ghost" size="sm" className="h-6 text-amber-800" onClick={() => { resetForm(); clearDraft(); }}>ابدأ من جديد</Button>
+        </div>
+      )}
       <div className="grid grid-cols-4 gap-3">
         <div className="col-span-2 space-y-1">
           <Label>المورد</Label>

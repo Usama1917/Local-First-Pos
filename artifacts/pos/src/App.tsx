@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Switch, Route, Router as WouterRouter } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { DirectionProvider } from "@radix-ui/react-direction";
@@ -5,6 +6,7 @@ import { Toaster } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Layout } from "@/components/layout";
 import NotFound from "@/pages/not-found";
+import LoginPage from "@/pages/login";
 
 import Dashboard from "@/pages/dashboard";
 import POSPage from "@/pages/pos";
@@ -29,9 +31,9 @@ const queryClient = new QueryClient({
   },
 });
 
-function Router() {
+function Router({ userName, onLogout }: { userName?: string; onLogout?: () => void }) {
   return (
-    <Layout>
+    <Layout userName={userName} onLogout={onLogout}>
       <Switch>
         <Route path="/" component={Dashboard} />
         <Route path="/pos" component={POSPage} />
@@ -52,14 +54,31 @@ function Router() {
   );
 }
 
+function AuthGate() {
+  const [user, setUser] = useState<any>(() => {
+    try { return JSON.parse(localStorage.getItem("pos_user") || "null"); } catch { return null; }
+  });
+
+  if (!user) {
+    return <LoginPage onLogin={(u) => { localStorage.setItem("pos_user", JSON.stringify(u)); setUser(u); }} />;
+  }
+
+  return (
+    <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+      <Router
+        userName={user.name}
+        onLogout={() => { localStorage.removeItem("pos_user"); setUser(null); }}
+      />
+    </WouterRouter>
+  );
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <DirectionProvider dir="rtl">
         <TooltipProvider>
-          <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-            <Router />
-          </WouterRouter>
+          <AuthGate />
           <Toaster position="top-center" richColors expand={false} duration={3000} />
         </TooltipProvider>
       </DirectionProvider>
