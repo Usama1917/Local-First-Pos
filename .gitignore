@@ -52,9 +52,14 @@ Thumbs.db
 data/*.db
 data/*.db-shm
 data/*.db-wal
+data/*.db-*
 backups/
 .env
 .env.*
+
+# Runtime logs (shop server log lives here)
+logs/
+*.log
 
 # Per-machine config (e.g. chosen database location)
 pos-config.json
