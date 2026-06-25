@@ -73,21 +73,21 @@ router.get("/craftsmen/:id", (req, res) => {
 
 router.get("/craftsmen/:id/customers", (req, res) => {
   const id = Number(req.params.id);
+  // Use correlated subqueries (not a dual LEFT JOIN) so the invoice aggregates
+  // are not multiplied by the number of matching quotations and vice-versa.
   const customers = db.prepare(`
     SELECT
       c.id, c.name, c.phone, c.area,
-      COUNT(DISTINCT si.id) as invoiceCount,
-      COALESCE(SUM(si.total), 0) as totalSales,
-      COALESCE(SUM(si.remainingAmount), 0) as totalRemaining,
-      MAX(si.createdAt) as lastInvoiceDate,
-      COUNT(DISTINCT q.id) as quotationCount
+      (SELECT COUNT(*) FROM sales_invoices si WHERE si.customerId = c.id AND si.craftsmanId = ? AND si.status != 'draft') as invoiceCount,
+      (SELECT COALESCE(SUM(si.total), 0) FROM sales_invoices si WHERE si.customerId = c.id AND si.craftsmanId = ? AND si.status != 'draft') as totalSales,
+      (SELECT COALESCE(SUM(si.remainingAmount), 0) FROM sales_invoices si WHERE si.customerId = c.id AND si.craftsmanId = ? AND si.status != 'draft') as totalRemaining,
+      (SELECT MAX(si.createdAt) FROM sales_invoices si WHERE si.customerId = c.id AND si.craftsmanId = ? AND si.status != 'draft') as lastInvoiceDate,
+      (SELECT COUNT(*) FROM quotations q WHERE q.customerId = c.id AND q.craftsmanId = ?) as quotationCount
     FROM customers c
-    LEFT JOIN sales_invoices si ON si.customerId = c.id AND si.craftsmanId = ? AND si.status != 'draft'
-    LEFT JOIN quotations q ON q.customerId = c.id AND q.craftsmanId = ?
-    WHERE (si.id IS NOT NULL OR q.id IS NOT NULL)
-    GROUP BY c.id, c.name, c.phone, c.area
+    WHERE EXISTS (SELECT 1 FROM sales_invoices si WHERE si.customerId = c.id AND si.craftsmanId = ? AND si.status != 'draft')
+       OR EXISTS (SELECT 1 FROM quotations q WHERE q.customerId = c.id AND q.craftsmanId = ?)
     ORDER BY totalSales DESC
-  `).all(id, id);
+  `).all(id, id, id, id, id, id, id);
   res.json({ items: customers, total: customers.length });
 });
 

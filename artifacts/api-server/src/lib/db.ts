@@ -198,8 +198,13 @@ export function initializeSchema() {
 
     CREATE INDEX IF NOT EXISTS idx_sales_serial ON sales_invoices(serial);
     CREATE INDEX IF NOT EXISTS idx_sales_customer ON sales_invoices(customerId);
+    CREATE INDEX IF NOT EXISTS idx_sales_craftsman ON sales_invoices(craftsmanId);
     CREATE INDEX IF NOT EXISTS idx_sales_status ON sales_invoices(status);
     CREATE INDEX IF NOT EXISTS idx_sales_created ON sales_invoices(createdAt);
+
+    CREATE INDEX IF NOT EXISTS idx_quotations_serial ON quotations(serial);
+    CREATE INDEX IF NOT EXISTS idx_quotations_customer ON quotations(customerId);
+    CREATE INDEX IF NOT EXISTS idx_quotations_craftsman ON quotations(craftsmanId);
 
     CREATE TABLE IF NOT EXISTS sales_invoice_items (
       id INTEGER PRIMARY KEY AUTOINCREMENT,

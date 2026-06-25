@@ -31,7 +31,7 @@ function SupplierProfile({ id }: { id: number }) {
 
   const handlePay = async () => {
     if (!payAmount) { toast.error("أدخل المبلغ"); return; }
-    await addPayment.mutateAsync({ supplierId: id, data: { amount: parseFloat(payAmount), date: new Date().toISOString().split("T")[0], notes: payNote } });
+    await addPayment.mutateAsync({ id, data: { amount: parseFloat(payAmount), date: new Date().toISOString().split("T")[0], notes: payNote } });
     qc.invalidateQueries({ queryKey: getGetSupplierPaymentsQueryKey(id) });
     qc.invalidateQueries({ queryKey: getListSuppliersQueryKey({}) });
     toast.success("تم تسجيل الدفعة");

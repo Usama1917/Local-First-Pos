@@ -66,6 +66,20 @@ export default defineConfig({
     fs: {
       strict: true,
     },
+    // Local dev only: when not running inside Replit (whose platform router
+    // dispatches "/api" to the API service), proxy "/api" to the local API
+    // server so the SPA and backend share one origin. Harmless on Replit
+    // because "/api" requests never reach Vite there.
+    ...(process.env.REPL_ID === undefined
+      ? {
+          proxy: {
+            "/api": {
+              target: process.env.API_PROXY_TARGET || "http://localhost:8080",
+              changeOrigin: true,
+            },
+          },
+        }
+      : {}),
   },
   preview: {
     port,

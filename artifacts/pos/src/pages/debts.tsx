@@ -29,10 +29,10 @@ function PaymentDialog({ entity, type, onClose }: { entity: any; type: "customer
     if (!amount) { toast.error("أدخل المبلغ"); return; }
     const payData = { amount: parseFloat(amount), date: new Date().toISOString().split("T")[0], notes: notes || undefined };
     if (type === "customer") {
-      await addCustomerPayment.mutateAsync({ customerId: entity.id, data: payData });
+      await addCustomerPayment.mutateAsync({ id: entity.id, data: payData });
       qc.invalidateQueries({ queryKey: getListCustomerDebtsQueryKey() });
     } else {
-      await addSupplierPayment.mutateAsync({ supplierId: entity.id, data: payData });
+      await addSupplierPayment.mutateAsync({ id: entity.id, data: payData });
       qc.invalidateQueries({ queryKey: getListSupplierDebtsQueryKey() });
     }
     toast.success("تم تسجيل الدفعة");

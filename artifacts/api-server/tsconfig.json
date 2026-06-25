@@ -5,7 +5,11 @@
     "tsBuildInfoFile": ".tsbuildinfo",
     "outDir": "dist",
     "rootDir": "src",
-    "types": ["node"]
+    "types": ["node"],
+    // Express route handlers use the early-return guard pattern
+    // (`return res.status(4xx).json(...)` followed by a trailing `res.json(...)`),
+    // which trips noImplicitReturns. Relax it for this package only.
+    "noImplicitReturns": false
   },
   "include": ["src"],
   "references": [

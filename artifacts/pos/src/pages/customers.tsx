@@ -58,7 +58,7 @@ function CustomerProfile({ customerId, onClose }: { customerId: number; onClose:
 
   const handlePay = async () => {
     if (!payAmount) { toast.error("أدخل المبلغ"); return; }
-    await addPayment.mutateAsync({ customerId, data: { amount: parseFloat(payAmount), date: new Date().toISOString().split("T")[0], notes: payNote } });
+    await addPayment.mutateAsync({ id: customerId, data: { amount: parseFloat(payAmount), date: new Date().toISOString().split("T")[0], notes: payNote } });
     qc.invalidateQueries({ queryKey: getListCustomersQueryKey({}) });
     qc.invalidateQueries({ queryKey: getGetCustomerStatementQueryKey(customerId) });
     toast.success("تم تسجيل الدفعة");
