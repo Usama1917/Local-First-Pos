@@ -6,7 +6,7 @@ import {
   useListBackups,
   getGetSettingsQueryKey,
 } from "@workspace/api-client-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,8 @@ export default function SettingsPage() {
   const updateSettings = useUpdateSettings();
   const createBackup = useCreateBackup();
   const { data: backups } = useListBackups();
+  const { data: dbInfo } = useQuery({ queryKey: ["backup-info"], queryFn: () => fetch("/api/backup/info").then(r => r.json()) });
+  const [newDataDir, setNewDataDir] = useState("");
   const s = settings as any;
 
   const [form, setForm] = useState<any>({
@@ -57,10 +59,31 @@ export default function SettingsPage() {
     toast.success("تم حفظ الإعدادات");
   };
 
+  const triggerDownload = (filename: string) => {
+    const a = document.createElement("a");
+    a.href = `/api/backup/download/${encodeURIComponent(filename)}`;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  };
+
   const handleBackup = async () => {
-    await createBackup.mutateAsync();
+    const r: any = await createBackup.mutateAsync();
     qc.invalidateQueries();
     toast.success("تم إنشاء النسخة الاحتياطية");
+    if (r?.filename) triggerDownload(r.filename); // browser asks where to save
+  };
+
+  const saveDataDir = async () => {
+    if (!newDataDir.trim()) { toast.error("اكتب مسار المجلد"); return; }
+    const res = await fetch("/api/backup/data-dir", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ dir: newDataDir.trim() }),
+    });
+    if (res.ok) { toast.success("تم الحفظ — أعد تشغيل البرنامج لتطبيق المكان الجديد"); setNewDataDir(""); }
+    else toast.error("تعذّر الحفظ");
   };
 
   if (isLoading) return <div className="p-8 text-center text-muted-foreground">جاري التحميل...</div>;
@@ -142,7 +165,7 @@ export default function SettingsPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="backup">
+        <TabsContent value="backup" className="space-y-4">
           <Card>
             <CardHeader><CardTitle>النسخ الاحتياطي والاستعادة</CardTitle></CardHeader>
             <CardContent className="space-y-4">
@@ -167,11 +190,38 @@ export default function SettingsPage() {
                           <p className="text-xs text-muted-foreground">{new Date(b.createdAt).toLocaleString("ar-EG")}</p>
                         </div>
                       </div>
-                      <span className="text-xs text-muted-foreground">{(b.size / 1024).toFixed(1)} KB</span>
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs text-muted-foreground">{(b.size / 1024).toFixed(1)} KB</span>
+                        <Button variant="outline" size="sm" onClick={() => triggerDownload(b.filename)}>
+                          <Download className="h-3.5 w-3.5 ml-1" /> تنزيل
+                        </Button>
+                      </div>
                     </div>
                   ))}
                   {!(backups as any[])?.length && <p className="text-sm text-muted-foreground">لا توجد نسخ احتياطية</p>}
                 </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader><CardTitle>مكان حفظ قاعدة البيانات</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              <div className="rounded-md bg-muted/50 p-3 text-sm">
+                <p className="font-medium">المكان الحالي لقاعدة البيانات:</p>
+                <p className="font-mono text-xs break-all text-muted-foreground">{(dbInfo as any)?.dbPath || "..."}</p>
+                <p className="mt-2 font-medium">مجلد النسخ الاحتياطية:</p>
+                <p className="font-mono text-xs break-all text-muted-foreground">{(dbInfo as any)?.backupDir || "..."}</p>
+              </div>
+              <div className="space-y-1">
+                <Label>تغيير مكان حفظ البيانات (مسار مجلد)</Label>
+                <div className="flex gap-2">
+                  <Input placeholder="مثال: D:\POS-Data" value={newDataDir} onChange={e => setNewDataDir(e.target.value)} />
+                  <Button variant="outline" onClick={saveDataDir}>حفظ المكان</Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  ⚠️ يتطلب إعادة تشغيل البرنامج. لو عندك بيانات قديمة، انقل ملف <span className="font-mono">store.db</span> للمكان الجديد قبل التشغيل.
+                </p>
               </div>
             </CardContent>
           </Card>

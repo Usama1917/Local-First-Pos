@@ -55,3 +55,6 @@ data/*.db-wal
 backups/
 .env
 .env.*
+
+# Per-machine config (e.g. chosen database location)
+pos-config.json
