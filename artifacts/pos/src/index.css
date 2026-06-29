@@ -235,3 +235,41 @@
     margin: 12mm;
   }
 }
+
+/* ── Toast notifications (sonner) ──────────────────────────────────────────
+   Pinned to the top-left of the screen, using the app font (not sonner's small
+   default), and sliding in from / out behind the left screen edge. */
+[data-sonner-toaster] {
+  font-family: var(--app-font-sans);
+}
+/* Force the stack to the far left even under RTL. */
+[data-sonner-toaster][data-x-position="left"] {
+  right: auto !important;
+  left: max(env(safe-area-inset-left), 1.25rem) !important;
+}
+[data-sonner-toast] {
+  font-family: var(--app-font-sans) !important;
+  font-size: 0.95rem !important;
+}
+[data-sonner-toast] [data-title] {
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+[data-sonner-toast] [data-description] {
+  font-size: 0.82rem;
+}
+/* Horizontal slide tied to the left edge (overrides sonner's vertical slide). */
+[data-sonner-toast][data-x-position="left"][data-mounted="true"] {
+  animation: app-toast-in-left 0.35s cubic-bezier(0.21, 1.02, 0.73, 1);
+}
+[data-sonner-toast][data-x-position="left"][data-removed="true"] {
+  animation: app-toast-out-left 0.2s ease-in forwards;
+}
+@keyframes app-toast-in-left {
+  from { transform: translateX(calc(-100% - 2rem)); opacity: 0; }
+  to   { transform: translateX(0); opacity: 1; }
+}
+@keyframes app-toast-out-left {
+  from { transform: translateX(0); opacity: 1; }
+  to   { transform: translateX(calc(-100% - 2rem)); opacity: 0; }
+}

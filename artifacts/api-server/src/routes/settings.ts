@@ -31,7 +31,10 @@ router.patch("/settings", (req, res) => {
     updatedAt = datetime('now')
     WHERE id = 1
   `).run(
-    shopName || null, shopPhone || null, shopAddress || null, currency || null,
+    shopName || null,
+    shopPhone === undefined ? null : shopPhone,
+    shopAddress === undefined ? null : shopAddress,
+    currency || null,
     defaultPrintTemplate || null, lowStockThreshold ?? null,
     enableCraftsmanCommission !== undefined ? (enableCraftsmanCommission ? 1 : 0) : null,
     enableDarkMode !== undefined ? (enableDarkMode ? 1 : 0) : null,

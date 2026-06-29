@@ -29,6 +29,9 @@ import type {
   Category,
   CategoryInput,
   CategoryUpdate,
+  CommissionPayoutInput,
+  CommissionPayoutReceipt,
+  CommissionPayoutsPage,
   Craftsman,
   CraftsmanCommissionItem,
   CraftsmanCustomersPage,
@@ -53,6 +56,7 @@ import type {
   GetBestSellersParams,
   GetCraftsmanCommissionReportParams,
   GetInventoryReportParams,
+  GetNextBarcode200,
   GetPurchasesReportParams,
   GetSalesReportParams,
   HealthStatus,
@@ -63,6 +67,7 @@ import type {
   ListProductsParams,
   ListPurchaseInvoicesParams,
   ListQuotationsParams,
+  ListReturnsParams,
   ListSalesInvoicesParams,
   ListStockMovementsParams,
   ListSuppliersParams,
@@ -82,6 +87,10 @@ import type {
   QuotationInput,
   QuotationUpdate,
   QuotationsPage,
+  ReturnInput,
+  ReturnLookup,
+  ReturnReceipt,
+  ReturnsPage,
   SalesInvoice,
   SalesInvoiceDetail,
   SalesInvoiceInput,
@@ -107,7 +116,11 @@ import type {
   SuppliersPage,
   Unit,
   UnitInput,
-  UnitUpdate
+  UnitUpdate,
+  User,
+  UserInput,
+  UserUpdate,
+  UsersPage
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -415,6 +428,296 @@ export const useLogout = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getLogoutMutationOptions(options));
+    }
+
+export const getListUsersUrl = () => {
+
+
+
+
+  return `/api/users`
+}
+
+/**
+ * @summary List system users
+ */
+export const listUsers = async ( options?: RequestInit): Promise<UsersPage> => {
+
+  return customFetch<UsersPage>(getListUsersUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListUsersQueryKey = () => {
+    return [
+    `/api/users`
+    ] as const;
+    }
+
+
+export const getListUsersQueryOptions = <TData = Awaited<ReturnType<typeof listUsers>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listUsers>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListUsersQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listUsers>>> = ({ signal }) => listUsers({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listUsers>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListUsersQueryResult = NonNullable<Awaited<ReturnType<typeof listUsers>>>
+export type ListUsersQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List system users
+ */
+
+export function useListUsers<TData = Awaited<ReturnType<typeof listUsers>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listUsers>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListUsersQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getCreateUserUrl = () => {
+
+
+
+
+  return `/api/users`
+}
+
+/**
+ * @summary Create a user
+ */
+export const createUser = async (userInput: UserInput, options?: RequestInit): Promise<User> => {
+
+  return customFetch<User>(getCreateUserUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      userInput,)
+  }
+);}
+
+
+
+
+export const getCreateUserMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createUser>>, TError,{data: BodyType<UserInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createUser>>, TError,{data: BodyType<UserInput>}, TContext> => {
+
+const mutationKey = ['createUser'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createUser>>, {data: BodyType<UserInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createUser(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateUserMutationResult = NonNullable<Awaited<ReturnType<typeof createUser>>>
+    export type CreateUserMutationBody = BodyType<UserInput>
+    export type CreateUserMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Create a user
+ */
+export const useCreateUser = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createUser>>, TError,{data: BodyType<UserInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createUser>>,
+        TError,
+        {data: BodyType<UserInput>},
+        TContext
+      > => {
+      return useMutation(getCreateUserMutationOptions(options));
+    }
+
+export const getUpdateUserUrl = (id: number,) => {
+
+
+
+
+  return `/api/users/${id}`
+}
+
+/**
+ * @summary Update a user (name, password, role, permissions, active)
+ */
+export const updateUser = async (id: number,
+    userUpdate: UserUpdate, options?: RequestInit): Promise<User> => {
+
+  return customFetch<User>(getUpdateUserUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      userUpdate,)
+  }
+);}
+
+
+
+
+export const getUpdateUserMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateUser>>, TError,{id: number;data: BodyType<UserUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateUser>>, TError,{id: number;data: BodyType<UserUpdate>}, TContext> => {
+
+const mutationKey = ['updateUser'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateUser>>, {id: number;data: BodyType<UserUpdate>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateUser(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateUserMutationResult = NonNullable<Awaited<ReturnType<typeof updateUser>>>
+    export type UpdateUserMutationBody = BodyType<UserUpdate>
+    export type UpdateUserMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Update a user (name, password, role, permissions, active)
+ */
+export const useUpdateUser = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateUser>>, TError,{id: number;data: BodyType<UserUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateUser>>,
+        TError,
+        {id: number;data: BodyType<UserUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateUserMutationOptions(options));
+    }
+
+export const getDeleteUserUrl = (id: number,) => {
+
+
+
+
+  return `/api/users/${id}`
+}
+
+/**
+ * @summary Delete a user
+ */
+export const deleteUser = async (id: number, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDeleteUserUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteUserMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteUser>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteUser>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['deleteUser'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteUser>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteUser(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteUserMutationResult = NonNullable<Awaited<ReturnType<typeof deleteUser>>>
+
+    export type DeleteUserMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Delete a user
+ */
+export const useDeleteUser = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteUser>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteUser>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getDeleteUserMutationOptions(options));
     }
 
 export const getGetDashboardSummaryUrl = () => {
@@ -1869,6 +2172,83 @@ export function useSearchProducts<TData = Awaited<ReturnType<typeof searchProduc
 
 
 
+export const getGetNextBarcodeUrl = () => {
+
+
+
+
+  return `/api/products/next-barcode`
+}
+
+/**
+ * @summary Generate a fresh store-internal barcode (unique, not yet used)
+ */
+export const getNextBarcode = async ( options?: RequestInit): Promise<GetNextBarcode200> => {
+
+  return customFetch<GetNextBarcode200>(getGetNextBarcodeUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetNextBarcodeQueryKey = () => {
+    return [
+    `/api/products/next-barcode`
+    ] as const;
+    }
+
+
+export const getGetNextBarcodeQueryOptions = <TData = Awaited<ReturnType<typeof getNextBarcode>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getNextBarcode>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetNextBarcodeQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getNextBarcode>>> = ({ signal }) => getNextBarcode({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getNextBarcode>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetNextBarcodeQueryResult = NonNullable<Awaited<ReturnType<typeof getNextBarcode>>>
+export type GetNextBarcodeQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Generate a fresh store-internal barcode (unique, not yet used)
+ */
+
+export function useGetNextBarcode<TData = Awaited<ReturnType<typeof getNextBarcode>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getNextBarcode>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetNextBarcodeQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
 export const getGetProductUrl = (id: number,) => {
 
 
@@ -3262,6 +3642,232 @@ export function useGetCraftsmanCustomers<TData = Awaited<ReturnType<typeof getCr
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetCraftsmanCustomersQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getListCraftsmanPayoutsUrl = (id: number,) => {
+
+
+
+
+  return `/api/craftsmen/${id}/payouts`
+}
+
+/**
+ * @summary List commission payouts for a craftsman
+ */
+export const listCraftsmanPayouts = async (id: number, options?: RequestInit): Promise<CommissionPayoutsPage> => {
+
+  return customFetch<CommissionPayoutsPage>(getListCraftsmanPayoutsUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListCraftsmanPayoutsQueryKey = (id: number,) => {
+    return [
+    `/api/craftsmen/${id}/payouts`
+    ] as const;
+    }
+
+
+export const getListCraftsmanPayoutsQueryOptions = <TData = Awaited<ReturnType<typeof listCraftsmanPayouts>>, TError = ErrorType<unknown>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCraftsmanPayouts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListCraftsmanPayoutsQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listCraftsmanPayouts>>> = ({ signal }) => listCraftsmanPayouts(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listCraftsmanPayouts>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListCraftsmanPayoutsQueryResult = NonNullable<Awaited<ReturnType<typeof listCraftsmanPayouts>>>
+export type ListCraftsmanPayoutsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List commission payouts for a craftsman
+ */
+
+export function useListCraftsmanPayouts<TData = Awaited<ReturnType<typeof listCraftsmanPayouts>>, TError = ErrorType<unknown>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCraftsmanPayouts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListCraftsmanPayoutsQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getCreateCraftsmanPayoutUrl = (id: number,) => {
+
+
+
+
+  return `/api/craftsmen/${id}/payouts`
+}
+
+/**
+ * @summary Pay out commission to a craftsman (full or partial)
+ */
+export const createCraftsmanPayout = async (id: number,
+    commissionPayoutInput: CommissionPayoutInput, options?: RequestInit): Promise<CommissionPayoutReceipt> => {
+
+  return customFetch<CommissionPayoutReceipt>(getCreateCraftsmanPayoutUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      commissionPayoutInput,)
+  }
+);}
+
+
+
+
+export const getCreateCraftsmanPayoutMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCraftsmanPayout>>, TError,{id: number;data: BodyType<CommissionPayoutInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createCraftsmanPayout>>, TError,{id: number;data: BodyType<CommissionPayoutInput>}, TContext> => {
+
+const mutationKey = ['createCraftsmanPayout'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createCraftsmanPayout>>, {id: number;data: BodyType<CommissionPayoutInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  createCraftsmanPayout(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateCraftsmanPayoutMutationResult = NonNullable<Awaited<ReturnType<typeof createCraftsmanPayout>>>
+    export type CreateCraftsmanPayoutMutationBody = BodyType<CommissionPayoutInput>
+    export type CreateCraftsmanPayoutMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Pay out commission to a craftsman (full or partial)
+ */
+export const useCreateCraftsmanPayout = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCraftsmanPayout>>, TError,{id: number;data: BodyType<CommissionPayoutInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createCraftsmanPayout>>,
+        TError,
+        {id: number;data: BodyType<CommissionPayoutInput>},
+        TContext
+      > => {
+      return useMutation(getCreateCraftsmanPayoutMutationOptions(options));
+    }
+
+export const getGetCraftsmanPayoutUrl = (payoutId: number,) => {
+
+
+
+
+  return `/api/craftsman-payouts/${payoutId}`
+}
+
+/**
+ * @summary Get a commission payout receipt
+ */
+export const getCraftsmanPayout = async (payoutId: number, options?: RequestInit): Promise<CommissionPayoutReceipt> => {
+
+  return customFetch<CommissionPayoutReceipt>(getGetCraftsmanPayoutUrl(payoutId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCraftsmanPayoutQueryKey = (payoutId: number,) => {
+    return [
+    `/api/craftsman-payouts/${payoutId}`
+    ] as const;
+    }
+
+
+export const getGetCraftsmanPayoutQueryOptions = <TData = Awaited<ReturnType<typeof getCraftsmanPayout>>, TError = ErrorType<unknown>>(payoutId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCraftsmanPayout>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCraftsmanPayoutQueryKey(payoutId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCraftsmanPayout>>> = ({ signal }) => getCraftsmanPayout(payoutId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(payoutId), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCraftsmanPayout>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCraftsmanPayoutQueryResult = NonNullable<Awaited<ReturnType<typeof getCraftsmanPayout>>>
+export type GetCraftsmanPayoutQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get a commission payout receipt
+ */
+
+export function useGetCraftsmanPayout<TData = Awaited<ReturnType<typeof getCraftsmanPayout>>, TError = ErrorType<unknown>>(
+ payoutId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCraftsmanPayout>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCraftsmanPayoutQueryOptions(payoutId,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 
@@ -4816,6 +5422,309 @@ export function useLookupSalesInvoiceBySerial<TData = Awaited<ReturnType<typeof 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getLookupSalesInvoiceBySerialQueryOptions(serial,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getListReturnsUrl = (params?: ListReturnsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/returns?${stringifiedParams}` : `/api/returns`
+}
+
+/**
+ * @summary List returns / exchanges
+ */
+export const listReturns = async (params?: ListReturnsParams, options?: RequestInit): Promise<ReturnsPage> => {
+
+  return customFetch<ReturnsPage>(getListReturnsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListReturnsQueryKey = (params?: ListReturnsParams,) => {
+    return [
+    `/api/returns`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListReturnsQueryOptions = <TData = Awaited<ReturnType<typeof listReturns>>, TError = ErrorType<unknown>>(params?: ListReturnsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listReturns>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListReturnsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listReturns>>> = ({ signal }) => listReturns(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listReturns>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListReturnsQueryResult = NonNullable<Awaited<ReturnType<typeof listReturns>>>
+export type ListReturnsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List returns / exchanges
+ */
+
+export function useListReturns<TData = Awaited<ReturnType<typeof listReturns>>, TError = ErrorType<unknown>>(
+ params?: ListReturnsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listReturns>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListReturnsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getCreateReturnUrl = () => {
+
+
+
+
+  return `/api/returns`
+}
+
+/**
+ * @summary Create a return / exchange against an invoice
+ */
+export const createReturn = async (returnInput: ReturnInput, options?: RequestInit): Promise<ReturnReceipt> => {
+
+  return customFetch<ReturnReceipt>(getCreateReturnUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      returnInput,)
+  }
+);}
+
+
+
+
+export const getCreateReturnMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createReturn>>, TError,{data: BodyType<ReturnInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createReturn>>, TError,{data: BodyType<ReturnInput>}, TContext> => {
+
+const mutationKey = ['createReturn'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createReturn>>, {data: BodyType<ReturnInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createReturn(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateReturnMutationResult = NonNullable<Awaited<ReturnType<typeof createReturn>>>
+    export type CreateReturnMutationBody = BodyType<ReturnInput>
+    export type CreateReturnMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Create a return / exchange against an invoice
+ */
+export const useCreateReturn = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createReturn>>, TError,{data: BodyType<ReturnInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createReturn>>,
+        TError,
+        {data: BodyType<ReturnInput>},
+        TContext
+      > => {
+      return useMutation(getCreateReturnMutationOptions(options));
+    }
+
+export const getLookupInvoiceForReturnUrl = (serial: string,) => {
+
+
+
+
+  return `/api/returns/lookup/${serial}`
+}
+
+/**
+ * @summary Lookup an invoice (with returnable quantities) for the returns screen
+ */
+export const lookupInvoiceForReturn = async (serial: string, options?: RequestInit): Promise<ReturnLookup> => {
+
+  return customFetch<ReturnLookup>(getLookupInvoiceForReturnUrl(serial),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getLookupInvoiceForReturnQueryKey = (serial: string,) => {
+    return [
+    `/api/returns/lookup/${serial}`
+    ] as const;
+    }
+
+
+export const getLookupInvoiceForReturnQueryOptions = <TData = Awaited<ReturnType<typeof lookupInvoiceForReturn>>, TError = ErrorType<void>>(serial: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof lookupInvoiceForReturn>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getLookupInvoiceForReturnQueryKey(serial);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof lookupInvoiceForReturn>>> = ({ signal }) => lookupInvoiceForReturn(serial, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(serial), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof lookupInvoiceForReturn>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type LookupInvoiceForReturnQueryResult = NonNullable<Awaited<ReturnType<typeof lookupInvoiceForReturn>>>
+export type LookupInvoiceForReturnQueryError = ErrorType<void>
+
+
+/**
+ * @summary Lookup an invoice (with returnable quantities) for the returns screen
+ */
+
+export function useLookupInvoiceForReturn<TData = Awaited<ReturnType<typeof lookupInvoiceForReturn>>, TError = ErrorType<void>>(
+ serial: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof lookupInvoiceForReturn>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getLookupInvoiceForReturnQueryOptions(serial,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetReturnUrl = (id: number,) => {
+
+
+
+
+  return `/api/returns/${id}`
+}
+
+export const getReturn = async (id: number, options?: RequestInit): Promise<ReturnReceipt> => {
+
+  return customFetch<ReturnReceipt>(getGetReturnUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetReturnQueryKey = (id: number,) => {
+    return [
+    `/api/returns/${id}`
+    ] as const;
+    }
+
+
+export const getGetReturnQueryOptions = <TData = Awaited<ReturnType<typeof getReturn>>, TError = ErrorType<unknown>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getReturn>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetReturnQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getReturn>>> = ({ signal }) => getReturn(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getReturn>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetReturnQueryResult = NonNullable<Awaited<ReturnType<typeof getReturn>>>
+export type GetReturnQueryError = ErrorType<unknown>
+
+
+
+export function useGetReturn<TData = Awaited<ReturnType<typeof getReturn>>, TError = ErrorType<unknown>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getReturn>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetReturnQueryOptions(id,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

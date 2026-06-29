@@ -19,6 +19,41 @@ export interface AuthUser {
   username: string;
   name: string;
   role: string;
+  permissions?: string[];
+}
+
+export interface User {
+  id: number;
+  username: string;
+  name: string;
+  password?: string;
+  role: string;
+  permissions?: string[];
+  isActive?: boolean;
+  createdAt?: string;
+}
+
+export interface UserInput {
+  username: string;
+  password: string;
+  name: string;
+  role?: string;
+  permissions?: string[];
+  isActive?: boolean;
+}
+
+export interface UserUpdate {
+  username?: string;
+  password?: string;
+  name?: string;
+  role?: string;
+  permissions?: string[];
+  isActive?: boolean;
+}
+
+export interface UsersPage {
+  items: User[];
+  total: number;
 }
 
 export interface DashboardSummary {
@@ -131,6 +166,7 @@ export interface Product {
   paintType?: string | null;
   /** @nullable */
   packageSize?: string | null;
+  soldByWeight?: boolean;
   isActive?: boolean;
   isLowStock?: boolean;
   createdAt?: string;
@@ -159,6 +195,7 @@ export interface ProductInput {
   colorCode?: string;
   paintType?: string;
   packageSize?: string;
+  soldByWeight?: boolean;
   isActive?: boolean;
 }
 
@@ -184,6 +221,7 @@ export interface ProductUpdate {
   colorCode?: string;
   paintType?: string;
   packageSize?: string;
+  soldByWeight?: boolean;
   isActive?: boolean;
 }
 
@@ -366,6 +404,8 @@ export interface Craftsman {
   commissionPercent?: number | null;
   totalSales?: number;
   totalCommission?: number;
+  paidCommission?: number;
+  outstandingCommission?: number;
   isActive?: boolean;
   createdAt?: string;
 }
@@ -419,6 +459,55 @@ export interface CraftsmanLinkedCustomer {
 
 export interface CraftsmanCustomersPage {
   items: CraftsmanLinkedCustomer[];
+  total: number;
+}
+
+export interface CommissionPayoutInput {
+  amount?: number;
+  notes?: string;
+}
+
+export interface CommissionPayoutItem {
+  invoiceId: number;
+  serial: string;
+  /** @nullable */
+  customerName?: string | null;
+  invoiceTotal?: number;
+  invoiceCommission?: number;
+  amount: number;
+  createdAt?: string;
+}
+
+export interface CommissionPayout {
+  id: number;
+  serial: string;
+  amount: number;
+  /** @nullable */
+  notes?: string | null;
+  createdAt?: string;
+}
+
+export interface CommissionPayoutReceipt {
+  id: number;
+  serial: string;
+  craftsmanId: number;
+  /** @nullable */
+  craftsmanName?: string | null;
+  /** @nullable */
+  craftsmanPhone?: string | null;
+  /** @nullable */
+  craftsmanJobType?: string | null;
+  /** @nullable */
+  commissionPercent?: number | null;
+  amount: number;
+  /** @nullable */
+  notes?: string | null;
+  createdAt?: string;
+  items: CommissionPayoutItem[];
+}
+
+export interface CommissionPayoutsPage {
+  items: CommissionPayout[];
   total: number;
 }
 
@@ -731,6 +820,134 @@ export interface SalesPage {
   total: number;
 }
 
+export interface ReturnLookupItem {
+  productId: number;
+  /** @nullable */
+  productName?: string | null;
+  /** @nullable */
+  sku?: string | null;
+  /** @nullable */
+  barcode?: string | null;
+  /** @nullable */
+  unitName?: string | null;
+  currentStock?: number;
+  quantity: number;
+  unitPrice: number;
+  total?: number;
+  returnedQty?: number;
+  availableQty?: number;
+}
+
+export interface ReturnLookup {
+  id: number;
+  serial: string;
+  status?: string;
+  /** @nullable */
+  customerId?: number | null;
+  /** @nullable */
+  customerName?: string | null;
+  /** @nullable */
+  customerPhone?: string | null;
+  total?: number;
+  createdAt?: string;
+  items: ReturnLookupItem[];
+}
+
+export interface ReturnInputItem {
+  productId: number;
+  quantity: number;
+  unitPrice: number;
+  restock?: boolean;
+}
+
+export type ReturnInputSettlementType = typeof ReturnInputSettlementType[keyof typeof ReturnInputSettlementType];
+
+
+export const ReturnInputSettlementType = {
+  cash: 'cash',
+  account: 'account',
+} as const;
+
+export interface ReturnInput {
+  originalInvoiceId: number;
+  settlementType?: ReturnInputSettlementType;
+  notes?: string;
+  returnedItems?: ReturnInputItem[];
+  newItems?: ReturnInputItem[];
+}
+
+export type ReturnItemKind = typeof ReturnItemKind[keyof typeof ReturnItemKind];
+
+
+export const ReturnItemKind = {
+  returned: 'returned',
+  new: 'new',
+} as const;
+
+export interface ReturnItem {
+  id: number;
+  kind: ReturnItemKind;
+  productId: number;
+  /** @nullable */
+  productName?: string | null;
+  /** @nullable */
+  sku?: string | null;
+  /** @nullable */
+  unitName?: string | null;
+  quantity: number;
+  unitPrice: number;
+  total: number;
+  restock?: number;
+}
+
+export type ReturnType = typeof ReturnType[keyof typeof ReturnType];
+
+
+export const ReturnType = {
+  return: 'return',
+  exchange: 'exchange',
+} as const;
+
+export type ReturnSettlementType = typeof ReturnSettlementType[keyof typeof ReturnSettlementType];
+
+
+export const ReturnSettlementType = {
+  cash: 'cash',
+  account: 'account',
+} as const;
+
+export interface Return {
+  id: number;
+  serial: string;
+  /** @nullable */
+  originalInvoiceId?: number | null;
+  /** @nullable */
+  originalSerial?: string | null;
+  /** @nullable */
+  customerId?: number | null;
+  /** @nullable */
+  customerName?: string | null;
+  type: ReturnType;
+  settlementType?: ReturnSettlementType;
+  returnedTotal?: number;
+  newItemsTotal?: number;
+  netAmount: number;
+  /** @nullable */
+  notes?: string | null;
+  createdAt?: string;
+}
+
+export type ReturnReceipt = Return & ({
+  /** @nullable */
+  customerPhone?: string | null;
+  items?: ReturnItem[];
+});
+
+export interface ReturnsPage {
+  items: Return[];
+  total: number;
+}
+
 export interface PurchaseItem {
   id: number;
   productId: number;
@@ -1020,7 +1237,7 @@ export interface SettingsUpdate {
 export interface BackupInfo {
   filename: string;
   createdAt: string;
-  sizeBytes: number;
+  size: number;
   /** @nullable */
   path?: string | null;
 }
@@ -1039,6 +1256,10 @@ limit?: number;
 export type SearchProductsParams = {
 q: string;
 limit?: number;
+};
+
+export type GetNextBarcode200 = {
+  barcode: string;
 };
 
 export type ListCustomersParams = {
@@ -1078,6 +1299,12 @@ from?: string;
 to?: string;
 page?: number;
 limit?: number;
+};
+
+export type ListReturnsParams = {
+search?: string;
+limit?: number;
+offset?: number;
 };
 
 export type ListPurchaseInvoicesParams = {

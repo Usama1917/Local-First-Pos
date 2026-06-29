@@ -1,7 +1,15 @@
 import { Router } from "express";
-import db from "../lib/db.js";
+import db, { nextBarcode } from "../lib/db.js";
 
 const router = Router();
+
+// Translate a SQLite UNIQUE violation into a friendly Arabic message (or null).
+function uniqueErrorMessage(e: any): string | null {
+  if (e?.code === "ERR_SQLITE_ERROR" && /UNIQUE constraint failed/.test(e?.message || "")) {
+    return /barcode/.test(e.message) ? "الباركود مستخدم بالفعل" : "الكود (SKU) مستخدم بالفعل";
+  }
+  return null;
+}
 
 const PRODUCT_SELECT = `
   SELECT p.*, 
@@ -48,30 +56,43 @@ router.get("/products/search", (req, res) => {
   res.json(rows);
 });
 
+// Generate a fresh store-internal barcode (unique, not yet in the DB). Defined
+// before "/products/:id" so it isn't swallowed by the :id route.
+router.get("/products/next-barcode", (_req, res) => {
+  res.json({ barcode: nextBarcode() });
+});
+
 router.post("/products", (req, res) => {
   const {
     nameAr, nameEn, sku, barcode, categoryId, brandId, supplierId, unitId,
     listPrice = 0, supplierDiscount = 0, netPurchasePrice = 0, extraCost = 0,
     trueCost = 0, sellingPrice = 0, minSellingPrice, currentStock = 0, minStock = 5,
-    location, notes, colorCode, paintType, packageSize, isActive = true,
+    location, notes, colorCode, paintType, packageSize, soldByWeight = false, isActive = true,
   } = req.body;
 
   if (!nameAr || !sku) return res.status(400).json({ error: "الاسم والكود مطلوبان" });
 
-  const r = db.prepare(`
-    INSERT INTO products 
-    (nameAr, nameEn, sku, barcode, categoryId, brandId, supplierId, unitId, listPrice, supplierDiscount,
-     netPurchasePrice, extraCost, trueCost, sellingPrice, minSellingPrice, currentStock, minStock,
-     location, notes, colorCode, paintType, packageSize, isActive)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-  `).run(
-    nameAr, nameEn || null, sku, barcode || null,
-    categoryId || null, brandId || null, supplierId || null, unitId || null,
-    listPrice, supplierDiscount, netPurchasePrice, extraCost, trueCost,
-    sellingPrice, minSellingPrice || null, currentStock, minStock,
-    location || null, notes || null, colorCode || null, paintType || null, packageSize || null,
-    isActive ? 1 : 0,
-  );
+  let r;
+  try {
+    r = db.prepare(`
+      INSERT INTO products
+      (nameAr, nameEn, sku, barcode, categoryId, brandId, supplierId, unitId, listPrice, supplierDiscount,
+       netPurchasePrice, extraCost, trueCost, sellingPrice, minSellingPrice, currentStock, minStock,
+       location, notes, colorCode, paintType, packageSize, soldByWeight, isActive)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+    `).run(
+      nameAr, nameEn || null, sku, barcode || null,
+      categoryId || null, brandId || null, supplierId || null, unitId || null,
+      listPrice, supplierDiscount, netPurchasePrice, extraCost, trueCost,
+      sellingPrice, minSellingPrice || null, currentStock, minStock,
+      location || null, notes || null, colorCode || null, paintType || null, packageSize || null,
+      soldByWeight ? 1 : 0, isActive ? 1 : 0,
+    );
+  } catch (e: any) {
+    const msg = uniqueErrorMessage(e);
+    if (msg) return res.status(400).json({ error: msg });
+    throw e;
+  }
 
   if (currentStock > 0) {
     db.prepare(`INSERT INTO stock_movements (productId, type, quantity, balanceBefore, balanceAfter, referenceType, notes) VALUES (?,?,?,?,?,?,?)`)
@@ -96,31 +117,48 @@ router.patch("/products/:id", (req, res) => {
     nameAr, nameEn, sku, barcode, categoryId, brandId, supplierId, unitId,
     listPrice, supplierDiscount, netPurchasePrice, extraCost, trueCost,
     sellingPrice, minSellingPrice, minStock, location, notes,
-    colorCode, paintType, packageSize, isActive,
+    colorCode, paintType, packageSize, soldByWeight, isActive,
   } = req.body;
 
-  db.prepare(`
-    UPDATE products SET
-    nameAr = COALESCE(?, nameAr), nameEn = COALESCE(?, nameEn), sku = COALESCE(?, sku),
-    barcode = COALESCE(?, barcode), categoryId = COALESCE(?, categoryId), brandId = COALESCE(?, brandId),
-    supplierId = COALESCE(?, supplierId), unitId = COALESCE(?, unitId),
-    listPrice = COALESCE(?, listPrice), supplierDiscount = COALESCE(?, supplierDiscount),
-    netPurchasePrice = COALESCE(?, netPurchasePrice), extraCost = COALESCE(?, extraCost),
-    trueCost = COALESCE(?, trueCost), sellingPrice = COALESCE(?, sellingPrice),
-    minSellingPrice = COALESCE(?, minSellingPrice), minStock = COALESCE(?, minStock),
-    location = COALESCE(?, location), notes = COALESCE(?, notes),
-    colorCode = COALESCE(?, colorCode), paintType = COALESCE(?, paintType), packageSize = COALESCE(?, packageSize),
-    isActive = COALESCE(?, isActive), updatedAt = datetime('now')
-    WHERE id = ?
-  `).run(
-    nameAr || null, nameEn || null, sku || null, barcode || null,
-    categoryId || null, brandId || null, supplierId || null, unitId || null,
-    listPrice ?? null, supplierDiscount ?? null, netPurchasePrice ?? null,
-    extraCost ?? null, trueCost ?? null, sellingPrice ?? null, minSellingPrice ?? null,
-    minStock ?? null, location || null, notes || null, colorCode || null,
-    paintType || null, packageSize || null, isActive !== undefined ? (isActive ? 1 : 0) : null,
-    id,
-  );
+  // For nullable TEXT fields, COALESCE(?, col) + `value || null` can NEVER clear a
+  // field (empty string → null → keeps old). Distinguish "omitted" from "cleared":
+  // present key with empty value → write NULL; absent key → keep existing.
+  const has = (k: string) => Object.prototype.hasOwnProperty.call(req.body, k);
+  const clearable = (k: string, v: any) => (has(k) ? (v || null) : existing[k]);
+  const effWeight = soldByWeight !== undefined ? (soldByWeight ? 1 : 0) : existing.soldByWeight;
+  // Weight products never keep a barcode (domain rule: soldByWeight ⇒ no barcode).
+  const barcodeVal = effWeight ? null : clearable("barcode", barcode);
+
+  try {
+    db.prepare(`
+      UPDATE products SET
+      nameAr = COALESCE(?, nameAr), nameEn = ?, sku = COALESCE(?, sku),
+      barcode = ?, categoryId = COALESCE(?, categoryId), brandId = COALESCE(?, brandId),
+      supplierId = COALESCE(?, supplierId), unitId = COALESCE(?, unitId),
+      listPrice = COALESCE(?, listPrice), supplierDiscount = COALESCE(?, supplierDiscount),
+      netPurchasePrice = COALESCE(?, netPurchasePrice), extraCost = COALESCE(?, extraCost),
+      trueCost = COALESCE(?, trueCost), sellingPrice = COALESCE(?, sellingPrice),
+      minSellingPrice = COALESCE(?, minSellingPrice), minStock = COALESCE(?, minStock),
+      location = ?, notes = ?,
+      colorCode = ?, paintType = ?, packageSize = ?,
+      soldByWeight = COALESCE(?, soldByWeight), isActive = COALESCE(?, isActive), updatedAt = datetime('now')
+      WHERE id = ?
+    `).run(
+      nameAr || null, clearable("nameEn", nameEn), sku || null, barcodeVal,
+      categoryId || null, brandId || null, supplierId || null, unitId || null,
+      listPrice ?? null, supplierDiscount ?? null, netPurchasePrice ?? null,
+      extraCost ?? null, trueCost ?? null, sellingPrice ?? null, minSellingPrice ?? null,
+      minStock ?? null, clearable("location", location), clearable("notes", notes), clearable("colorCode", colorCode),
+      clearable("paintType", paintType), clearable("packageSize", packageSize),
+      soldByWeight !== undefined ? (soldByWeight ? 1 : 0) : null,
+      isActive !== undefined ? (isActive ? 1 : 0) : null,
+      id,
+    );
+  } catch (e: any) {
+    const msg = uniqueErrorMessage(e);
+    if (msg) return res.status(400).json({ error: msg });
+    throw e;
+  }
 
   res.json(db.prepare(`${PRODUCT_SELECT} WHERE p.id = ?`).get(id));
 });

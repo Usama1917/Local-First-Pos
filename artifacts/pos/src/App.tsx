@@ -1,26 +1,12 @@
 import { useState } from "react";
-import { Switch, Route, Router as WouterRouter } from "wouter";
+import { Switch, Route, Redirect, Router as WouterRouter } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { DirectionProvider } from "@radix-ui/react-direction";
 import { Toaster } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Layout } from "@/components/layout";
-import NotFound from "@/pages/not-found";
 import LoginPage from "@/pages/login";
-
-import Dashboard from "@/pages/dashboard";
-import POSPage from "@/pages/pos";
-import QuotationsPage from "@/pages/quotations";
-import SalesPage from "@/pages/sales";
-import PurchasesPage from "@/pages/purchases";
-import ProductsPage from "@/pages/products";
-import InventoryPage from "@/pages/inventory";
-import CustomersPage from "@/pages/customers";
-import CraftsmenPage from "@/pages/craftsmen";
-import SuppliersPage from "@/pages/suppliers";
-import DebtsPage from "@/pages/debts";
-import ReportsPage from "@/pages/reports";
-import SettingsPage from "@/pages/settings";
+import { allowedPages, type SessionUser } from "@/lib/pages";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -31,32 +17,49 @@ const queryClient = new QueryClient({
   },
 });
 
-function Router({ userName, onLogout }: { userName?: string; onLogout?: () => void }) {
+function Router({ user, onLogout }: { user: SessionUser; onLogout: () => void }) {
+  const pages = allowedPages(user);
+
+  if (pages.length === 0) {
+    return (
+      <Layout userName={user.name} pages={[]} onLogout={onLogout}>
+        <div className="flex h-full items-center justify-center text-center text-muted-foreground">
+          <div>
+            <p className="text-lg font-semibold">لا توجد صلاحيات</p>
+            <p className="text-sm">حسابك ليس له صلاحية لأي صفحة. راجع مدير النظام.</p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  const fallback = pages[0].key;
   return (
-    <Layout userName={userName} onLogout={onLogout}>
+    <Layout userName={user.name} pages={pages} onLogout={onLogout}>
       <Switch>
-        <Route path="/" component={Dashboard} />
-        <Route path="/pos" component={POSPage} />
-        <Route path="/quotations" component={QuotationsPage} />
-        <Route path="/sales" component={SalesPage} />
-        <Route path="/purchases" component={PurchasesPage} />
-        <Route path="/products" component={ProductsPage} />
-        <Route path="/inventory" component={InventoryPage} />
-        <Route path="/customers" component={CustomersPage} />
-        <Route path="/craftsmen" component={CraftsmenPage} />
-        <Route path="/suppliers" component={SuppliersPage} />
-        <Route path="/debts" component={DebtsPage} />
-        <Route path="/reports" component={ReportsPage} />
-        <Route path="/settings" component={SettingsPage} />
-        <Route component={NotFound} />
+        {pages.map((p) => (
+          <Route key={p.key} path={p.key} component={p.component} />
+        ))}
+        {/* Any other path (unknown, or one this user may not open) → first allowed page. */}
+        <Route><Redirect to={fallback} /></Route>
       </Switch>
     </Layout>
   );
 }
 
 function AuthGate() {
-  const [user, setUser] = useState<any>(() => {
-    try { return JSON.parse(localStorage.getItem("pos_user") || "null"); } catch { return null; }
+  const [user, setUser] = useState<SessionUser | null>(() => {
+    try {
+      const u = JSON.parse(localStorage.getItem("pos_user") || "null");
+      // A cached non-admin session from before per-page permissions existed would
+      // otherwise resolve to "no pages" and dead-end. Force a fresh login so it
+      // picks up its real permissions.
+      if (u && u.role !== "admin" && !Array.isArray(u.permissions)) {
+        localStorage.removeItem("pos_user");
+        return null;
+      }
+      return u;
+    } catch { return null; }
   });
 
   if (!user) {
@@ -66,7 +69,7 @@ function AuthGate() {
   return (
     <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
       <Router
-        userName={user.name}
+        user={user}
         onLogout={() => { localStorage.removeItem("pos_user"); setUser(null); }}
       />
     </WouterRouter>
@@ -79,7 +82,14 @@ function App() {
       <DirectionProvider dir="rtl">
         <TooltipProvider>
           <AuthGate />
-          <Toaster position="top-center" richColors expand={false} duration={3000} />
+          <Toaster
+            position="top-left"
+            dir="rtl"
+            richColors
+            expand={false}
+            duration={3000}
+            toastOptions={{ className: "app-toast", style: { fontFamily: "var(--app-font-sans)", fontSize: "0.95rem" } }}
+          />
         </TooltipProvider>
       </DirectionProvider>
     </QueryClientProvider>

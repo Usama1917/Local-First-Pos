@@ -1,26 +1,11 @@
-import { LayoutDashboard, ShoppingCart, FileText, Receipt, ShoppingBag, Package, ClipboardList, Users, HardHat, Truck, CreditCard, BarChart3, Settings, LogOut } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import type { PageDef } from "@/lib/pages";
 
-const navigation = [
-  { name: "لوحة التحكم", href: "/", icon: LayoutDashboard },
-  { name: "الكاشير", href: "/pos", icon: ShoppingCart },
-  { name: "التسعيرات", href: "/quotations", icon: FileText },
-  { name: "الفواتير", href: "/sales", icon: Receipt },
-  { name: "المشتريات", href: "/purchases", icon: ShoppingBag },
-  { name: "المنتجات", href: "/products", icon: Package },
-  { name: "المخزن", href: "/inventory", icon: ClipboardList },
-  { name: "العملاء", href: "/customers", icon: Users },
-  { name: "الصنايعية", href: "/craftsmen", icon: HardHat },
-  { name: "الموردين", href: "/suppliers", icon: Truck },
-  { name: "المديونيات", href: "/debts", icon: CreditCard },
-  { name: "التقارير", href: "/reports", icon: BarChart3 },
-  { name: "الإعدادات", href: "/settings", icon: Settings },
-];
-
-export function Layout({ children, userName, onLogout }: { children: React.ReactNode; userName?: string; onLogout?: () => void }) {
+export function Layout({ children, userName, pages, onLogout }: { children: React.ReactNode; userName?: string; pages: PageDef[]; onLogout?: () => void }) {
   const [location] = useLocation();
 
   return (
@@ -31,10 +16,10 @@ export function Layout({ children, userName, onLogout }: { children: React.React
           إدارة المتجر
         </div>
         <div className="flex-1 overflow-y-auto py-4 flex flex-col gap-1 px-3">
-          {navigation.map((item) => {
-            const isActive = location === item.href || (item.href !== "/" && location.startsWith(item.href));
+          {pages.map((item) => {
+            const isActive = location === item.key || (item.key !== "/" && location.startsWith(item.key));
             return (
-              <Link key={item.name} href={item.href}>
+              <Link key={item.key} href={item.key}>
                 <div
                   className={cn(
                     "relative flex items-center gap-3 px-3 py-2 rounded-md cursor-pointer transition-colors",
@@ -51,7 +36,7 @@ export function Layout({ children, userName, onLogout }: { children: React.React
                     />
                   )}
                   <item.icon className="relative z-10 h-5 w-5" />
-                  <span className="relative z-10 font-medium">{item.name}</span>
+                  <span className="relative z-10 font-medium">{item.label}</span>
                 </div>
               </Link>
             );

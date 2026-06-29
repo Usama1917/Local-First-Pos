@@ -1,7 +1,20 @@
 import { Router } from "express";
 import db from "../lib/db.js";
+import { nextPayoutSerial } from "../lib/db.js";
+import { archivePayout } from "../lib/archive.js";
 
 const router = Router();
+
+// Commission a craftsman has earned but not yet been paid out:
+// sum over his finalized invoices of (commission earned − commission already paid).
+const OUTSTANDING_SUBQUERY = `
+  COALESCE((SELECT SUM(si.craftsmanCommission - si.commissionPaid)
+            FROM sales_invoices si
+            WHERE si.craftsmanId = cr.id AND si.status NOT IN ('draft','cancelled')), 0)`;
+const PAID_SUBQUERY = `
+  COALESCE((SELECT SUM(si.commissionPaid)
+            FROM sales_invoices si
+            WHERE si.craftsmanId = cr.id AND si.status NOT IN ('draft','cancelled')), 0)`;
 
 router.get("/craftsmen", (req, res) => {
   const { search, isActive } = req.query as any;
@@ -19,7 +32,9 @@ router.get("/craftsmen", (req, res) => {
   const items = db.prepare(`
     SELECT cr.*,
       COALESCE((SELECT SUM(si.total) FROM sales_invoices si WHERE si.craftsmanId = cr.id AND si.status != 'draft' AND si.status != 'cancelled'), 0) as totalSales,
-      COALESCE((SELECT SUM(si.craftsmanCommission) FROM sales_invoices si WHERE si.craftsmanId = cr.id AND si.status != 'draft' AND si.status != 'cancelled'), 0) as totalCommission
+      COALESCE((SELECT SUM(si.craftsmanCommission) FROM sales_invoices si WHERE si.craftsmanId = cr.id AND si.status != 'draft' AND si.status != 'cancelled'), 0) as totalCommission,
+      ${PAID_SUBQUERY} as paidCommission,
+      ${OUTSTANDING_SUBQUERY} as outstandingCommission
     FROM craftsmen cr ${where} ORDER BY cr.name
   `).all(...params);
   res.json({ items, total: items.length });
@@ -41,11 +56,18 @@ router.get("/craftsmen/:id", (req, res) => {
     SELECT cr.*,
       COALESCE((SELECT SUM(si.total) FROM sales_invoices si WHERE si.craftsmanId = cr.id AND si.status != 'draft' AND si.status != 'cancelled'), 0) as totalSales,
       COALESCE((SELECT SUM(si.craftsmanCommission) FROM sales_invoices si WHERE si.craftsmanId = cr.id AND si.status != 'draft' AND si.status != 'cancelled'), 0) as totalCommission,
+      ${PAID_SUBQUERY} as paidCommission,
+      ${OUTSTANDING_SUBQUERY} as outstandingCommission,
       COALESCE((SELECT COUNT(DISTINCT si.customerId) FROM sales_invoices si WHERE si.craftsmanId = cr.id AND si.customerId IS NOT NULL AND si.status != 'draft'), 0) as uniqueCustomers,
       COALESCE((SELECT COUNT(*) FROM quotations q WHERE q.craftsmanId = cr.id), 0) as totalQuotations
     FROM craftsmen cr WHERE cr.id = ?
   `).get(id);
   if (!row) return res.status(404).json({ error: "غير موجود" });
+
+  const recentPayouts = db.prepare(`
+    SELECT id, serial, amount, notes, createdAt FROM craftsman_payouts
+    WHERE craftsmanId = ? ORDER BY createdAt DESC LIMIT 50
+  `).all(id);
 
   const recentSales = db.prepare(`
     SELECT si.id, si.serial, si.status, si.paymentType, si.total, si.paidAmount,
@@ -68,7 +90,7 @@ router.get("/craftsmen/:id", (req, res) => {
     ORDER BY q.createdAt DESC LIMIT 50
   `).all(id);
 
-  res.json({ ...row as any, recentSales, recentQuotations });
+  res.json({ ...row as any, recentSales, recentQuotations, recentPayouts });
 });
 
 router.get("/craftsmen/:id/customers", (req, res) => {
@@ -80,7 +102,7 @@ router.get("/craftsmen/:id/customers", (req, res) => {
       c.id, c.name, c.phone, c.area,
       (SELECT COUNT(*) FROM sales_invoices si WHERE si.customerId = c.id AND si.craftsmanId = ? AND si.status != 'draft') as invoiceCount,
       (SELECT COALESCE(SUM(si.total), 0) FROM sales_invoices si WHERE si.customerId = c.id AND si.craftsmanId = ? AND si.status != 'draft') as totalSales,
-      (SELECT COALESCE(SUM(si.remainingAmount), 0) FROM sales_invoices si WHERE si.customerId = c.id AND si.craftsmanId = ? AND si.status != 'draft') as totalRemaining,
+      (SELECT COALESCE(SUM(si.remainingAmount), 0) FROM sales_invoices si WHERE si.customerId = c.id AND si.craftsmanId = ? AND si.status IN ('finalized','partially_paid','credit')) as totalRemaining,
       (SELECT MAX(si.createdAt) FROM sales_invoices si WHERE si.customerId = c.id AND si.craftsmanId = ? AND si.status != 'draft') as lastInvoiceDate,
       (SELECT COUNT(*) FROM quotations q WHERE q.customerId = c.id AND q.craftsmanId = ?) as quotationCount
     FROM customers c
@@ -109,6 +131,102 @@ router.patch("/craftsmen/:id", (req, res) => {
 router.delete("/craftsmen/:id", (req, res) => {
   db.prepare("UPDATE craftsmen SET isActive = 0 WHERE id = ?").run(Number(req.params.id));
   res.json({ success: true });
+});
+
+// ---- Commission payouts -------------------------------------------------
+
+// Outstanding commission for one craftsman (earned − already paid).
+function outstandingFor(id: number): number {
+  const r = db.prepare(`
+    SELECT COALESCE(SUM(craftsmanCommission - commissionPaid), 0) as v
+    FROM sales_invoices WHERE craftsmanId = ? AND status NOT IN ('draft','cancelled')
+  `).get(id) as any;
+  return r?.v || 0;
+}
+
+// Full receipt for a payout: the payout + craftsman header + the invoices it settled.
+function payoutReceipt(payoutId: number) {
+  const payout = db.prepare(`
+    SELECT p.*, cr.name as craftsmanName, cr.phone as craftsmanPhone,
+           cr.jobType as craftsmanJobType, cr.commissionPercent
+    FROM craftsman_payouts p JOIN craftsmen cr ON p.craftsmanId = cr.id
+    WHERE p.id = ?
+  `).get(payoutId) as any;
+  if (!payout) return null;
+  const items = db.prepare(`
+    SELECT pii.invoiceId, pii.amount, si.serial, si.total as invoiceTotal,
+           si.craftsmanCommission as invoiceCommission, si.createdAt, c.name as customerName
+    FROM craftsman_payout_items pii
+    JOIN sales_invoices si ON pii.invoiceId = si.id
+    LEFT JOIN customers c ON si.customerId = c.id
+    WHERE pii.payoutId = ? ORDER BY si.createdAt
+  `).all(payoutId);
+  return { ...payout, items };
+}
+
+// Pay out commission. Amount is optional → defaults to the full outstanding.
+// Allocates the amount across the craftsman's unsettled invoices, oldest first.
+router.post("/craftsmen/:id/payouts", (req, res) => {
+  const id = Number(req.params.id);
+  const craftsman = db.prepare("SELECT * FROM craftsmen WHERE id = ?").get(id) as any;
+  if (!craftsman) return res.status(404).json({ error: "غير موجود" });
+
+  const outstanding = outstandingFor(id);
+  let amount = req.body?.amount != null ? Number(req.body.amount) : outstanding;
+  amount = Math.round(amount * 100) / 100;
+  const { notes } = req.body || {};
+
+  if (!(amount > 0)) return res.status(400).json({ error: "المبلغ لازم يكون أكبر من صفر" });
+  if (amount > outstanding + 0.001) return res.status(400).json({ error: "المبلغ أكبر من العمولة المستحقة" });
+
+  db.exec("BEGIN");
+  try {
+    const r = db.prepare(
+      "INSERT INTO craftsman_payouts (serial, craftsmanId, amount, notes) VALUES (?,?,?,?)",
+    ).run(nextPayoutSerial(), id, amount, notes || null);
+    const payoutId = r.lastInsertRowid as number;
+
+    // FIFO: settle the oldest invoices first.
+    const unsettled = db.prepare(`
+      SELECT id, (craftsmanCommission - commissionPaid) as due
+      FROM sales_invoices
+      WHERE craftsmanId = ? AND status NOT IN ('draft','cancelled')
+        AND (craftsmanCommission - commissionPaid) > 0.001
+      ORDER BY createdAt ASC, id ASC
+    `).all(id) as any[];
+
+    const addItem = db.prepare("INSERT INTO craftsman_payout_items (payoutId, invoiceId, amount) VALUES (?,?,?)");
+    const bumpPaid = db.prepare("UPDATE sales_invoices SET commissionPaid = commissionPaid + ? WHERE id = ?");
+    let remaining = amount;
+    for (const inv of unsettled) {
+      if (remaining <= 0.001) break;
+      const alloc = Math.min(remaining, inv.due);
+      addItem.run(payoutId, inv.id, alloc);
+      bumpPaid.run(alloc, inv.id);
+      remaining -= alloc;
+    }
+    db.exec("COMMIT");
+    res.status(201).json(payoutReceipt(payoutId));
+    // Auto-archive a PDF of the commission payout (best-effort).
+    archivePayout(payoutId).catch((e) => console.error("archive payout failed:", e?.message || e));
+  } catch (e) {
+    db.exec("ROLLBACK");
+    throw e;
+  }
+});
+
+router.get("/craftsmen/:id/payouts", (req, res) => {
+  const id = Number(req.params.id);
+  const items = db.prepare(
+    "SELECT id, serial, amount, notes, createdAt FROM craftsman_payouts WHERE craftsmanId = ? ORDER BY createdAt DESC",
+  ).all(id);
+  res.json({ items, total: items.length });
+});
+
+router.get("/craftsman-payouts/:payoutId", (req, res) => {
+  const receipt = payoutReceipt(Number(req.params.payoutId));
+  if (!receipt) return res.status(404).json({ error: "غير موجود" });
+  res.json(receipt);
 });
 
 export default router;

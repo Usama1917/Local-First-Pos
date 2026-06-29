@@ -4,6 +4,9 @@ import {
   useCreateCraftsman,
   useGetCraftsman,
   useGetCraftsmanCustomers,
+  useCreateCraftsmanPayout,
+  useGetSettings,
+  getCraftsmanPayout,
   getListCraftsmenQueryKey,
   getGetCraftsmanQueryKey,
   getGetCraftsmanCustomersQueryKey,
@@ -17,7 +20,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatCurrency } from "@/lib/format";
-import { Search, Plus, HardHat, Eye, Users, Receipt, FileText } from "lucide-react";
+import { printCommissionReceipt } from "@/lib/print-commission";
+import { Search, Plus, HardHat, Eye, Users, Receipt, FileText, Wallet, Printer, Banknote } from "lucide-react";
 import { toast } from "sonner";
 
 const STATUS_LABELS: Record<string, { label: string; variant: any }> = {
@@ -35,16 +39,55 @@ const Q_STATUS: Record<string, { label: string; variant: any }> = {
   cancelled: { label: "ملغية", variant: "destructive" },
 };
 
-function CraftsmanProfile({ id, onClose }: { id: number; onClose: () => void }) {
+function CraftsmanProfile({ id }: { id: number; onClose: () => void }) {
+  const qc = useQueryClient();
   const { data } = useGetCraftsman(id, { query: { queryKey: getGetCraftsmanQueryKey(id) } });
   const { data: linkedCustomers } = useGetCraftsmanCustomers(id, { query: { queryKey: getGetCraftsmanCustomersQueryKey(id) } });
+  const createPayout = useCreateCraftsmanPayout();
+  const { data: settings } = useGetSettings();
+  const shop = (settings as any) || {};
+
+  const [showWithdraw, setShowWithdraw] = useState(false);
+  const [amount, setAmount] = useState("");
+  const [notes, setNotes] = useState("");
 
   const craftsman = data as any;
+
+  const outstanding = craftsman?.outstandingCommission || 0;
+
+  const openWithdraw = () => {
+    setAmount(String(Math.round(outstanding * 100) / 100));
+    setNotes("");
+    setShowWithdraw(true);
+  };
+
+  const handleWithdraw = async () => {
+    const amt = parseFloat(amount);
+    if (!(amt > 0)) { toast.error("اكتب مبلغ صحيح"); return; }
+    if (amt > outstanding + 0.001) { toast.error("المبلغ أكبر من العمولة المستحقة"); return; }
+    try {
+      const receipt = await createPayout.mutateAsync({ id, data: { amount: amt, notes: notes || undefined } });
+      qc.invalidateQueries({ queryKey: getGetCraftsmanQueryKey(id) });
+      qc.invalidateQueries({ queryKey: getListCraftsmenQueryKey({}) });
+      toast.success("تم سحب العمولة");
+      setShowWithdraw(false);
+      if (!printCommissionReceipt(receipt as any, shop)) toast.error("فعّل النوافذ المنبثقة (Popup) للطباعة");
+    } catch (e: any) { toast.error(e?.message || "خطأ"); }
+  };
+
+  const reprint = async (payoutId: number) => {
+    try {
+      const receipt = await getCraftsmanPayout(payoutId);
+      if (!printCommissionReceipt(receipt as any, shop)) toast.error("فعّل النوافذ المنبثقة (Popup) للطباعة");
+    } catch (e: any) { toast.error(e?.message || "خطأ"); }
+  };
+
   if (!craftsman) return null;
 
   const invoices = craftsman.recentSales || [];
   const quotations = craftsman.recentQuotations || [];
   const customers = (linkedCustomers as any)?.items || [];
+  const payouts = craftsman.recentPayouts || [];
 
   return (
     <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
@@ -53,9 +96,11 @@ function CraftsmanProfile({ id, onClose }: { id: number; onClose: () => void }) 
           <HardHat className="h-5 w-5 text-amber-600" />
           {craftsman.name}
         </DialogTitle>
-        <div className="flex gap-4 text-sm text-muted-foreground">
+        <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
           {craftsman.phone && <span>📞 {craftsman.phone}</span>}
           {craftsman.jobType && <span>🔧 {craftsman.jobType}</span>}
+          <span>📊 نسبة العمولة {craftsman.commissionPercent || 0}%</span>
+          <span>👥 {craftsman.uniqueCustomers || 0} عميل</span>
         </div>
       </DialogHeader>
 
@@ -69,13 +114,48 @@ function CraftsmanProfile({ id, onClose }: { id: number; onClose: () => void }) 
           <p className="text-xs text-muted-foreground">إجمالي العمولة</p>
         </CardContent></Card>
         <Card><CardContent className="p-3 text-center">
-          <p className="text-xl font-bold">{craftsman.commissionPercent || 0}%</p>
-          <p className="text-xs text-muted-foreground">نسبة العمولة</p>
+          <p className="text-xl font-bold text-muted-foreground">{formatCurrency(craftsman.paidCommission || 0)}</p>
+          <p className="text-xs text-muted-foreground">المسحوب</p>
         </CardContent></Card>
-        <Card><CardContent className="p-3 text-center">
-          <p className="text-xl font-bold text-primary">{craftsman.uniqueCustomers || 0}</p>
-          <p className="text-xs text-muted-foreground">عدد العملاء</p>
+        <Card className="border-emerald-200 bg-emerald-50/40"><CardContent className="p-3 text-center">
+          <p className="text-xl font-bold text-emerald-700">{formatCurrency(outstanding)}</p>
+          <p className="text-xs text-muted-foreground">المستحق حاليًا</p>
         </CardContent></Card>
+      </div>
+
+      {/* Withdraw commission */}
+      <div className="rounded-md border bg-muted/30 p-3 mb-1">
+        {!showWithdraw ? (
+          <div className="flex items-center justify-between">
+            <div className="text-sm">
+              <span className="text-muted-foreground">العمولة المستحقة للسحب: </span>
+              <span className="font-bold text-emerald-700">{formatCurrency(outstanding)}</span>
+            </div>
+            <Button size="sm" onClick={openWithdraw} disabled={outstanding <= 0}>
+              <Wallet className="h-4 w-4 ml-1" />سحب العمولة
+            </Button>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <p className="text-sm font-semibold flex items-center gap-1"><Banknote className="h-4 w-4" />سحب عمولة نقدًا</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label>المبلغ (المستحق {formatCurrency(outstanding)})</Label>
+                <Input type="number" value={amount} onChange={e => setAmount(e.target.value)} max={outstanding} />
+              </div>
+              <div className="space-y-1">
+                <Label>ملاحظات (اختياري)</Label>
+                <Input value={notes} onChange={e => setNotes(e.target.value)} placeholder="مثال: سحب آخر السنة" />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" size="sm" onClick={() => setShowWithdraw(false)}>إلغاء</Button>
+              <Button size="sm" onClick={handleWithdraw} disabled={createPayout.isPending}>
+                <Printer className="h-4 w-4 ml-1" />تأكيد السحب وطباعة الإيصال
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
       <Tabs defaultValue="invoices">
@@ -87,6 +167,10 @@ function CraftsmanProfile({ id, onClose }: { id: number; onClose: () => void }) 
           <TabsTrigger value="quotations" className="flex-1">
             <FileText className="h-3.5 w-3.5 ml-1" />
             التسعيرات ({quotations.length})
+          </TabsTrigger>
+          <TabsTrigger value="payouts" className="flex-1">
+            <Wallet className="h-3.5 w-3.5 ml-1" />
+            السحوبات ({payouts.length})
           </TabsTrigger>
           <TabsTrigger value="customers" className="flex-1">
             <Users className="h-3.5 w-3.5 ml-1" />
@@ -172,6 +256,42 @@ function CraftsmanProfile({ id, onClose }: { id: number; onClose: () => void }) 
           )}
         </TabsContent>
 
+        <TabsContent value="payouts">
+          {payouts.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <Wallet className="h-10 w-10 mx-auto mb-2 opacity-30" />
+              <p>لا توجد سحوبات عمولة بعد</p>
+            </div>
+          ) : (
+            <table className="w-full text-sm">
+              <thead className="bg-muted/50">
+                <tr>
+                  <th className="p-2 text-right">الإيصال</th>
+                  <th className="p-2 text-left">المبلغ</th>
+                  <th className="p-2 text-right">ملاحظات</th>
+                  <th className="p-2 text-right">التاريخ</th>
+                  <th className="p-2 text-center w-24">طباعة</th>
+                </tr>
+              </thead>
+              <tbody>
+                {payouts.map((p: any) => (
+                  <tr key={p.id} className="border-b hover:bg-muted/30">
+                    <td className="p-2 font-mono font-medium text-primary">{p.serial}</td>
+                    <td className="p-2 text-left font-semibold text-emerald-700">{formatCurrency(p.amount)}</td>
+                    <td className="p-2 text-muted-foreground">{p.notes || "—"}</td>
+                    <td className="p-2 text-muted-foreground text-xs">{new Date(p.createdAt).toLocaleDateString("ar-EG")}</td>
+                    <td className="p-2 text-center">
+                      <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => reprint(p.id)} title="إعادة طباعة الإيصال">
+                        <Printer className="h-4 w-4" />
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </TabsContent>
+
         <TabsContent value="customers">
           <div className="mb-3 text-sm text-muted-foreground">
             العملاء الذين تعاملوا عن طريق هذا الصنايعي
@@ -235,10 +355,14 @@ export default function CraftsmenPage() {
 
   const handleAdd = async () => {
     if (!form.name) { toast.error("الاسم مطلوب"); return; }
-    await createCraftsman.mutateAsync({ data: { ...form, commissionPercent: parseFloat(form.commissionPercent) || undefined } });
-    qc.invalidateQueries({ queryKey: getListCraftsmenQueryKey({}) });
-    toast.success("تم الإضافة");
-    setShowAdd(false);
+    try {
+      await createCraftsman.mutateAsync({ data: { ...form, commissionPercent: parseFloat(form.commissionPercent) || undefined } });
+      qc.invalidateQueries({ queryKey: getListCraftsmenQueryKey({}) });
+      toast.success("تم الإضافة");
+      setShowAdd(false);
+    } catch (e: any) {
+      toast.error(e?.message || "خطأ");
+    }
   };
 
   const craftsmen = (data as any)?.items || [];
@@ -286,24 +410,30 @@ export default function CraftsmenPage() {
               <th className="p-3">التخصص</th>
               <th className="p-3">الهاتف</th>
               <th className="p-3 text-left">إجمالي المبيعات</th>
-              <th className="p-3 text-left">العمولة</th>
+              <th className="p-3 text-left">إجمالي العمولة</th>
+              <th className="p-3 text-left">عمولة مستحقة</th>
               <th className="p-3"></th>
             </tr>
           </thead>
           <tbody>
-            {isLoading ? <tr><td colSpan={6} className="p-8 text-center text-muted-foreground">جاري التحميل...</td></tr> :
+            {isLoading ? <tr><td colSpan={7} className="p-8 text-center text-muted-foreground">جاري التحميل...</td></tr> :
               craftsmen.map((c: any) => (
-                <tr key={c.id} className="border-b hover:bg-muted/30">
+                <tr key={c.id} className="border-b hover:bg-muted/30 cursor-pointer" onClick={() => setSelectedId(c.id)}>
                   <td className="p-3 font-medium">{c.name}</td>
                   <td className="p-3 text-muted-foreground">{c.jobType || "—"}</td>
                   <td className="p-3 text-muted-foreground">{c.phone || "—"}</td>
                   <td className="p-3 text-left">{formatCurrency(c.totalSales)}</td>
                   <td className="p-3 text-left text-amber-600 font-semibold">{formatCurrency(c.totalCommission)}</td>
-                  <td className="p-3"><Button variant="ghost" size="sm" onClick={() => setSelectedId(c.id)}><Eye className="h-4 w-4 ml-1" />عرض</Button></td>
+                  <td className="p-3 text-left font-semibold">
+                    {c.outstandingCommission > 0
+                      ? <span className="text-emerald-700">{formatCurrency(c.outstandingCommission)}</span>
+                      : <span className="text-muted-foreground text-xs">—</span>}
+                  </td>
+                  <td className="p-3"><Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setSelectedId(c.id); }}><Eye className="h-4 w-4 ml-1" />عرض</Button></td>
                 </tr>
               ))}
             {!isLoading && craftsmen.length === 0 && (
-              <tr><td colSpan={6} className="p-8 text-center text-muted-foreground">
+              <tr><td colSpan={7} className="p-8 text-center text-muted-foreground">
                 <HardHat className="h-10 w-10 mx-auto mb-2 opacity-30" />لا يوجد صنايعية
               </td></tr>
             )}

@@ -18,11 +18,14 @@ import draftsRouter from "./drafts.js";
 import reportsRouter from "./reports.js";
 import settingsRouter from "./settings.js";
 import backupRouter from "./backup.js";
+import returnsRouter from "./returns.js";
+import usersRouter from "./users.js";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
 router.use(authRouter);
+router.use(usersRouter);
 router.use(dashboardRouter);
 router.use(categoriesRouter);
 router.use(brandsRouter);
@@ -33,6 +36,7 @@ router.use(craftsmenRouter);
 router.use(suppliersRouter);
 router.use(quotationsRouter);
 router.use(salesRouter);
+router.use(returnsRouter);
 router.use(purchasesRouter);
 router.use(stockRouter);
 router.use(debtsRouter);

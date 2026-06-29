@@ -121,6 +121,9 @@ pnpm workspace (Node 24, TypeScript 5.9). Packages:
   `trueCost = net + extraCost`, `profit = sellingPrice − trueCost`.
 - `/craftsmen/:id/customers` uses **correlated subqueries** (NOT a dual LEFT JOIN)
   to avoid aggregate fan‑out — keep it that way.
+- **`products.soldByWeight`**: `0` = sold by piece (gets a barcode + printable stickers,
+  integer qty); `1` = sold by weight/measure (NO barcode, fractional qty, prices are
+  per‑unit e.g. “بالكيلو”). A product with an **empty barcode is never printed**.
 
 ---
 
@@ -137,6 +140,105 @@ pnpm workspace (Node 24, TypeScript 5.9). Packages:
 ---
 
 ## 7. Session changelog (everything done so far)
+
+### Session 2026‑06‑29 — returns, users/RBAC, commission payouts, PDF archive, full bug‑fix pass (UNCOMMITTED)
+All on the working tree (not committed). `pnpm run typecheck` and `pnpm run build:shop` are green. Restart the API after backend edits (`dev` = build && start).
+
+**New features**
+- **Purchases drafts are now usable** (`pages/purchases.tsx`, `routes/purchases.ts`): click a purchase row → opens it; a **draft** can be edited and **finalized** (stock goes up) or **deleted**; a finalized one opens **read‑only** with **«إعادة طباعة الباركود»**. Bigger dialog; product search is a floating dropdown; columns distributed (`table-fixed`).
+- **Barcode stickers on purchase** (`pages/purchases.tsx` + `lib/print-labels.ts`): finalizing a purchase prints one sticker per added unit (copies = quantity); items with no barcode (sold‑by‑weight) are skipped; per‑row print toggle.
+- **Craftsman commission payouts / سحب العمولة** (`pages/craftsmen.tsx`, `routes/craftsmen.ts`, `lib/print-commission.ts`): new `craftsman_payouts` + `craftsman_payout_items` tables; outstanding = earned − paid (`sales_invoices.commissionPaid` column); **partial** withdrawals allocate FIFO across the craftsman's unsettled invoices; prints an A4 receipt; payouts history tab + reprint. New serial `CMP-YYYY-…` via `nextPayoutSerial()` (counters table).
+- **Returns & Exchange / المرتجعات والاستبدال** (new `pages/returns.tsx`, `routes/returns.ts`, `lib/print-return.ts`): scan/enter an invoice serial → per‑item return by qty (capped by already‑returned), optional exchange items, **سليم/تالف** restock toggle, **cash or on‑account** settlement; net = newItems − returned. New `returns` + `return_items` tables; serial `RET-YYYY-…`. **Account‑settled returns are folded into customer debt** (debts list, customers.totalDebt, statement). Stock: returned (restock) ↑, exchange items ↓.
+- **Users page + per‑page RBAC** (new `pages/users.tsx`, `routes/users.ts`, `lib/pages.tsx`): admin‑only page; create users, view/change plaintext passwords, role (admin/staff), and a **permissions dialog** (Switch per page). `users.permissions` (JSON array of allowed route keys); `role='admin'` = full access. Central **`lib/pages.tsx`** registry now drives nav (`layout.tsx`) **and** routes (`App.tsx`); non‑admins only see/reach their allowed pages (catch‑all `<Redirect>` to first allowed). Login returns `permissions`. **RBAC is UI‑only by design** (no server auth middleware) and **permissions apply on next login only** — both accepted by the owner; do NOT "fix" them unasked.
+- **Auto‑archive every document to PDF** (new `lib/archive.ts`, `lib/pdf.ts`, `lib/dialog.ts`, `routes/backup.ts`, `pages/settings.tsx`): pick a folder in Settings → every finalized sale/purchase/return/payout is written as a **PDF** into `العملاء/<customer>/`, `الصنايعية/`, `المشتريات/`. PDF is produced by driving the **installed system browser headless** (`--headless --print-to-pdf`, found via `findBrowser()`) — no bundled Chromium; correct Arabic. `htmlToPdf` polls for the output file (modern Chrome/Edge don't exit after print) then kills the browser. Archive dir is read **fresh** (`getArchiveDir()` in `paths.ts`, stored in `pos-config.json`) so it applies without restart. **Native folder‑picker** (`dialog.ts`: PowerShell FolderBrowserDialog on Windows / `osascript` on mac) via `POST /api/backup/pick-folder` → Settings «تصفّح» buttons fill the path. `/backup/info` now also returns `archiveDir` + `pdfEngineAvailable`.
+- **Toast notifications restyled** (`App.tsx` sonner + `index.css`): top‑left, app font, slide in/out behind the left edge.
+
+**Bug‑fix pass (adversarial multi‑agent review → 19 confirmed bugs fixed)**
+- **Customer & supplier payments now reduce the debt** (`routes/debts.ts`, `customers.ts`, `suppliers.ts`, `dashboard.ts`): all debt aggregates subtract `customer_payments`/`supplier_payments` (they previously only summed invoice `remainingAmount`, so recorded سداد payments were ignored). Dashboard receivables/payables now use the **same per‑entity positive‑balance formula** as `/debts/*` (incl. opening balance + account returns − payments).
+- **Sales PATCH** recomputes `total`/`remainingAmount` on every path (a discount/payment‑only edit no longer leaves stale money); line/invoice totals clamped `≥ 0` (no negative invoices from over‑discount) — client also clamps in `pages/pos.tsx`.
+- **Sales finalize status**: any positive remaining on a non‑credit sale → `partially_paid` (was mislabeled `finalized` when paid = 0).
+- **Products PATCH** can now clear nullable text fields (barcode/nameEn/notes/…); empty string → NULL instead of COALESCE keeping the old value; **soldByWeight ⇒ barcode forced NULL** (domain rule).
+- **Purchases PATCH/DELETE** now reject non‑draft invoices (were editable/cancellable after finalize, corrupting stock); **finalize** no longer wipes `products.trueCost` to 0 on a 0‑cost line (split stock‑increment from cost‑update; only set cost when `> 0`).
+- **Customer statement** and **`/craftsmen/:id/customers` totalRemaining** now exclude `cancelled` invoices (matched the debt screens).
+- **Settings PATCH** can clear `shopPhone`/`shopAddress`.
+- **PDF**: use `pathToFileURL()` (raw `file://C:\…` is not loadable on Windows). **`safeName`** keeps hyphens so archived filenames match serials (`INV-2026-…`).
+- **POS draft autosave** now includes `paidAmount` (a restored partial draft no longer finalizes with 0 paid).
+- **Purchases**: re‑scanning an added product bumps its qty (was a silent no‑op); qty field no longer snaps empty→1 mid‑edit.
+- **Error handling**: `craftsmen.tsx` add and `settings.tsx` save now `try/catch` with a toast.
+- **OpenAPI** `BackupInfo.sizeBytes` → `size` (matched the backend); regenerated client.
+
+**Migrations added** (`ensureColumn` in `lib/db.ts`): `sales_invoices.commissionPaid`, `users.permissions`. New tables auto‑create on boot: `craftsman_payouts`, `craftsman_payout_items`, `returns`, `return_items`. New counter‑based serials: `commission_payout` (CMP), `return` (RET).
+
+### Session 2026‑06‑27 — products overhaul, barcodes, weight‑sale (UNCOMMITTED)
+All of the below is on the working tree only (not committed/pushed yet). Typecheck
++ pos build are green. The API `dev` script is `build && start` (NOT watch) — after
+editing `artifacts/api-server/**` you MUST restart it for changes to take effect.
+
+- **Add‑product dialog rebuilt** (`pages/products.tsx`). Wide dialog (`max-w-[1340px]`,
+  `w-[96vw]`); two halves — identity on the **right**, pricing (حسبة الأسعار) on the
+  **left**. **Batch add**: a shared `ProductFormFields` feeds a queue/sheet; “إضافة
+  المنتج للقائمة” pushes the current entry, then **“حفظ الكل وطباعة”** saves the whole
+  batch and prints stickers. Per‑row actions: تعديل / حذف / **طباعة‑أو‑عدم‑طباعة** toggle.
+  Save loop is recoverable: on a mid‑batch failure, already‑saved rows are dropped from
+  the queue so a retry doesn’t double‑save.
+- **Edit existing products**: click any product row → edit dialog (PATCH). Reuses
+  `ProductFormFields`. **`currentStock` is read‑only on edit** (stock only moves via
+  purchases/جرد; the PATCH route ignores it anyway). Edit payload uses
+  `buildPayload(form, /*skipEmpty*/ true)` so clearing a numeric input sends `undefined`
+  (backend COALESCE keeps the old value) instead of zeroing the price.
+- **Barcodes** (the big one):
+  - Two modes in the form: **باركود جاهز** (type manually OR hardware‑scan fills it) and
+    **إنشاء باركود** (generate a unique store code + live preview: bars + number + SKU).
+  - Generation: backend `nextBarcode()` (`lib/db.ts`) using a new idempotent **`counters`**
+    table; numbers are `"2" + 6‑digit` and skip any already in `products`. Endpoint
+    **`GET /products/next-barcode`** (registered BEFORE `/products/:id`). Client fn
+    `getNextBarcode()`.
+  - Reusable `components/ui/barcode.tsx` (JsBarcode CODE128). 
+  - **Label printing** `lib/print-labels.ts`: opens a dedicated print window (isolated
+    from the A4 invoice CSS), `@page { size: 40mm 15mm; margin: 0 }`, **one sticker per
+    page**, **copies = quantity (currentStock)**, a **blank separator page between
+    products** (none after the last — uses `:last-of-type`, and the `<script>` lives in
+    `<head>` so it doesn’t become the body’s last child).
+  - A product with an **empty barcode never prints** (filtered out; no separator either).
+- **Sale type — count vs weight** (`soldByWeight`):
+  - New `products.soldByWeight INTEGER DEFAULT 0` + **idempotent migration** `ensureColumn()`
+    in `lib/db.ts` (runs `ALTER TABLE` only if the column is missing — needed because
+    `CREATE TABLE IF NOT EXISTS` won’t add columns to an existing DB). Wired through
+    POST/PATCH, OpenAPI (`Product`/`ProductInput`/`ProductUpdate`), and codegen.
+  - Form has a **طريقة البيع** toggle: **بالقطعة (عدد)** vs **بالوزن / الكمية**. Weight mode
+    **hides the barcode block** (so weight products get no barcode/sticker) and allows a
+    fractional quantity.
+  - Every price/quantity field shows a unit hint: **(بالقطعة)** for count, **(بالكيلو)** for
+    weight (dynamic from the chosen وحدة القياس → بالمتر/باللتر…; defaults قطعة/كيلو).
+    خصم المورد % is intentionally left without a hint. Quantity label is **العدد** for count,
+    **الكمية** for weight.
+- **Arabic→Western digits, system‑wide**: `toWesternDigits()` (`lib/format.ts`) wired into
+  the shared `components/ui/input.tsx`; numeric inputs render as `type=text inputMode=decimal`
+  so Arabic numerals (٠‑٩) land and are normalised to `0‑9` everywhere. (Textarea/notes not
+  yet covered.)
+- **Min‑selling‑price soft warning** in the cashier (`pages/pos.tsx`): when a line’s
+  discount drops the unit price below `minSellingPrice`, a yellow “السعر أقل من الحد
+  المسموح” note + amber discount border appears — **warning only, does not block**. (Not
+  yet wired into quotations.)
+- **Suppliers page → “الموردين والماركات”** (`pages/suppliers.tsx`, sidebar label in
+  `components/layout.tsx`): two **slide‑animated tabs** (`components/ui/tabs.tsx`) — موردين
+  (unchanged) + **ماركات** CRUD (`useListBrands/useCreateBrand/useUpdateBrand/useDeleteBrand`).
+- **Backend hardening**: POST/PATCH `/products` now translate a SQLite `UNIQUE` violation
+  into a friendly Arabic **400** (`uniqueErrorMessage()`), instead of leaking an HTML 500.
+- Removed the English‑name field from the add form; barcode moved to the last identity field.
+- Reviewed by an adversarial multi‑agent pass; **5 confirmed bugs were found and fixed**
+  (trailing blank label page, batch barcode de‑dup, non‑atomic save recovery, edit
+  price‑zeroing, UNIQUE→500). 
+
+#### ▶ NEXT (pick up here tomorrow)
+1. **Sell‑by‑weight in the cashier** (`pages/pos.tsx`): for `soldByWeight` products the cart
+   currently only does ±1 — let the cashier type a **decimal quantity** (e.g. 2.5 كيلو).
+   The product row carries `soldByWeight`; gate the qty input on it.
+2. Optional: default وحدة القياس to “كيلو” when switching a product to weight mode.
+3. Extend the min‑selling‑price warning to **quotations**.
+4. Normalise Arabic digits in the **Textarea** (notes) too, for full coverage.
+5. Commit this session (it’s all uncommitted) once verified in the real app, and tighten
+   the remaining `as any` casts in `pages/products.tsx`.
 
 ### Already on `origin/main` (pushed)
 - `50412a7` — **mac/windows native‑binary fix + craftsman‑customer linking.**
@@ -203,16 +305,23 @@ pnpm workspace (Node 24, TypeScript 5.9). Packages:
 | Vite/esbuild won't start on macOS/Windows | Native binaries missing — make sure `pnpm-workspace.yaml` does **not** re‑add the platform‑exclude overrides, then `pnpm install`. (Old emergency workaround: set `ESBUILD_BINARY_PATH` to a fetched `@esbuild/darwin-arm64` binary.) |
 | `pnpm install` adds an `allowBuilds:` block to `pnpm-workspace.yaml` | Harmless pnpm build‑script prompt noise — **revert it before committing**. |
 | New import fails to resolve | pnpm strict mode — add the dep to that package's `package.json` and `pnpm install` (transitive deps are NOT importable). |
+| Barcode stickers print a blank/extra page or wrong size | `lib/print-labels.ts` uses its own print window with `@page { size:40mm 15mm }`. The inline `<script>` must stay in `<head>` and the last‑page break uses `:last-of-type` — don't move them, or a trailing blank page returns. Popup blocked → save still works, a toast asks to allow popups. |
+| `/products/next-barcode` returns 404 / “غير موجود” | The API wasn't restarted after the route was added, OR it's defined **after** `/products/:id` (it must be before). `dev` = `build && start`, so restart it. |
 
 ---
 
 ## 9. Open items / recommendations for the next agent
 
-- `data/store.db` may contain the user's **live test data** — don't reset it without asking.
+- **See §7 “▶ NEXT” for the live to‑do list** (sell‑by‑weight in the cashier is the top item).
+- **The 2026‑06‑27 work is all UNCOMMITTED** — commit it once verified in the real app.
+- **Adding a DB column?** Use the `ensureColumn(table, col, def)` migration helper in
+  `lib/db.ts` (called at the end of `initializeSchema`). `CREATE TABLE IF NOT EXISTS` will
+  **not** add a column to an existing DB, so add both the column in the `CREATE TABLE` (for
+  fresh installs) **and** an `ensureColumn(...)` call (for existing installs). `soldByWeight`
+  is the reference example.
+- **Restart the API after backend edits** — `dev` = `build && start`, not watch.
+- `data/store.db` holds the user's **live data** — don't reset it without asking.
 - Consider gitignoring `data/store.db-shm` / `-wal` (transient; currently tracked → constant noise).
 - The unused `lib/db` (Postgres/Drizzle) package could be deleted.
-- Several POS pages still cast API responses `as any`; types can be tightened now
-  that the spec matches the backend.
-- An in‑app "❓ help" popover explaining the add‑product form was discussed but not
-  built (the explanatory text exists in chat).
+- Several POS pages still cast API responses `as any`; tighten them.
 - Commission UI exists and works; keep it separate from debt.

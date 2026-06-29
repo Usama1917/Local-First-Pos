@@ -37,9 +37,18 @@ Checks: `pnpm run typecheck` · `pnpm run build` · `pnpm --filter @workspace/ap
   tracked separately. Never mix customer/supplier debt and commission.
 - Quotation→invoice convert preserves both ids + the link.
 - `/craftsmen/:id/customers` uses correlated subqueries (no JOIN fan‑out) — keep it.
+- `products.soldByWeight`: 0 = by piece (gets barcode + stickers, integer qty); 1 = by
+  weight (no barcode, fractional qty, per‑unit prices). Empty barcode ⇒ never printed.
+- **Adding a DB column?** add it to `CREATE TABLE` **and** call `ensureColumn()` in
+  `db.ts` (CREATE IF NOT EXISTS won't alter an existing DB). Restart the API after backend
+  edits (`dev` = build && start, not watch).
+
+> **Latest work + the “what's next” list live in [`AGENTS.md`](./AGENTS.md) §7** (the
+> 2026‑06‑27 block is uncommitted). Top next task: sell‑by‑weight in the cashier.
 
 ## Map
-- Routes: `artifacts/api-server/src/routes/*.ts` · DB: `…/src/lib/db.ts`
-- Pages: `artifacts/pos/src/pages/*.tsx` · UI: `artifacts/pos/src/components/ui/*`
-- Barcode scanner hook: `artifacts/pos/src/hooks/use-barcode-scanner.ts`
+- Routes: `artifacts/api-server/src/routes/*.ts` · DB: `…/src/lib/db.ts` (`nextBarcode`, `ensureColumn`)
+- Pages: `artifacts/pos/src/pages/*.tsx` · UI: `artifacts/pos/src/components/ui/*` (incl. `barcode.tsx`, `tabs.tsx`)
+- Barcode scanner hook: `artifacts/pos/src/hooks/use-barcode-scanner.ts` · label printing: `…/src/lib/print-labels.ts`
+- Arabic→Western digits: `toWesternDigits` in `…/src/lib/format.ts` (wired into `components/ui/input.tsx`)
 - API spec (edit + codegen): `lib/api-spec/openapi.yaml` → `lib/api-client-react` (don't hand‑edit `generated/`)

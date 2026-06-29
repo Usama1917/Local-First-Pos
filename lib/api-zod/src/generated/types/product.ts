@@ -50,6 +50,7 @@ export interface Product {
   paintType?: string | null;
   /** @nullable */
   packageSize?: string | null;
+  soldByWeight?: boolean;
   isActive?: boolean;
   isLowStock?: boolean;
   createdAt?: string;

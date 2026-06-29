@@ -5,7 +5,10 @@ const router = Router();
 
 const CUSTOMER_SELECT = `
   SELECT c.*,
-    COALESCE(c.openingBalance, 0) + COALESCE((SELECT SUM(si.remainingAmount) FROM sales_invoices si WHERE si.customerId = c.id AND si.status IN ('finalized','partially_paid','credit')), 0) as totalDebt
+    COALESCE(c.openingBalance, 0)
+      + COALESCE((SELECT SUM(si.remainingAmount) FROM sales_invoices si WHERE si.customerId = c.id AND si.status IN ('finalized','partially_paid','credit')), 0)
+      + COALESCE((SELECT SUM(r.netAmount) FROM returns r WHERE r.customerId = c.id AND r.settlementType = 'account'), 0)
+      - COALESCE((SELECT SUM(cp.amount) FROM customer_payments cp WHERE cp.customerId = c.id), 0) as totalDebt
   FROM customers c
 `;
 
@@ -69,7 +72,7 @@ router.get("/customers/:id/statement", (req, res) => {
 
   const invoices = db.prepare(`
     SELECT id, serial, createdAt as date, total, paidAmount, remainingAmount, paymentType, status, 'invoice' as type
-    FROM sales_invoices WHERE customerId = ? AND status != 'draft'
+    FROM sales_invoices WHERE customerId = ? AND status IN ('finalized','partially_paid','credit','paid')
     ORDER BY createdAt ASC
   `).all(id) as any[];
 
@@ -78,9 +81,17 @@ router.get("/customers/:id/statement", (req, res) => {
     ORDER BY date ASC
   `).all(id) as any[];
 
+  // Account-settled returns/exchanges move the balance: net>0 the customer owes
+  // the difference (debit), net<0 it's a credit in his favour.
+  const returns = db.prepare(`
+    SELECT id, serial, createdAt as date, netAmount, type as returnType, 'return' as type
+    FROM returns WHERE customerId = ? AND settlementType = 'account'
+    ORDER BY createdAt ASC
+  `).all(id) as any[];
+
   let balance = customer.openingBalance || 0;
   const entries: any[] = [];
-  
+
   if (balance !== 0) {
     entries.push({ type: "opening", date: customer.createdAt, description: "رصيد افتتاحي", debit: balance > 0 ? balance : 0, credit: balance < 0 ? Math.abs(balance) : 0, balance });
   }
@@ -88,12 +99,17 @@ router.get("/customers/:id/statement", (req, res) => {
   const all = [
     ...invoices.map(i => ({ ...i, sortDate: i.date })),
     ...payments.map(p => ({ ...p, sortDate: p.date })),
+    ...returns.map(r => ({ ...r, sortDate: r.date })),
   ].sort((a, b) => a.sortDate.localeCompare(b.sortDate));
 
   for (const entry of all) {
     if (entry.type === "invoice") {
       balance += entry.remainingAmount;
       entries.push({ type: "invoice", date: entry.date, description: `فاتورة #${entry.serial}`, debit: entry.remainingAmount, credit: 0, balance, invoiceId: entry.id, serial: entry.serial });
+    } else if (entry.type === "return") {
+      balance += entry.netAmount;
+      const label = entry.returnType === "exchange" ? "استبدال" : "مرتجع";
+      entries.push({ type: "return", date: entry.date, description: `${label} #${entry.serial}`, debit: entry.netAmount > 0 ? entry.netAmount : 0, credit: entry.netAmount < 0 ? Math.abs(entry.netAmount) : 0, balance, serial: entry.serial });
     } else {
       balance -= entry.amount;
       entries.push({ type: "payment", date: entry.date, description: `دفعة: ${entry.notes || ""}`, debit: 0, credit: entry.amount, balance, paymentId: entry.id });

@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatCurrency } from "@/lib/format";
-import { Save, Download, HardDrive, Settings } from "lucide-react";
+import { Save, Download, HardDrive, Settings, FolderOpen } from "lucide-react";
 import { toast } from "sonner";
 
 export default function SettingsPage() {
@@ -26,6 +26,7 @@ export default function SettingsPage() {
   const { data: backups } = useListBackups();
   const { data: dbInfo } = useQuery({ queryKey: ["backup-info"], queryFn: () => fetch("/api/backup/info").then(r => r.json()) });
   const [newDataDir, setNewDataDir] = useState("");
+  const [newArchiveDir, setNewArchiveDir] = useState("");
   const s = settings as any;
 
   const [form, setForm] = useState<any>({
@@ -54,9 +55,13 @@ export default function SettingsPage() {
   }, [s]);
 
   const handleSave = async () => {
-    await updateSettings.mutateAsync({ data: form });
-    qc.invalidateQueries({ queryKey: getGetSettingsQueryKey() });
-    toast.success("تم حفظ الإعدادات");
+    try {
+      await updateSettings.mutateAsync({ data: form });
+      qc.invalidateQueries({ queryKey: getGetSettingsQueryKey() });
+      toast.success("تم حفظ الإعدادات");
+    } catch (e: any) {
+      toast.error(e?.message || "تعذّر حفظ الإعدادات");
+    }
   };
 
   const triggerDownload = (filename: string) => {
@@ -76,13 +81,32 @@ export default function SettingsPage() {
   };
 
   const saveDataDir = async () => {
-    if (!newDataDir.trim()) { toast.error("اكتب مسار المجلد"); return; }
+    if (!newDataDir.trim()) { toast.error("اكتب أو اختر مسار المجلد"); return; }
     const res = await fetch("/api/backup/data-dir", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ dir: newDataDir.trim() }),
     });
     if (res.ok) { toast.success("تم الحفظ — أعد تشغيل البرنامج لتطبيق المكان الجديد"); setNewDataDir(""); }
+    else toast.error("تعذّر الحفظ");
+  };
+
+  // Open the native folder picker on the shop PC and fill the given field.
+  const browseFolder = async (setter: (v: string) => void) => {
+    try {
+      const r = await fetch("/api/backup/pick-folder", { method: "POST" }).then((x) => x.json());
+      if (r?.path) setter(r.path);
+    } catch { toast.error("تعذّر فتح نافذة التصفّح"); }
+  };
+
+  const saveArchiveDir = async () => {
+    if (!newArchiveDir.trim()) { toast.error("اكتب أو اختر مجلد الأرشفة"); return; }
+    const res = await fetch("/api/backup/archive-dir", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ dir: newArchiveDir.trim() }),
+    });
+    if (res.ok) { toast.success("تم حفظ مكان الأرشفة"); setNewArchiveDir(""); qc.invalidateQueries({ queryKey: ["backup-info"] }); }
     else toast.error("تعذّر الحفظ");
   };
 
@@ -217,11 +241,40 @@ export default function SettingsPage() {
                 <Label>تغيير مكان حفظ البيانات (مسار مجلد)</Label>
                 <div className="flex gap-2">
                   <Input placeholder="مثال: D:\POS-Data" value={newDataDir} onChange={e => setNewDataDir(e.target.value)} />
+                  <Button variant="outline" onClick={() => browseFolder(setNewDataDir)}><FolderOpen className="h-4 w-4 ml-1" />تصفّح</Button>
                   <Button variant="outline" onClick={saveDataDir}>حفظ المكان</Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
                   ⚠️ يتطلب إعادة تشغيل البرنامج. لو عندك بيانات قديمة، انقل ملف <span className="font-mono">store.db</span> للمكان الجديد قبل التشغيل.
                 </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader><CardTitle>أرشفة الفواتير تلقائيًا (PDF)</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                لما تختار مجلد هنا، كل فاتورة (بيع / مشتريات / مرتجع / سحب عمولة) هتتحفظ تلقائيًا كملف PDF بداخله، منظّمة في فولدرات:
+                <span className="font-medium"> العملاء</span> (فولدر لكل عميل)،
+                <span className="font-medium"> الصنايعية</span> (إيصالات السحب)،
+                <span className="font-medium"> المشتريات</span> (فواتير الشراء).
+              </p>
+              <div className="rounded-md bg-muted/50 p-3 text-sm">
+                <p className="font-medium">مجلد الأرشفة الحالي:</p>
+                <p className="font-mono text-xs break-all text-muted-foreground">{(dbInfo as any)?.archiveDir || "غير مفعّل"}</p>
+              </div>
+              <div className="space-y-1">
+                <Label>مجلد حفظ الفواتير</Label>
+                <div className="flex gap-2">
+                  <Input placeholder="مثال: D:\POS-Invoices" value={newArchiveDir} onChange={e => setNewArchiveDir(e.target.value)} />
+                  <Button variant="outline" onClick={() => browseFolder(setNewArchiveDir)}><FolderOpen className="h-4 w-4 ml-1" />تصفّح</Button>
+                  <Button variant="outline" onClick={saveArchiveDir}>حفظ المكان</Button>
+                </div>
+                <p className="text-xs text-muted-foreground">✅ يُطبَّق فورًا — مش محتاج إعادة تشغيل. الفواتير القديمة متتأرشفش، بس اللي جاي.</p>
+                {(dbInfo as any)?.pdfEngineAvailable === false && (
+                  <p className="text-xs text-amber-600">⚠️ مفيش متصفّح (Edge/Chrome) متثبّت على الجهاز — مطلوب لإنشاء ملفات الـ PDF.</p>
+                )}
               </div>
             </CardContent>
           </Card>

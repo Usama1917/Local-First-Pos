@@ -1,6 +1,7 @@
 import { Router } from "express";
 import db from "../lib/db.js";
 import { nextSerial, getSettings } from "../lib/db.js";
+import { archiveSale } from "../lib/archive.js";
 
 const router = Router();
 
@@ -50,8 +51,8 @@ router.post("/sales", (req, res) => {
   const { customerId, craftsmanId, discount = 0, notes, paymentType = "cash", paidAmount, items = [], status = "draft" } = req.body;
 
   let subtotal = 0;
-  for (const item of items) subtotal += (item.unitPrice * item.quantity) - (item.discount || 0);
-  const total = subtotal - discount;
+  for (const item of items) subtotal += Math.max(0, (item.unitPrice * item.quantity) - (item.discount || 0));
+  const total = Math.max(0, subtotal - discount);
   const finalPaid = paidAmount !== undefined ? paidAmount : (paymentType === "cash" ? total : 0);
   const remaining = total - finalPaid;
 
@@ -69,7 +70,7 @@ router.post("/sales", (req, res) => {
 
   const insertItem = db.prepare("INSERT INTO sales_invoice_items (invoiceId, productId, quantity, unitPrice, discount, total) VALUES (?,?,?,?,?,?)");
   for (const item of items) {
-    const t = (item.unitPrice * item.quantity) - (item.discount || 0);
+    const t = Math.max(0, (item.unitPrice * item.quantity) - (item.discount || 0));
     insertItem.run(invId, item.productId, item.quantity, item.unitPrice, item.discount || 0, t);
   }
 
@@ -96,26 +97,32 @@ router.patch("/sales/:id", (req, res) => {
 
   const { customerId, craftsmanId, discount, notes, paymentType, paidAmount, items } = req.body;
 
+  // Recompute the subtotal: from the new items if provided, otherwise keep the stored one.
+  let subtotal = inv.subtotal;
   if (items !== undefined) {
     db.prepare("DELETE FROM sales_invoice_items WHERE invoiceId = ?").run(id);
-    let subtotal = 0;
-    for (const item of items) subtotal += (item.unitPrice * item.quantity) - (item.discount || 0);
-    const total = subtotal - (discount ?? inv.discount);
-    const fp = paidAmount !== undefined ? paidAmount : (paymentType === "cash" ? total : 0);
-    db.prepare("UPDATE sales_invoices SET subtotal = ?, total = ?, paidAmount = ?, remainingAmount = ? WHERE id = ?").run(subtotal, total, fp, total - fp, id);
+    subtotal = 0;
     const insertItem = db.prepare("INSERT INTO sales_invoice_items (invoiceId, productId, quantity, unitPrice, discount, total) VALUES (?,?,?,?,?,?)");
     for (const item of items) {
-      const t = (item.unitPrice * item.quantity) - (item.discount || 0);
+      const t = Math.max(0, (item.unitPrice * item.quantity) - (item.discount || 0));
+      subtotal += t;
       insertItem.run(id, item.productId, item.quantity, item.unitPrice, item.discount || 0, t);
     }
   }
 
+  // Money fields are ALWAYS re-derived (a discount/payment-only edit must update total/remaining too).
+  const effDiscount = discount ?? inv.discount;
+  const effPaymentType = paymentType ?? inv.paymentType;
+  const total = Math.max(0, subtotal - effDiscount);
+  const fp = paidAmount !== undefined ? paidAmount : (effPaymentType === "cash" ? total : inv.paidAmount);
+  const remaining = total - fp;
+
   db.prepare(`UPDATE sales_invoices SET
     customerId = COALESCE(?, customerId), craftsmanId = COALESCE(?, craftsmanId),
-    discount = COALESCE(?, discount), notes = COALESCE(?, notes),
-    paymentType = COALESCE(?, paymentType), paidAmount = COALESCE(?, paidAmount),
+    discount = ?, notes = COALESCE(?, notes),
+    paymentType = ?, paidAmount = ?, subtotal = ?, total = ?, remainingAmount = ?,
     updatedAt = datetime('now') WHERE id = ?
-  `).run(customerId || null, craftsmanId || null, discount ?? null, notes || null, paymentType || null, paidAmount ?? null, id);
+  `).run(customerId || null, craftsmanId || null, effDiscount, notes || null, effPaymentType, fp, subtotal, total, remaining, id);
 
   res.json({ ...db.prepare(`${INVOICE_SELECT} WHERE si.id = ?`).get(id), items: getItems(id) });
 });
@@ -143,8 +150,8 @@ router.post("/sales/:id/finalize", (req, res) => {
 
   let status = "finalized";
   if (pt === "credit") status = "credit";
-  else if (remaining > 0 && remaining < inv.total) status = "partially_paid";
-  else if (remaining <= 0) status = pt === "cash" ? "finalized" : "paid";
+  else if (remaining > 0) status = "partially_paid"; // any unpaid balance on a non-credit sale
+  else status = pt === "cash" ? "finalized" : "paid";
 
   let commission = inv.craftsmanCommission;
   if (inv.craftsmanId) {
@@ -173,6 +180,8 @@ router.post("/sales/:id/finalize", (req, res) => {
   }
 
   res.json(db.prepare(`${INVOICE_SELECT} WHERE si.id = ?`).get(id));
+  // Auto-archive a PDF of the finalized invoice (best-effort, non-blocking).
+  archiveSale(id).catch((e) => console.error("archive sale failed:", e?.message || e));
 });
 
 router.post("/sales/:id/cancel", (req, res) => {

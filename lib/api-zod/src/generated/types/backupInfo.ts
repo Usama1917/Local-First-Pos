@@ -9,7 +9,7 @@
 export interface BackupInfo {
   filename: string;
   createdAt: string;
-  sizeBytes: number;
+  size: number;
   /** @nullable */
   path?: string | null;
 }

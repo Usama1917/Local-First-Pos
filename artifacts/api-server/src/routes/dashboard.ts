@@ -16,14 +16,29 @@ router.get("/dashboard/summary", (_req, res) => {
     WHERE status != 'draft' AND status != 'cancelled' AND date(createdAt) = ?
   `).get(today) as any;
 
+  // Sum of POSITIVE per-customer balances, using the SAME formula as /debts/customers
+  // (opening balance + unpaid invoices + account-settled returns − recorded payments).
   const totalReceivables = db.prepare(`
-    SELECT COALESCE(SUM(remainingAmount), 0) as total FROM sales_invoices 
-    WHERE status IN ('finalized', 'partially_paid', 'credit') AND remainingAmount > 0
+    SELECT COALESCE(SUM(bal), 0) as total FROM (
+      SELECT (
+        COALESCE(c.openingBalance, 0)
+        + COALESCE((SELECT SUM(si.remainingAmount) FROM sales_invoices si WHERE si.customerId = c.id AND si.status IN ('finalized','partially_paid','credit')), 0)
+        + COALESCE((SELECT SUM(r.netAmount) FROM returns r WHERE r.customerId = c.id AND r.settlementType = 'account'), 0)
+        - COALESCE((SELECT SUM(cp.amount) FROM customer_payments cp WHERE cp.customerId = c.id), 0)
+      ) as bal
+      FROM customers c WHERE c.isActive = 1
+    ) WHERE bal > 0
   `).get() as any;
 
   const totalPayables = db.prepare(`
-    SELECT COALESCE(SUM(remainingAmount), 0) as total FROM purchase_invoices 
-    WHERE status IN ('finalized', 'partially_paid', 'credit') AND remainingAmount > 0
+    SELECT COALESCE(SUM(bal), 0) as total FROM (
+      SELECT (
+        COALESCE(s.openingBalance, 0)
+        + COALESCE((SELECT SUM(pi.remainingAmount) FROM purchase_invoices pi WHERE pi.supplierId = s.id AND pi.status IN ('finalized','partially_paid','credit')), 0)
+        - COALESCE((SELECT SUM(sp.amount) FROM supplier_payments sp WHERE sp.supplierId = s.id), 0)
+      ) as bal
+      FROM suppliers s WHERE s.isActive = 1
+    ) WHERE bal > 0
   `).get() as any;
 
   const settings = db.prepare("SELECT * FROM settings WHERE id = 1").get() as any;

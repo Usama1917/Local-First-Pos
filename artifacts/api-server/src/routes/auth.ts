@@ -10,7 +10,9 @@ router.post("/auth/login", (req, res) => {
     return res.status(401).json({ error: "اسم المستخدم أو كلمة المرور غير صحيحة" });
   }
   (req as any).session = { userId: user.id, username: user.username, role: user.role, name: user.name };
-  res.json({ id: user.id, username: user.username, name: user.name, role: user.role });
+  let permissions: string[] = [];
+  try { permissions = JSON.parse(user.permissions || "[]"); } catch { permissions = []; }
+  res.json({ id: user.id, username: user.username, name: user.name, role: user.role, permissions });
 });
 
 router.get("/auth/me", (req, res) => {

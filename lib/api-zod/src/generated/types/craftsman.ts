@@ -21,6 +21,8 @@ export interface Craftsman {
   commissionPercent?: number | null;
   totalSales?: number;
   totalCommission?: number;
+  paidCommission?: number;
+  outstandingCommission?: number;
   isActive?: boolean;
   createdAt?: string;
 }

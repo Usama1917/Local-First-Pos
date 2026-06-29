@@ -5,18 +5,24 @@ import {
   useGetSupplier,
   useGetSupplierPayments,
   useAddSupplierPayment,
+  useListBrands,
+  useCreateBrand,
+  useUpdateBrand,
+  useDeleteBrand,
   getListSuppliersQueryKey,
   getGetSupplierQueryKey,
   getGetSupplierPaymentsQueryKey,
+  getListBrandsQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { formatCurrency } from "@/lib/format";
-import { Search, Plus, Truck, Eye, CreditCard } from "lucide-react";
+import { Search, Plus, Truck, Eye, CreditCard, Tag, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 function SupplierProfile({ id }: { id: number }) {
@@ -82,6 +88,22 @@ function SupplierProfile({ id }: { id: number }) {
 }
 
 export default function SuppliersPage() {
+  return (
+    <div className="space-y-4">
+      <h1 className="text-2xl font-bold">الموردين والماركات</h1>
+      <Tabs defaultValue="suppliers">
+        <TabsList>
+          <TabsTrigger value="suppliers"><Truck className="h-4 w-4 ml-2" />الموردين</TabsTrigger>
+          <TabsTrigger value="brands"><Tag className="h-4 w-4 ml-2" />الماركات</TabsTrigger>
+        </TabsList>
+        <TabsContent value="suppliers"><SuppliersTab /></TabsContent>
+        <TabsContent value="brands"><BrandsTab /></TabsContent>
+      </Tabs>
+    </div>
+  );
+}
+
+function SuppliersTab() {
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [showAdd, setShowAdd] = useState(false);
@@ -124,8 +146,7 @@ export default function SuppliersPage() {
         </DialogContent>
       </Dialog>
 
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">الموردين</h1>
+      <div className="flex items-center justify-end">
         <Button onClick={() => setShowAdd(true)}><Plus className="h-4 w-4 ml-2" />إضافة مورد</Button>
       </div>
 
@@ -161,6 +182,98 @@ export default function SuppliersPage() {
             {!isLoading && suppliers.length === 0 && (
               <tr><td colSpan={5} className="p-8 text-center text-muted-foreground">
                 <Truck className="h-10 w-10 mx-auto mb-2 opacity-30" />لا يوجد موردون
+              </td></tr>
+            )}
+          </tbody>
+        </table>
+      </CardContent></Card>
+    </div>
+  );
+}
+
+function BrandsTab() {
+  const qc = useQueryClient();
+  const { data, isLoading } = useListBrands({ query: { queryKey: getListBrandsQueryKey() } });
+  const createBrand = useCreateBrand();
+  const updateBrand = useUpdateBrand();
+  const deleteBrand = useDeleteBrand();
+
+  const [showAdd, setShowAdd] = useState(false);
+  const [editId, setEditId] = useState<number | null>(null);
+  const [form, setForm] = useState({ name: "", nameEn: "" });
+
+  const brands = (data as any[]) || [];
+  const invalidate = () => qc.invalidateQueries({ queryKey: getListBrandsQueryKey() });
+
+  const openAdd = () => { setEditId(null); setForm({ name: "", nameEn: "" }); setShowAdd(true); };
+  const openEdit = (b: any) => { setEditId(b.id); setForm({ name: b.name || "", nameEn: b.nameEn || "" }); setShowAdd(true); };
+
+  const handleSave = async () => {
+    if (!form.name) { toast.error("الاسم مطلوب"); return; }
+    if (editId) {
+      await updateBrand.mutateAsync({ id: editId, data: { name: form.name, nameEn: form.nameEn || undefined } });
+      toast.success("تم تعديل الماركة");
+    } else {
+      await createBrand.mutateAsync({ data: { name: form.name, nameEn: form.nameEn || undefined } });
+      toast.success("تم إضافة الماركة");
+    }
+    invalidate();
+    setShowAdd(false);
+  };
+
+  const handleDelete = async (b: any) => {
+    if (!confirm(`حذف الماركة "${b.name}"؟`)) return;
+    await deleteBrand.mutateAsync({ id: b.id });
+    invalidate();
+    toast.success("تم حذف الماركة");
+  };
+
+  return (
+    <div className="space-y-4">
+      <Dialog open={showAdd} onOpenChange={setShowAdd}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>{editId ? "تعديل ماركة" : "إضافة ماركة"}</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1"><Label>الاسم *</Label><Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} /></div>
+            <div className="space-y-1"><Label>الاسم بالإنجليزية</Label><Input value={form.nameEn} onChange={e => setForm(f => ({ ...f, nameEn: e.target.value }))} /></div>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => setShowAdd(false)}>إلغاء</Button>
+            <Button onClick={handleSave} disabled={createBrand.isPending || updateBrand.isPending}>حفظ</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <div className="flex items-center justify-end">
+        <Button onClick={openAdd}><Plus className="h-4 w-4 ml-2" />إضافة ماركة</Button>
+      </div>
+
+      <Card><CardContent className="p-0">
+        <table className="w-full text-sm">
+          <thead className="bg-muted/50">
+            <tr className="text-right">
+              <th className="p-3">الماركة</th>
+              <th className="p-3">بالإنجليزية</th>
+              <th className="p-3 w-24"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {isLoading ? <tr><td colSpan={3} className="p-8 text-center text-muted-foreground">جاري التحميل...</td></tr> :
+              brands.map((b: any) => (
+                <tr key={b.id} className="border-b hover:bg-muted/30">
+                  <td className="p-3 font-medium">{b.name}</td>
+                  <td className="p-3 text-muted-foreground">{b.nameEn || "—"}</td>
+                  <td className="p-3">
+                    <div className="flex gap-1 justify-end">
+                      <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEdit(b)} title="تعديل"><Pencil className="h-4 w-4" /></Button>
+                      <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => handleDelete(b)} title="حذف"><Trash2 className="h-4 w-4" /></Button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            {!isLoading && brands.length === 0 && (
+              <tr><td colSpan={3} className="p-8 text-center text-muted-foreground">
+                <Tag className="h-10 w-10 mx-auto mb-2 opacity-30" />لا توجد ماركات
               </td></tr>
             )}
           </tbody>

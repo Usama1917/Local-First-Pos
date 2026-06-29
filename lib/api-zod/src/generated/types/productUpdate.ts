@@ -28,5 +28,6 @@ export interface ProductUpdate {
   colorCode?: string;
   paintType?: string;
   packageSize?: string;
+  soldByWeight?: boolean;
   isActive?: boolean;
 }

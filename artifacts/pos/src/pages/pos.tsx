@@ -19,7 +19,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Label } from "@/components/ui/label";
 import { formatCurrency } from "@/lib/format";
 import { useBarcodeScanner, findProductByCode } from "@/hooks/use-barcode-scanner";
-import { Search, Plus, Minus, Trash2, ShoppingCart, CheckCircle, X, Package } from "lucide-react";
+import { Search, Plus, Minus, Trash2, ShoppingCart, CheckCircle, X, Package, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 
 interface CartItem {
@@ -27,6 +27,7 @@ interface CartItem {
   productName: string;
   sku: string;
   sellingPrice: number;
+  minSellingPrice: number;
   quantity: number;
   discount: number;
   total: number;
@@ -73,10 +74,10 @@ export default function POSPage() {
       data: {
         type: "sales_invoice",
         entityId: "new",
-        data: JSON.stringify({ cart, customerId, craftsmanId, invoiceDiscount, paymentType, notes }),
+        data: JSON.stringify({ cart, customerId, craftsmanId, invoiceDiscount, paymentType, paidAmount, notes }),
       },
     });
-  }, [cart, customerId, craftsmanId, invoiceDiscount, paymentType, notes]);
+  }, [cart, customerId, craftsmanId, invoiceDiscount, paymentType, paidAmount, notes]);
 
   useEffect(() => {
     const timer = setTimeout(autoSave, 2000);
@@ -100,6 +101,7 @@ export default function POSPage() {
         productName: product.nameAr,
         sku: product.sku,
         sellingPrice: product.sellingPrice,
+        minSellingPrice: product.minSellingPrice || 0,
         quantity: 1,
         discount: 0,
         total: product.sellingPrice,
@@ -122,14 +124,18 @@ export default function POSPage() {
     setCart(prev => prev.map((item, i) => {
       if (i !== idx) return item;
       const qty = Math.max(0.5, item.quantity + delta);
-      return { ...item, quantity: qty, total: qty * item.sellingPrice - item.discount };
+      const gross = qty * item.sellingPrice;
+      const disc = Math.min(item.discount, gross); // a smaller qty must not leave discount > line value
+      return { ...item, quantity: qty, discount: disc, total: Math.max(0, gross - disc) };
     }));
   };
 
   const updateDiscount = (idx: number, disc: number) => {
     setCart(prev => prev.map((item, i) => {
       if (i !== idx) return item;
-      return { ...item, discount: disc, total: item.quantity * item.sellingPrice - disc };
+      const gross = item.quantity * item.sellingPrice;
+      const d = Math.min(Math.max(0, disc), gross); // clamp 0 ≤ discount ≤ line value (no negative totals)
+      return { ...item, discount: d, total: gross - d };
     }));
   };
 
@@ -177,6 +183,7 @@ export default function POSPage() {
     setCraftsmanId(draftData.craftsmanId || "");
     setInvoiceDiscount(draftData.invoiceDiscount || 0);
     setPaymentType(draftData.paymentType || "cash");
+    setPaidAmount(draftData.paidAmount || "");
     setNotes(draftData.notes || "");
     setShowDraftDialog(false);
     toast.success("تم استعادة المسودة");
@@ -342,11 +349,20 @@ export default function POSPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {cart.map((item, idx) => (
+                  {cart.map((item, idx) => {
+                    const unitNet = item.quantity > 0 ? item.total / item.quantity : item.sellingPrice;
+                    const belowMin = item.minSellingPrice > 0 && unitNet < item.minSellingPrice;
+                    return (
                     <tr key={idx} className="border-b hover:bg-muted/30">
                       <td className="p-3">
                         <p className="font-medium text-sm">{item.productName}</p>
                         <p className="text-xs text-muted-foreground">{item.sku}</p>
+                        {belowMin && (
+                          <p className="mt-1 flex items-center gap-1 text-xs text-amber-600">
+                            <AlertTriangle className="h-3 w-3 shrink-0" />
+                            السعر أقل من الحد المسموح ({formatCurrency(item.minSellingPrice)})
+                          </p>
+                        )}
                       </td>
                       <td className="p-3">
                         <div className="flex items-center justify-center gap-1">
@@ -363,7 +379,7 @@ export default function POSPage() {
                       <td className="p-3">
                         <Input
                           type="number"
-                          className="h-7 text-xs text-center"
+                          className={`h-7 text-xs text-center ${belowMin ? "border-amber-500 focus-visible:ring-amber-500" : ""}`}
                           value={item.discount || ""}
                           onChange={e => updateDiscount(idx, parseFloat(e.target.value) || 0)}
                           placeholder="0"
@@ -376,7 +392,8 @@ export default function POSPage() {
                         </Button>
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             )}

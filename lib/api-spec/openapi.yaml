@@ -10,6 +10,7 @@ servers:
 tags:
   - name: health
   - name: auth
+  - name: users
   - name: dashboard
   - name: products
   - name: categories
@@ -20,6 +21,7 @@ tags:
   - name: suppliers
   - name: quotations
   - name: sales
+  - name: returns
   - name: purchases
   - name: stock
   - name: payments
@@ -83,6 +85,66 @@ paths:
       responses:
         "200":
           description: Logged out
+
+  # Users (admin)
+  /users:
+    get:
+      operationId: listUsers
+      tags: [users]
+      summary: List system users
+      responses:
+        "200":
+          description: Users
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UsersPage"
+    post:
+      operationId: createUser
+      tags: [users]
+      summary: Create a user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+  /users/{id}:
+    patch:
+      operationId: updateUser
+      tags: [users]
+      summary: Update a user (name, password, role, permissions, active)
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+    delete:
+      operationId: deleteUser
+      tags: [users]
+      summary: Delete a user
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: Deleted
 
   # Dashboard
   /dashboard/summary:
@@ -388,6 +450,21 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Product"
+  /products/next-barcode:
+    get:
+      operationId: getNextBarcode
+      tags: [products]
+      summary: Generate a fresh store-internal barcode (unique, not yet used)
+      responses:
+        "200":
+          description: A newly generated unique barcode
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [barcode]
+                properties:
+                  barcode: { type: string }
   /products/{id}:
     get:
       operationId: getProduct
@@ -675,6 +752,53 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/CraftsmanCustomersPage"
+  /craftsmen/{id}/payouts:
+    get:
+      operationId: listCraftsmanPayouts
+      tags: [craftsmen]
+      summary: List commission payouts for a craftsman
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: Payouts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommissionPayoutsPage"
+    post:
+      operationId: createCraftsmanPayout
+      tags: [craftsmen]
+      summary: Pay out commission to a craftsman (full or partial)
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CommissionPayoutInput"
+      responses:
+        "201":
+          description: Payout receipt
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommissionPayoutReceipt"
+  /craftsman-payouts/{payoutId}:
+    get:
+      operationId: getCraftsmanPayout
+      tags: [craftsmen]
+      summary: Get a commission payout receipt
+      parameters:
+        - { name: payoutId, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: Payout receipt
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommissionPayoutReceipt"
 
   # Suppliers
   /suppliers:
@@ -1021,6 +1145,70 @@ paths:
                 $ref: "#/components/schemas/SalesInvoiceDetail"
         "404":
           description: Not found
+
+  # Returns & Exchanges
+  /returns:
+    get:
+      operationId: listReturns
+      tags: [returns]
+      summary: List returns / exchanges
+      parameters:
+        - { name: search, in: query, schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer } }
+        - { name: offset, in: query, schema: { type: integer } }
+      responses:
+        "200":
+          description: Returns
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReturnsPage"
+    post:
+      operationId: createReturn
+      tags: [returns]
+      summary: Create a return / exchange against an invoice
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReturnInput"
+      responses:
+        "201":
+          description: Return receipt
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReturnReceipt"
+  /returns/lookup/{serial}:
+    get:
+      operationId: lookupInvoiceForReturn
+      tags: [returns]
+      summary: Lookup an invoice (with returnable quantities) for the returns screen
+      parameters:
+        - { name: serial, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Invoice with returnable lines
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReturnLookup"
+        "404":
+          description: Not found
+  /returns/{id}:
+    get:
+      operationId: getReturn
+      tags: [returns]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: Return receipt
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReturnReceipt"
 
   # Purchase Invoices
   /purchases:
@@ -1497,6 +1685,55 @@ components:
         username: { type: string }
         name: { type: string }
         role: { type: string }
+        permissions:
+          type: array
+          items: { type: string }
+    User:
+      type: object
+      required: [id, username, name, role]
+      properties:
+        id: { type: integer }
+        username: { type: string }
+        name: { type: string }
+        password: { type: string }
+        role: { type: string }
+        permissions:
+          type: array
+          items: { type: string }
+        isActive: { type: boolean }
+        createdAt: { type: string }
+    UserInput:
+      type: object
+      required: [username, password, name]
+      properties:
+        username: { type: string }
+        password: { type: string }
+        name: { type: string }
+        role: { type: string }
+        permissions:
+          type: array
+          items: { type: string }
+        isActive: { type: boolean }
+    UserUpdate:
+      type: object
+      properties:
+        username: { type: string }
+        password: { type: string }
+        name: { type: string }
+        role: { type: string }
+        permissions:
+          type: array
+          items: { type: string }
+        isActive: { type: boolean }
+    UsersPage:
+      type: object
+      required: [items, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/User"
+        total: { type: integer }
 
     # Dashboard
     DashboardSummary:
@@ -1608,6 +1845,7 @@ components:
         colorCode: { type: ["string", "null"] }
         paintType: { type: ["string", "null"] }
         packageSize: { type: ["string", "null"] }
+        soldByWeight: { type: boolean }
         isActive: { type: boolean }
         isLowStock: { type: boolean }
         createdAt: { type: string }
@@ -1637,6 +1875,7 @@ components:
         colorCode: { type: string }
         paintType: { type: string }
         packageSize: { type: string }
+        soldByWeight: { type: boolean }
         isActive: { type: boolean }
     ProductUpdate:
       type: object
@@ -1662,6 +1901,7 @@ components:
         colorCode: { type: string }
         paintType: { type: string }
         packageSize: { type: string }
+        soldByWeight: { type: boolean }
         isActive: { type: boolean }
     ProductsPage:
       type: object
@@ -1831,6 +2071,8 @@ components:
         commissionPercent: { type: ["number", "null"] }
         totalSales: { type: number }
         totalCommission: { type: number }
+        paidCommission: { type: number }
+        outstandingCommission: { type: number }
         isActive: { type: boolean }
         createdAt: { type: string }
     CraftsmanInput:
@@ -1896,6 +2138,58 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/CraftsmanLinkedCustomer"
+        total: { type: integer }
+    CommissionPayoutInput:
+      type: object
+      properties:
+        amount: { type: number }
+        notes: { type: string }
+    CommissionPayoutItem:
+      type: object
+      required: [invoiceId, serial, amount]
+      properties:
+        invoiceId: { type: integer }
+        serial: { type: string }
+        customerName: { type: ["string", "null"] }
+        invoiceTotal: { type: number }
+        invoiceCommission: { type: number }
+        amount: { type: number }
+        createdAt: { type: string }
+    CommissionPayout:
+      type: object
+      required: [id, serial, amount]
+      properties:
+        id: { type: integer }
+        serial: { type: string }
+        amount: { type: number }
+        notes: { type: ["string", "null"] }
+        createdAt: { type: string }
+    CommissionPayoutReceipt:
+      type: object
+      required: [id, serial, craftsmanId, amount, items]
+      properties:
+        id: { type: integer }
+        serial: { type: string }
+        craftsmanId: { type: integer }
+        craftsmanName: { type: ["string", "null"] }
+        craftsmanPhone: { type: ["string", "null"] }
+        craftsmanJobType: { type: ["string", "null"] }
+        commissionPercent: { type: ["number", "null"] }
+        amount: { type: number }
+        notes: { type: ["string", "null"] }
+        createdAt: { type: string }
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CommissionPayoutItem"
+    CommissionPayoutsPage:
+      type: object
+      required: [items, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CommissionPayout"
         total: { type: integer }
 
     # Supplier
@@ -2189,6 +2483,112 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/SalesInvoice"
+        total: { type: integer }
+
+    # Returns & Exchanges
+    ReturnLookupItem:
+      type: object
+      required: [productId, quantity, unitPrice]
+      properties:
+        productId: { type: integer }
+        productName: { type: ["string", "null"] }
+        sku: { type: ["string", "null"] }
+        barcode: { type: ["string", "null"] }
+        unitName: { type: ["string", "null"] }
+        currentStock: { type: number }
+        quantity: { type: number }
+        unitPrice: { type: number }
+        total: { type: number }
+        returnedQty: { type: number }
+        availableQty: { type: number }
+    ReturnLookup:
+      type: object
+      required: [id, serial, items]
+      properties:
+        id: { type: integer }
+        serial: { type: string }
+        status: { type: string }
+        customerId: { type: ["integer", "null"] }
+        customerName: { type: ["string", "null"] }
+        customerPhone: { type: ["string", "null"] }
+        total: { type: number }
+        createdAt: { type: string }
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReturnLookupItem"
+    ReturnInputItem:
+      type: object
+      required: [productId, quantity, unitPrice]
+      properties:
+        productId: { type: integer }
+        quantity: { type: number }
+        unitPrice: { type: number }
+        restock: { type: boolean }
+    ReturnInput:
+      type: object
+      required: [originalInvoiceId]
+      properties:
+        originalInvoiceId: { type: integer }
+        settlementType: { type: string, enum: [cash, account] }
+        notes: { type: string }
+        returnedItems:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReturnInputItem"
+        newItems:
+          type: array
+          items:
+            $ref: "#/components/schemas/ReturnInputItem"
+    ReturnItem:
+      type: object
+      required: [id, kind, productId, quantity, unitPrice, total]
+      properties:
+        id: { type: integer }
+        kind: { type: string, enum: [returned, new] }
+        productId: { type: integer }
+        productName: { type: ["string", "null"] }
+        sku: { type: ["string", "null"] }
+        unitName: { type: ["string", "null"] }
+        quantity: { type: number }
+        unitPrice: { type: number }
+        total: { type: number }
+        restock: { type: integer }
+    Return:
+      type: object
+      required: [id, serial, type, netAmount]
+      properties:
+        id: { type: integer }
+        serial: { type: string }
+        originalInvoiceId: { type: ["integer", "null"] }
+        originalSerial: { type: ["string", "null"] }
+        customerId: { type: ["integer", "null"] }
+        customerName: { type: ["string", "null"] }
+        type: { type: string, enum: [return, exchange] }
+        settlementType: { type: string, enum: [cash, account] }
+        returnedTotal: { type: number }
+        newItemsTotal: { type: number }
+        netAmount: { type: number }
+        notes: { type: ["string", "null"] }
+        createdAt: { type: string }
+    ReturnReceipt:
+      allOf:
+        - $ref: "#/components/schemas/Return"
+        - type: object
+          properties:
+            customerPhone: { type: ["string", "null"] }
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/ReturnItem"
+    ReturnsPage:
+      type: object
+      required: [items, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Return"
         total: { type: integer }
 
     # Purchase Invoice
@@ -2515,9 +2915,9 @@ components:
     # Backup
     BackupInfo:
       type: object
-      required: [filename, createdAt, sizeBytes]
+      required: [filename, createdAt, size]
       properties:
         filename: { type: string }
         createdAt: { type: string }
-        sizeBytes: { type: integer }
+        size: { type: integer }
         path: { type: ["string", "null"] }

@@ -29,5 +29,6 @@ export interface ProductInput {
   colorCode?: string;
   paintType?: string;
   packageSize?: string;
+  soldByWeight?: boolean;
   isActive?: boolean;
 }

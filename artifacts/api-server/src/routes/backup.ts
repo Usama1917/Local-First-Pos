@@ -3,7 +3,9 @@ import fs from "fs";
 import path from "path";
 import AdmZip from "adm-zip";
 import db from "../lib/db.js";
-import { dataDir, dbPath, backupDir, getDataLocationSource, setConfiguredDataDir } from "../lib/paths.js";
+import { dataDir, dbPath, backupDir, getDataLocationSource, setConfiguredDataDir, getArchiveDir, setConfiguredArchiveDir } from "../lib/paths.js";
+import { pickFolder } from "../lib/dialog.js";
+import { browserAvailable } from "../lib/pdf.js";
 
 const router = Router();
 
@@ -60,7 +62,10 @@ router.get("/backup/download/:filename", (req, res) => {
 
 // Where the database / backups are stored (shown in Settings).
 router.get("/backup/info", (_req, res) => {
-  res.json({ dataDir, dbPath, backupDir, source: getDataLocationSource() });
+  res.json({
+    dataDir, dbPath, backupDir, source: getDataLocationSource(),
+    archiveDir: getArchiveDir(), pdfEngineAvailable: browserAvailable(),
+  });
 });
 
 // Choose a new data directory (applied after a restart).
@@ -73,6 +78,25 @@ router.post("/backup/data-dir", (req, res) => {
   } catch (e: any) {
     res.status(500).json({ error: e.message });
   }
+});
+
+// Choose the auto-archive folder (applies immediately — read fresh each document).
+router.post("/backup/archive-dir", (req, res) => {
+  const { dir } = req.body;
+  if (typeof dir !== "string") return res.status(400).json({ error: "المسار مطلوب" });
+  try {
+    setConfiguredArchiveDir(dir.trim());
+    res.json({ success: true, dir: dir.trim() });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Open a native folder-picker on the shop PC and return the chosen path ("" = cancelled).
+router.post("/backup/pick-folder", (_req, res) => {
+  pickFolder()
+    .then((dir) => res.json({ path: dir }))
+    .catch((e: any) => res.status(500).json({ error: e.message }));
 });
 
 router.post("/backup/restore", (req, res) => {

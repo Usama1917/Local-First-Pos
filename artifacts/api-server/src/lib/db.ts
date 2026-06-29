@@ -15,6 +15,7 @@ export function initializeSchema() {
       password TEXT NOT NULL,
       name TEXT NOT NULL,
       role TEXT NOT NULL DEFAULT 'cashier',
+      permissions TEXT,                              -- JSON array of allowed page keys (non-admin)
       isActive INTEGER NOT NULL DEFAULT 1,
       createdAt TEXT NOT NULL DEFAULT (datetime('now'))
     );
@@ -98,6 +99,7 @@ export function initializeSchema() {
       colorCode TEXT,
       paintType TEXT,
       packageSize TEXT,
+      soldByWeight INTEGER NOT NULL DEFAULT 0,
       isActive INTEGER NOT NULL DEFAULT 1,
       createdAt TEXT NOT NULL DEFAULT (datetime('now')),
       updatedAt TEXT NOT NULL DEFAULT (datetime('now'))
@@ -178,6 +180,7 @@ export function initializeSchema() {
       paidAmount REAL NOT NULL DEFAULT 0,
       remainingAmount REAL NOT NULL DEFAULT 0,
       craftsmanCommission REAL NOT NULL DEFAULT 0,
+      commissionPaid REAL NOT NULL DEFAULT 0,
       quotationId INTEGER REFERENCES quotations(id),
       barcode TEXT,
       notes TEXT,
@@ -303,11 +306,82 @@ export function initializeSchema() {
       UNIQUE(type, entityId)
     );
 
+    CREATE TABLE IF NOT EXISTS counters (
+      name TEXT PRIMARY KEY,
+      value INTEGER NOT NULL DEFAULT 0
+    );
+
+    CREATE TABLE IF NOT EXISTS craftsman_payouts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      serial TEXT NOT NULL UNIQUE,
+      craftsmanId INTEGER NOT NULL REFERENCES craftsmen(id),
+      amount REAL NOT NULL DEFAULT 0,
+      notes TEXT,
+      createdBy TEXT,
+      createdAt TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_payouts_craftsman ON craftsman_payouts(craftsmanId);
+
+    CREATE TABLE IF NOT EXISTS craftsman_payout_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      payoutId INTEGER NOT NULL REFERENCES craftsman_payouts(id) ON DELETE CASCADE,
+      invoiceId INTEGER NOT NULL REFERENCES sales_invoices(id),
+      amount REAL NOT NULL DEFAULT 0
+    );
+    CREATE INDEX IF NOT EXISTS idx_payout_items_payout ON craftsman_payout_items(payoutId);
+
+    CREATE TABLE IF NOT EXISTS returns (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      serial TEXT NOT NULL UNIQUE,
+      originalInvoiceId INTEGER REFERENCES sales_invoices(id),
+      originalSerial TEXT,
+      customerId INTEGER REFERENCES customers(id),
+      type TEXT NOT NULL DEFAULT 'return',          -- 'return' | 'exchange'
+      settlementType TEXT NOT NULL DEFAULT 'cash',  -- 'cash' | 'account'
+      returnedTotal REAL NOT NULL DEFAULT 0,
+      newItemsTotal REAL NOT NULL DEFAULT 0,
+      netAmount REAL NOT NULL DEFAULT 0,            -- newItemsTotal − returnedTotal (>0 customer pays, <0 refund)
+      notes TEXT,
+      createdBy TEXT,
+      createdAt TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_returns_invoice ON returns(originalInvoiceId);
+    CREATE INDEX IF NOT EXISTS idx_returns_customer ON returns(customerId);
+
+    CREATE TABLE IF NOT EXISTS return_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      returnId INTEGER NOT NULL REFERENCES returns(id) ON DELETE CASCADE,
+      kind TEXT NOT NULL DEFAULT 'returned',        -- 'returned' | 'new'
+      productId INTEGER NOT NULL REFERENCES products(id),
+      productName TEXT,
+      quantity REAL NOT NULL DEFAULT 0,
+      unitPrice REAL NOT NULL DEFAULT 0,
+      total REAL NOT NULL DEFAULT 0,
+      restock INTEGER NOT NULL DEFAULT 1            -- returned items only: 1 back to stock, 0 damaged
+    );
+    CREATE INDEX IF NOT EXISTS idx_return_items_return ON return_items(returnId);
+
     INSERT OR IGNORE INTO settings (id, shopName) VALUES (1, 'محل الأدوات الصحية والدهانات');
 
     INSERT OR IGNORE INTO users (username, password, name, role)
     VALUES ('admin', 'admin123', 'المدير', 'admin');
   `);
+
+  // Migrations for columns added after the first release (CREATE TABLE IF NOT
+  // EXISTS won't add a column to a pre-existing table).
+  ensureColumn("products", "soldByWeight", "INTEGER NOT NULL DEFAULT 0");
+  // Running total of commission already paid out to the craftsman for this invoice.
+  ensureColumn("sales_invoices", "commissionPaid", "REAL NOT NULL DEFAULT 0");
+  // Per-user allowed page keys (JSON array). NULL for admins (full access).
+  ensureColumn("users", "permissions", "TEXT");
+}
+
+// Adds a column to an existing table if it isn't there yet (idempotent).
+function ensureColumn(table: string, column: string, definition: string): void {
+  const cols = db.prepare(`PRAGMA table_info(${table})`).all() as any[];
+  if (!cols.some((c) => c.name === column)) {
+    db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+  }
 }
 
 export function nextSerial(prefix: string): string {
@@ -325,6 +399,48 @@ export function nextSerial(prefix: string): string {
     db.prepare("UPDATE settings SET purchaseCounter = ?, updatedAt = datetime('now') WHERE id = 1").run(counter);
   }
   return `${prefix}-${year}-${String(counter).padStart(6, "0")}`;
+}
+
+/**
+ * Generates a store-internal barcode for products that arrive without one.
+ * Uses an incrementing `barcode` counter, prefixed with "2" (the EAN range
+ * reserved for in-store use), and skips any value already taken so the result
+ * is guaranteed unique in the products table.
+ */
+// Serial backed by a named row in the `counters` table, for document types that
+// nextSerial() doesn't know about (it only handles invoice/quote/purchase).
+function nextCounterSerial(counterName: string, prefix: string): string {
+  const year = new Date().getFullYear();
+  const row = db.prepare("SELECT value FROM counters WHERE name = ?").get(counterName) as any;
+  const counter = (row?.value ?? 0) + 1;
+  db.prepare(
+    "INSERT INTO counters (name, value) VALUES (?, ?) ON CONFLICT(name) DO UPDATE SET value = excluded.value",
+  ).run(counterName, counter);
+  return `${prefix}-${year}-${String(counter).padStart(6, "0")}`;
+}
+
+// Serial for a craftsman commission payout (CMP-YYYY-000001).
+export function nextPayoutSerial(): string {
+  return nextCounterSerial("commission_payout", "CMP");
+}
+
+// Serial for a return / exchange document (RET-YYYY-000001).
+export function nextReturnSerial(): string {
+  return nextCounterSerial("return", "RET");
+}
+
+export function nextBarcode(): string {
+  const row = db.prepare("SELECT value FROM counters WHERE name = 'barcode'").get() as any;
+  let counter = row?.value ?? 0;
+  let candidate = "";
+  do {
+    counter += 1;
+    candidate = "2" + String(counter).padStart(6, "0");
+  } while (db.prepare("SELECT 1 FROM products WHERE barcode = ?").get(candidate));
+  db.prepare(
+    "INSERT INTO counters (name, value) VALUES ('barcode', ?) ON CONFLICT(name) DO UPDATE SET value = excluded.value",
+  ).run(counter);
+  return candidate;
 }
 
 export function getSettings() {

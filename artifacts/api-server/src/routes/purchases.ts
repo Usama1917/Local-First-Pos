@@ -1,6 +1,7 @@
 import { Router } from "express";
 import db from "../lib/db.js";
 import { nextSerial, getSettings } from "../lib/db.js";
+import { archivePurchase } from "../lib/archive.js";
 
 const router = Router();
 
@@ -72,6 +73,9 @@ router.get("/purchases/:id", (req, res) => {
 
 router.patch("/purchases/:id", (req, res) => {
   const id = Number(req.params.id);
+  const existing = db.prepare("SELECT * FROM purchase_invoices WHERE id = ?").get(id) as any;
+  if (!existing) return res.status(404).json({ error: "غير موجود" });
+  if (existing.status !== "draft") return res.status(400).json({ error: "لا يمكن تعديل فاتورة مُنجزة" });
   const { supplierId, paymentType, paidAmount, notes, invoiceDate, items } = req.body;
 
   if (items !== undefined) {
@@ -96,7 +100,12 @@ router.patch("/purchases/:id", (req, res) => {
 });
 
 router.delete("/purchases/:id", (req, res) => {
-  db.prepare("UPDATE purchase_invoices SET status = 'cancelled', updatedAt = datetime('now') WHERE id = ?").run(Number(req.params.id));
+  const id = Number(req.params.id);
+  const pur = db.prepare("SELECT status FROM purchase_invoices WHERE id = ?").get(id) as any;
+  if (!pur) return res.status(404).json({ error: "غير موجود" });
+  // Cancelling a finalized purchase would leave its received stock in inventory.
+  if (pur.status !== "draft") return res.status(400).json({ error: "لا يمكن حذف فاتورة مُنجزة" });
+  db.prepare("UPDATE purchase_invoices SET status = 'cancelled', updatedAt = datetime('now') WHERE id = ?").run(id);
   res.json({ success: true });
 });
 
@@ -117,13 +126,16 @@ router.post("/purchases/:id/finalize", (req, res) => {
   try {
     db.prepare("UPDATE purchase_invoices SET status = ?, paymentType = ?, paidAmount = ?, remainingAmount = ?, updatedAt = datetime('now') WHERE id = ?").run(status, pt, fp, remaining, id);
 
-    const updateStock = db.prepare("UPDATE products SET currentStock = currentStock + ?, trueCost = ?, updatedAt = datetime('now') WHERE id = ?");
+    const addStock = db.prepare("UPDATE products SET currentStock = currentStock + ?, updatedAt = datetime('now') WHERE id = ?");
+    const setCost = db.prepare("UPDATE products SET trueCost = ? WHERE id = ?");
     const insertMove = db.prepare("INSERT INTO stock_movements (productId, type, quantity, balanceBefore, balanceAfter, referenceType, referenceId, notes) VALUES (?,?,?,?,?,?,?,?)");
 
     for (const item of items) {
       const prod = db.prepare("SELECT currentStock FROM products WHERE id = ?").get(item.productId) as any;
       const before = prod?.currentStock || 0;
-      updateStock.run(item.quantity, item.trueCost || 0, item.productId);
+      addStock.run(item.quantity, item.productId);
+      // Only refresh the stored cost from a real (>0) line cost — never wipe it to 0.
+      if (item.trueCost > 0) setCost.run(item.trueCost, item.productId);
       insertMove.run(item.productId, "purchase", item.quantity, before, before + item.quantity, "purchase_invoice", id, `فاتورة مشتريات ${pur.serial}`);
     }
     db.exec("COMMIT");
@@ -133,6 +145,8 @@ router.post("/purchases/:id/finalize", (req, res) => {
   }
 
   res.json({ ...db.prepare(`${PURCHASE_SELECT} WHERE pi.id = ?`).get(id), items: getItems(id) });
+  // Auto-archive a PDF of the finalized purchase invoice (best-effort).
+  archivePurchase(id).catch((e) => console.error("archive purchase failed:", e?.message || e));
 });
 
 export default router;

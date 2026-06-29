@@ -5,7 +5,9 @@ const router = Router();
 
 const SUPPLIER_SELECT = `
   SELECT s.*,
-    COALESCE(s.openingBalance, 0) + COALESCE((SELECT SUM(pi.remainingAmount) FROM purchase_invoices pi WHERE pi.supplierId = s.id AND pi.status IN ('finalized','partially_paid','credit')), 0) as totalDebt
+    COALESCE(s.openingBalance, 0)
+      + COALESCE((SELECT SUM(pi.remainingAmount) FROM purchase_invoices pi WHERE pi.supplierId = s.id AND pi.status IN ('finalized','partially_paid','credit')), 0)
+      - COALESCE((SELECT SUM(sp.amount) FROM supplier_payments sp WHERE sp.supplierId = s.id), 0) as totalDebt
   FROM suppliers s
 `;
 

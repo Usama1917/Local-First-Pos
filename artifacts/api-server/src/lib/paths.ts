@@ -8,16 +8,23 @@ const projectRoot = path.resolve(here, "../../..");
 const configFile = path.join(projectRoot, "pos-config.json");
 const defaultDataDir = path.join(projectRoot, "data");
 
-function readConfigDir(): string | null {
+function readConfig(): Record<string, any> {
   try {
-    if (fs.existsSync(configFile)) {
-      const cfg = JSON.parse(fs.readFileSync(configFile, "utf8"));
-      if (cfg?.dataDir) return path.resolve(String(cfg.dataDir));
-    }
+    if (fs.existsSync(configFile)) return JSON.parse(fs.readFileSync(configFile, "utf8")) || {};
   } catch {
     /* ignore a corrupt config */
   }
-  return null;
+  return {};
+}
+
+function writeConfig(patch: Record<string, any>) {
+  const cfg = { ...readConfig(), ...patch };
+  fs.writeFileSync(configFile, JSON.stringify(cfg, null, 2), "utf8");
+}
+
+function readConfigDir(): string | null {
+  const cfg = readConfig();
+  return cfg?.dataDir ? path.resolve(String(cfg.dataDir)) : null;
 }
 
 /**
@@ -44,5 +51,20 @@ export function getDataLocationSource(): "env" | "config" | "default" {
 
 /** Persist a chosen data directory (applied on next restart). */
 export function setConfiguredDataDir(dir: string) {
-  fs.writeFileSync(configFile, JSON.stringify({ dataDir: dir }, null, 2), "utf8");
+  writeConfig({ dataDir: dir });
+}
+
+/**
+ * Folder where every finalized document is auto-archived as a PDF, organized into
+ * العملاء/الصنايعية/المشتريات subfolders. Read FRESH each time (via pos-config.json)
+ * so changing it from Settings applies immediately — no restart needed. Empty/unset
+ * = archiving disabled.
+ */
+export function getArchiveDir(): string | null {
+  const cfg = readConfig();
+  return cfg?.archiveDir ? path.resolve(String(cfg.archiveDir)) : null;
+}
+
+export function setConfiguredArchiveDir(dir: string) {
+  writeConfig({ archiveDir: dir });
 }

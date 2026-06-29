@@ -28,7 +28,8 @@ export const LoginResponse = zod.object({
   "id": zod.number(),
   "username": zod.string(),
   "name": zod.string(),
-  "role": zod.string()
+  "role": zod.string(),
+  "permissions": zod.array(zod.string()).optional()
 })
 
 
@@ -39,7 +40,75 @@ export const GetMeResponse = zod.object({
   "id": zod.number(),
   "username": zod.string(),
   "name": zod.string(),
-  "role": zod.string()
+  "role": zod.string(),
+  "permissions": zod.array(zod.string()).optional()
+})
+
+
+/**
+ * @summary List system users
+ */
+export const ListUsersResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.number(),
+  "username": zod.string(),
+  "name": zod.string(),
+  "password": zod.string().optional(),
+  "role": zod.string(),
+  "permissions": zod.array(zod.string()).optional(),
+  "isActive": zod.boolean().optional(),
+  "createdAt": zod.string().optional()
+})),
+  "total": zod.number()
+})
+
+
+/**
+ * @summary Create a user
+ */
+export const CreateUserBody = zod.object({
+  "username": zod.string(),
+  "password": zod.string(),
+  "name": zod.string(),
+  "role": zod.string().optional(),
+  "permissions": zod.array(zod.string()).optional(),
+  "isActive": zod.boolean().optional()
+})
+
+
+/**
+ * @summary Update a user (name, password, role, permissions, active)
+ */
+export const UpdateUserParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const UpdateUserBody = zod.object({
+  "username": zod.string().optional(),
+  "password": zod.string().optional(),
+  "name": zod.string().optional(),
+  "role": zod.string().optional(),
+  "permissions": zod.array(zod.string()).optional(),
+  "isActive": zod.boolean().optional()
+})
+
+export const UpdateUserResponse = zod.object({
+  "id": zod.number(),
+  "username": zod.string(),
+  "name": zod.string(),
+  "password": zod.string().optional(),
+  "role": zod.string(),
+  "permissions": zod.array(zod.string()).optional(),
+  "isActive": zod.boolean().optional(),
+  "createdAt": zod.string().optional()
+})
+
+
+/**
+ * @summary Delete a user
+ */
+export const DeleteUserParams = zod.object({
+  "id": zod.coerce.number()
 })
 
 
@@ -140,6 +209,7 @@ export const GetLowStockProductsResponseItem = zod.object({
   "colorCode": zod.string().nullish(),
   "paintType": zod.string().nullish(),
   "packageSize": zod.string().nullish(),
+  "soldByWeight": zod.boolean().optional(),
   "isActive": zod.boolean().optional(),
   "isLowStock": zod.boolean().optional(),
   "createdAt": zod.string().optional()
@@ -332,6 +402,7 @@ export const ListProductsResponse = zod.object({
   "colorCode": zod.string().nullish(),
   "paintType": zod.string().nullish(),
   "packageSize": zod.string().nullish(),
+  "soldByWeight": zod.boolean().optional(),
   "isActive": zod.boolean().optional(),
   "isLowStock": zod.boolean().optional(),
   "createdAt": zod.string().optional()
@@ -366,6 +437,7 @@ export const CreateProductBody = zod.object({
   "colorCode": zod.string().optional(),
   "paintType": zod.string().optional(),
   "packageSize": zod.string().optional(),
+  "soldByWeight": zod.boolean().optional(),
   "isActive": zod.boolean().optional()
 })
 
@@ -406,11 +478,20 @@ export const SearchProductsResponseItem = zod.object({
   "colorCode": zod.string().nullish(),
   "paintType": zod.string().nullish(),
   "packageSize": zod.string().nullish(),
+  "soldByWeight": zod.boolean().optional(),
   "isActive": zod.boolean().optional(),
   "isLowStock": zod.boolean().optional(),
   "createdAt": zod.string().optional()
 })
 export const SearchProductsResponse = zod.array(SearchProductsResponseItem)
+
+
+/**
+ * @summary Generate a fresh store-internal barcode (unique, not yet used)
+ */
+export const GetNextBarcodeResponse = zod.object({
+  "barcode": zod.string()
+})
 
 
 export const GetProductParams = zod.object({
@@ -445,6 +526,7 @@ export const GetProductResponse = zod.object({
   "colorCode": zod.string().nullish(),
   "paintType": zod.string().nullish(),
   "packageSize": zod.string().nullish(),
+  "soldByWeight": zod.boolean().optional(),
   "isActive": zod.boolean().optional(),
   "isLowStock": zod.boolean().optional(),
   "createdAt": zod.string().optional()
@@ -477,6 +559,7 @@ export const UpdateProductBody = zod.object({
   "colorCode": zod.string().optional(),
   "paintType": zod.string().optional(),
   "packageSize": zod.string().optional(),
+  "soldByWeight": zod.boolean().optional(),
   "isActive": zod.boolean().optional()
 })
 
@@ -508,6 +591,7 @@ export const UpdateProductResponse = zod.object({
   "colorCode": zod.string().nullish(),
   "paintType": zod.string().nullish(),
   "packageSize": zod.string().nullish(),
+  "soldByWeight": zod.boolean().optional(),
   "isActive": zod.boolean().optional(),
   "isLowStock": zod.boolean().optional(),
   "createdAt": zod.string().optional()
@@ -805,6 +889,8 @@ export const ListCraftsmenResponse = zod.object({
   "commissionPercent": zod.number().nullish(),
   "totalSales": zod.number().optional(),
   "totalCommission": zod.number().optional(),
+  "paidCommission": zod.number().optional(),
+  "outstandingCommission": zod.number().optional(),
   "isActive": zod.boolean().optional(),
   "createdAt": zod.string().optional()
 })),
@@ -841,6 +927,8 @@ export const GetCraftsmanResponse = zod.object({
   "commissionPercent": zod.number().nullish(),
   "totalSales": zod.number().optional(),
   "totalCommission": zod.number().optional(),
+  "paidCommission": zod.number().optional(),
+  "outstandingCommission": zod.number().optional(),
   "isActive": zod.boolean().optional(),
   "createdAt": zod.string().optional()
 }),
@@ -893,6 +981,8 @@ export const UpdateCraftsmanResponse = zod.object({
   "commissionPercent": zod.number().nullish(),
   "totalSales": zod.number().optional(),
   "totalCommission": zod.number().optional(),
+  "paidCommission": zod.number().optional(),
+  "outstandingCommission": zod.number().optional(),
   "isActive": zod.boolean().optional(),
   "createdAt": zod.string().optional()
 })
@@ -920,6 +1010,68 @@ export const GetCraftsmanCustomersResponse = zod.object({
   "quotationCount": zod.number()
 })),
   "total": zod.number()
+})
+
+
+/**
+ * @summary List commission payouts for a craftsman
+ */
+export const ListCraftsmanPayoutsParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const ListCraftsmanPayoutsResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.number(),
+  "serial": zod.string(),
+  "amount": zod.number(),
+  "notes": zod.string().nullish(),
+  "createdAt": zod.string().optional()
+})),
+  "total": zod.number()
+})
+
+
+/**
+ * @summary Pay out commission to a craftsman (full or partial)
+ */
+export const CreateCraftsmanPayoutParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const CreateCraftsmanPayoutBody = zod.object({
+  "amount": zod.number().optional(),
+  "notes": zod.string().optional()
+})
+
+
+/**
+ * @summary Get a commission payout receipt
+ */
+export const GetCraftsmanPayoutParams = zod.object({
+  "payoutId": zod.coerce.number()
+})
+
+export const GetCraftsmanPayoutResponse = zod.object({
+  "id": zod.number(),
+  "serial": zod.string(),
+  "craftsmanId": zod.number(),
+  "craftsmanName": zod.string().nullish(),
+  "craftsmanPhone": zod.string().nullish(),
+  "craftsmanJobType": zod.string().nullish(),
+  "commissionPercent": zod.number().nullish(),
+  "amount": zod.number(),
+  "notes": zod.string().nullish(),
+  "createdAt": zod.string().optional(),
+  "items": zod.array(zod.object({
+  "invoiceId": zod.number(),
+  "serial": zod.string(),
+  "customerName": zod.string().nullish(),
+  "invoiceTotal": zod.number().optional(),
+  "invoiceCommission": zod.number().optional(),
+  "amount": zod.number(),
+  "createdAt": zod.string().optional()
+}))
 })
 
 
@@ -1546,6 +1698,124 @@ export const LookupSalesInvoiceBySerialResponse = zod.object({
 
 
 /**
+ * @summary List returns / exchanges
+ */
+export const ListReturnsQueryParams = zod.object({
+  "search": zod.coerce.string().optional(),
+  "limit": zod.coerce.number().optional(),
+  "offset": zod.coerce.number().optional()
+})
+
+export const ListReturnsResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.number(),
+  "serial": zod.string(),
+  "originalInvoiceId": zod.number().nullish(),
+  "originalSerial": zod.string().nullish(),
+  "customerId": zod.number().nullish(),
+  "customerName": zod.string().nullish(),
+  "type": zod.enum(['return', 'exchange']),
+  "settlementType": zod.enum(['cash', 'account']).optional(),
+  "returnedTotal": zod.number().optional(),
+  "newItemsTotal": zod.number().optional(),
+  "netAmount": zod.number(),
+  "notes": zod.string().nullish(),
+  "createdAt": zod.string().optional()
+})),
+  "total": zod.number()
+})
+
+
+/**
+ * @summary Create a return / exchange against an invoice
+ */
+export const CreateReturnBody = zod.object({
+  "originalInvoiceId": zod.number(),
+  "settlementType": zod.enum(['cash', 'account']).optional(),
+  "notes": zod.string().optional(),
+  "returnedItems": zod.array(zod.object({
+  "productId": zod.number(),
+  "quantity": zod.number(),
+  "unitPrice": zod.number(),
+  "restock": zod.boolean().optional()
+})).optional(),
+  "newItems": zod.array(zod.object({
+  "productId": zod.number(),
+  "quantity": zod.number(),
+  "unitPrice": zod.number(),
+  "restock": zod.boolean().optional()
+})).optional()
+})
+
+
+/**
+ * @summary Lookup an invoice (with returnable quantities) for the returns screen
+ */
+export const LookupInvoiceForReturnParams = zod.object({
+  "serial": zod.coerce.string()
+})
+
+export const LookupInvoiceForReturnResponse = zod.object({
+  "id": zod.number(),
+  "serial": zod.string(),
+  "status": zod.string().optional(),
+  "customerId": zod.number().nullish(),
+  "customerName": zod.string().nullish(),
+  "customerPhone": zod.string().nullish(),
+  "total": zod.number().optional(),
+  "createdAt": zod.string().optional(),
+  "items": zod.array(zod.object({
+  "productId": zod.number(),
+  "productName": zod.string().nullish(),
+  "sku": zod.string().nullish(),
+  "barcode": zod.string().nullish(),
+  "unitName": zod.string().nullish(),
+  "currentStock": zod.number().optional(),
+  "quantity": zod.number(),
+  "unitPrice": zod.number(),
+  "total": zod.number().optional(),
+  "returnedQty": zod.number().optional(),
+  "availableQty": zod.number().optional()
+}))
+})
+
+
+export const GetReturnParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetReturnResponse = zod.object({
+  "id": zod.number(),
+  "serial": zod.string(),
+  "originalInvoiceId": zod.number().nullish(),
+  "originalSerial": zod.string().nullish(),
+  "customerId": zod.number().nullish(),
+  "customerName": zod.string().nullish(),
+  "type": zod.enum(['return', 'exchange']),
+  "settlementType": zod.enum(['cash', 'account']).optional(),
+  "returnedTotal": zod.number().optional(),
+  "newItemsTotal": zod.number().optional(),
+  "netAmount": zod.number(),
+  "notes": zod.string().nullish(),
+  "createdAt": zod.string().optional()
+}).and(zod.object({
+  "customerPhone": zod.string().nullish(),
+  "items": zod.array(zod.object({
+  "id": zod.number(),
+  "kind": zod.enum(['returned', 'new']),
+  "productId": zod.number(),
+  "productName": zod.string().nullish(),
+  "sku": zod.string().nullish(),
+  "unitName": zod.string().nullish(),
+  "quantity": zod.number(),
+  "unitPrice": zod.number(),
+  "total": zod.number(),
+  "restock": zod.number().optional()
+})).optional()
+}))
+
+
+/**
  * @summary List purchase invoices
  */
 export const ListPurchaseInvoicesQueryParams = zod.object({
@@ -2136,7 +2406,7 @@ export const UpdateSettingsResponse = zod.object({
 export const CreateBackupResponse = zod.object({
   "filename": zod.string(),
   "createdAt": zod.string(),
-  "sizeBytes": zod.number(),
+  "size": zod.number(),
   "path": zod.string().nullish()
 })
 
@@ -2147,7 +2417,7 @@ export const CreateBackupResponse = zod.object({
 export const ListBackupsResponseItem = zod.object({
   "filename": zod.string(),
   "createdAt": zod.string(),
-  "sizeBytes": zod.number(),
+  "size": zod.number(),
   "path": zod.string().nullish()
 })
 export const ListBackupsResponse = zod.array(ListBackupsResponseItem)

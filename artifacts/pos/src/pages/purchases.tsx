@@ -1,12 +1,16 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   useListPurchaseInvoices,
   useCreatePurchaseInvoice,
   useFinalizePurchaseInvoice,
+  useGetPurchaseInvoice,
+  useUpdatePurchaseInvoice,
+  useDeletePurchaseInvoice,
   useListSuppliers,
   useListProducts,
   useSearchProducts,
   getSearchProductsQueryKey,
+  getGetPurchaseInvoiceQueryKey,
   getListPurchaseInvoicesQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -20,7 +24,8 @@ import { Label } from "@/components/ui/label";
 import { formatCurrency } from "@/lib/format";
 import { useBarcodeScanner, findProductByCode } from "@/hooks/use-barcode-scanner";
 import { useDraftAutosave } from "@/hooks/use-draft-autosave";
-import { Search, Plus, ShoppingBag, CheckCircle, Trash2 } from "lucide-react";
+import { printLabels } from "@/lib/print-labels";
+import { Search, Plus, ShoppingBag, CheckCircle, Trash2, Printer, Ban } from "lucide-react";
 import { toast } from "sonner";
 
 const STATUS_LABELS: Record<string, { label: string; variant: any }> = {
@@ -33,11 +38,12 @@ const STATUS_LABELS: Record<string, { label: string; variant: any }> = {
 };
 
 interface PurchaseItem {
-  productId: number; productName: string; quantity: number;
+  productId: number; productName: string; sku: string; barcode: string; soldByWeight: boolean; quantity: number;
   listPrice: number; supplierDiscount: number; netPrice: number; extraCost: number; trueCost: number; total: number;
+  print: boolean;
 }
 
-function NewPurchaseDialog({ onClose, open }: { onClose: () => void; open: boolean }) {
+function NewPurchaseDialog({ onClose, open, invoiceId }: { onClose: () => void; open: boolean; invoiceId: number | null }) {
   const [supplierId, setSupplierId] = useState("");
   const [paymentType, setPaymentType] = useState("cash");
   const [paidAmount, setPaidAmount] = useState("");
@@ -46,21 +52,65 @@ function NewPurchaseDialog({ onClose, open }: { onClose: () => void; open: boole
   const [items, setItems] = useState<PurchaseItem[]>([]);
   const [productSearch, setProductSearch] = useState("");
   const qc = useQueryClient();
+  const isExisting = invoiceId != null;
   const { data: suppliers } = useListSuppliers({});
   const { data: searchResults } = useSearchProducts({ q: productSearch }, { query: { enabled: productSearch.length >= 1, queryKey: getSearchProductsQueryKey({ q: productSearch }) } });
+  const { data: loaded } = useGetPurchaseInvoice(invoiceId as number, { query: { enabled: isExisting, queryKey: getGetPurchaseInvoiceQueryKey(invoiceId as number) } });
   const createPurchase = useCreatePurchaseInvoice();
+  const updatePurchase = useUpdatePurchaseInvoice();
   const finalizePurchase = useFinalizePurchaseInvoice();
+  const deletePurchase = useDeletePurchaseInvoice();
+
+  // An existing invoice can only be edited while it's still a draft; once
+  // finalized it's view-only (you can still re-print its barcodes).
+  const status = (loaded as any)?.status;
+  const serial = (loaded as any)?.serial as string | undefined;
+  const readOnly = isExisting && status != null && status !== "draft";
+
+  // Load an existing invoice's data into the form once it arrives.
+  useEffect(() => {
+    if (!loaded) return;
+    const inv = loaded as any;
+    setSupplierId(inv.supplierId ? String(inv.supplierId) : "");
+    setPaymentType(inv.paymentType || "cash");
+    setPaidAmount(inv.paidAmount != null ? String(inv.paidAmount) : "");
+    setInvoiceDate(inv.invoiceDate || (inv.createdAt ? String(inv.createdAt).split("T")[0] : new Date().toISOString().split("T")[0]));
+    setNotes(inv.notes || "");
+    setItems((inv.items || []).map((it: any) => ({
+      productId: it.productId,
+      productName: it.productName || "",
+      sku: it.sku || "",
+      barcode: it.barcode || "",
+      soldByWeight: !it.barcode,
+      quantity: it.quantity || 1,
+      listPrice: it.listPrice || 0,
+      supplierDiscount: it.supplierDiscount || 0,
+      netPrice: it.netPrice || 0,
+      extraCost: it.extraCost || 0,
+      trueCost: it.trueCost || 0,
+      total: it.total || 0,
+      print: !!it.barcode,
+    })));
+  }, [loaded]);
 
   const addProduct = (p: any) => {
     setItems(prev => {
-      if (prev.find(i => i.productId === p.id)) return prev;
+      // Already on the invoice → bump its quantity (so a repeat scan counts another unit).
+      if (prev.find(i => i.productId === p.id)) {
+        return prev.map(i => i.productId === p.id
+          ? { ...i, quantity: i.quantity + 1, total: i.trueCost * (i.quantity + 1) }
+          : i);
+      }
       const disc = p.supplierDiscount || 30;
       const net = p.listPrice * (1 - disc / 100);
       const extra = p.extraCost || 0;
       const trueCost = net + extra;
+      const soldByWeight = !!p.soldByWeight;
+      const barcode = soldByWeight ? "" : (p.barcode || "");
       return [...prev, {
-        productId: p.id, productName: p.nameAr, quantity: 1,
+        productId: p.id, productName: p.nameAr, sku: p.sku || "", barcode, soldByWeight, quantity: 1,
         listPrice: p.listPrice || 0, supplierDiscount: disc, netPrice: net, extraCost: extra, trueCost, total: trueCost,
+        print: !!barcode, // only items that carry a barcode get stickers
       }];
     });
     setProductSearch("");
@@ -81,15 +131,22 @@ function NewPurchaseDialog({ onClose, open }: { onClose: () => void; open: boole
     setItems([]); setSupplierId(""); setPaymentType("cash"); setPaidAmount(""); setNotes(""); setRestored(false);
   };
   // Periodic auto-save → a power cut / refresh mid-purchase won't lose the work.
+  // Only for a brand-new invoice; an existing one already lives in the DB.
   const { clearDraft } = useDraftAutosave({
     type: "purchase",
     entityId: "new",
-    enabled: open,
+    enabled: open && !isExisting,
     hasContent: items.length > 0,
     data: { items, supplierId, paymentType, paidAmount, invoiceDate, notes },
     onRestore: (p) => {
       if (!p?.items?.length) return;
-      setItems(p.items);
+      setItems(p.items.map((it: any) => ({
+        ...it,
+        sku: it.sku ?? "",
+        barcode: it.soldByWeight ? "" : (it.barcode ?? ""),
+        soldByWeight: !!it.soldByWeight,
+        print: it.print ?? !!it.barcode,
+      })));
       setSupplierId(p.supplierId || "");
       setPaymentType(p.paymentType || "cash");
       setPaidAmount(p.paidAmount || "");
@@ -111,36 +168,90 @@ function NewPurchaseDialog({ onClose, open }: { onClose: () => void; open: boole
     }));
   };
 
+  const togglePrint = (idx: number) =>
+    setItems(prev => prev.map((it, i) => (i === idx ? { ...it, print: !it.print } : it)));
+
   const total = items.reduce((s, i) => s + i.total, 0);
+
+  // Build the printable stickers list (one per added unit; no-barcode items skipped).
+  const buildLabels = (respectToggle: boolean) =>
+    items
+      .filter(i => i.barcode && (!respectToggle || i.print !== false))
+      .map(i => ({ barcode: i.barcode, sku: i.sku, copies: Math.round(i.quantity) }))
+      .filter(l => l.copies >= 1);
 
   const handleSave = async (finalize = false) => {
     if (items.length === 0) { toast.error("أضف منتجاً"); return; }
     try {
       const fp = paymentType === "cash" ? total : parseFloat(paidAmount) || 0;
-      const inv = await createPurchase.mutateAsync({
-        data: {
-          supplierId: supplierId ? Number(supplierId) : undefined,
-          paymentType: paymentType as any, paidAmount: fp, notes: notes || undefined,
-          invoiceDate, status: "draft",
-          items: items.map(i => ({ productId: i.productId, quantity: i.quantity, listPrice: i.listPrice, supplierDiscount: i.supplierDiscount, netPrice: i.netPrice, extraCost: i.extraCost, trueCost: i.trueCost, total: i.total })),
-        },
-      });
-      if (finalize) {
-        await finalizePurchase.mutateAsync({ id: (inv as any).id, data: { paymentType: paymentType as any, paidAmount: fp } });
-        toast.success("تم حفظ وإنهاء فاتورة المشتريات");
+      const payloadItems = items.map(i => ({ productId: i.productId, quantity: i.quantity, listPrice: i.listPrice, supplierDiscount: i.supplierDiscount, netPrice: i.netPrice, extraCost: i.extraCost, trueCost: i.trueCost, total: i.total }));
+      let targetId = invoiceId;
+      if (isExisting) {
+        // Update the existing draft in place.
+        await updatePurchase.mutateAsync({
+          id: invoiceId as number,
+          data: {
+            supplierId: supplierId ? Number(supplierId) : undefined,
+            paymentType: paymentType as any, paidAmount: fp, notes: notes || undefined,
+            invoiceDate, items: payloadItems,
+          },
+        });
       } else {
-        toast.success("تم حفظ الفاتورة كمسودة");
+        const inv = await createPurchase.mutateAsync({
+          data: {
+            supplierId: supplierId ? Number(supplierId) : undefined,
+            paymentType: paymentType as any, paidAmount: fp, notes: notes || undefined,
+            invoiceDate, status: "draft", items: payloadItems,
+          },
+        });
+        targetId = (inv as any).id;
+      }
+      if (finalize) {
+        await finalizePurchase.mutateAsync({ id: targetId as number, data: { paymentType: paymentType as any, paidAmount: fp } });
+        toast.success("تم حفظ وإنهاء فاتورة المشتريات");
+        // Stock just went up → print a sticker per added unit. Items with no
+        // barcode (sold-by-weight) are skipped automatically.
+        const labels = buildLabels(true);
+        if (labels.length && !printLabels(labels)) toast.error("فعّل النوافذ المنبثقة (Popup) للطباعة");
+      } else {
+        toast.success(isExisting ? "تم حفظ التعديلات" : "تم حفظ الفاتورة كمسودة");
       }
       qc.invalidateQueries({ queryKey: getListPurchaseInvoicesQueryKey({}) });
-      clearDraft();
+      if (!isExisting) clearDraft();
       resetForm();
       onClose();
     } catch (e: any) { toast.error(e.message || "خطأ"); }
   };
 
+  const handleDelete = async () => {
+    if (!isExisting) return;
+    if (!window.confirm("متأكد إنك عايز تحذف المسودة دي؟")) return;
+    try {
+      await deletePurchase.mutateAsync({ id: invoiceId as number });
+      qc.invalidateQueries({ queryKey: getListPurchaseInvoicesQueryKey({}) });
+      toast.success("تم حذف المسودة");
+      onClose();
+    } catch (e: any) { toast.error(e.message || "خطأ"); }
+  };
+
+  const handleReprint = () => {
+    const labels = buildLabels(false);
+    if (!labels.length) { toast.error("مفيش أصناف بباركود للطباعة"); return; }
+    if (!printLabels(labels)) toast.error("فعّل النوافذ المنبثقة (Popup) للطباعة");
+  };
+
   return (
-    <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-      <DialogHeader><DialogTitle>فاتورة مشتريات جديدة</DialogTitle></DialogHeader>
+    <DialogContent className="max-w-[1340px] w-[96vw] max-h-[94vh] overflow-y-auto">
+      <DialogHeader>
+        <DialogTitle>
+          {!isExisting ? "فاتورة مشتريات جديدة" : readOnly ? `فاتورة مشتريات — ${serial || ""}` : `تعديل مسودة — ${serial || ""}`}
+        </DialogTitle>
+      </DialogHeader>
+      {readOnly && (
+        <div className="rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-800">
+          🔒 الفاتورة دي مكتملة — للعرض فقط. تقدر تعيد طباعة الباركود بس.
+        </div>
+      )}
       {restored && (
         <div className="flex items-center justify-between rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
           <span>↩️ تم استرجاع مسودة محفوظة تلقائيًا</span>
@@ -150,15 +261,15 @@ function NewPurchaseDialog({ onClose, open }: { onClose: () => void; open: boole
       <div className="grid grid-cols-4 gap-3">
         <div className="col-span-2 space-y-1">
           <Label>المورد</Label>
-          <Select value={supplierId} onValueChange={setSupplierId}>
+          <Select value={supplierId} onValueChange={setSupplierId} disabled={readOnly}>
             <SelectTrigger><SelectValue placeholder="اختر المورد" /></SelectTrigger>
             <SelectContent>{(suppliers as any)?.items?.map((s: any) => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}</SelectContent>
           </Select>
         </div>
-        <div className="space-y-1"><Label>التاريخ</Label><Input type="date" value={invoiceDate} onChange={e => setInvoiceDate(e.target.value)} /></div>
+        <div className="space-y-1"><Label>التاريخ</Label><Input type="date" value={invoiceDate} onChange={e => setInvoiceDate(e.target.value)} disabled={readOnly} /></div>
         <div className="space-y-1">
           <Label>الدفع</Label>
-          <Select value={paymentType} onValueChange={setPaymentType}>
+          <Select value={paymentType} onValueChange={setPaymentType} disabled={readOnly}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="cash">نقدي</SelectItem>
@@ -168,48 +279,69 @@ function NewPurchaseDialog({ onClose, open }: { onClose: () => void; open: boole
           </Select>
         </div>
         {paymentType === "partial" && (
-          <div className="col-span-2 space-y-1"><Label>المدفوع</Label><Input type="number" value={paidAmount} onChange={e => setPaidAmount(e.target.value)} /></div>
+          <div className="col-span-2 space-y-1"><Label>المدفوع</Label><Input type="number" value={paidAmount} onChange={e => setPaidAmount(e.target.value)} disabled={readOnly} /></div>
         )}
       </div>
 
-      <div className="relative">
-        <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input className="pr-9" placeholder="ابحث عن منتج للإضافة..." value={productSearch} onChange={e => setProductSearch(e.target.value)} />
-      </div>
-      {productSearch && (searchResults as any[])?.map((p: any) => (
-        <div key={p.id} className="flex justify-between p-2 border rounded hover:bg-muted cursor-pointer" onClick={() => addProduct(p)}>
-          <span>{p.nameAr} <span className="text-xs text-muted-foreground">({p.sku})</span></span>
-          <span className="text-sm text-muted-foreground">قائمة: {formatCurrency(p.listPrice)}</span>
+      {!readOnly && (
+        <div className="relative">
+          <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
+          <Input className="pr-9" placeholder="ابحث عن منتج للإضافة..." value={productSearch} onChange={e => setProductSearch(e.target.value)} />
+          {productSearch && (searchResults as any[])?.length > 0 && (
+            <div className="absolute inset-x-0 top-full z-50 mt-1 max-h-72 overflow-y-auto rounded-md border bg-popover text-popover-foreground shadow-md">
+              {(searchResults as any[]).map((p: any) => (
+                <div key={p.id} className="flex justify-between gap-2 p-2 cursor-pointer hover:bg-muted border-b last:border-b-0" onClick={() => addProduct(p)}>
+                  <span>{p.nameAr} <span className="text-xs text-muted-foreground">({p.sku})</span></span>
+                  <span className="text-sm text-muted-foreground whitespace-nowrap">قائمة: {formatCurrency(p.listPrice)}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
-      ))}
+      )}
 
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="w-full table-fixed text-sm">
           <thead className="bg-muted/50">
             <tr>
-              <th className="p-2 text-right">المنتج</th>
-              <th className="p-2 text-center w-16">الكمية</th>
-              <th className="p-2 text-left w-24">سعر القائمة</th>
-              <th className="p-2 text-left w-20">خصم %</th>
-              <th className="p-2 text-left w-24">صافي شراء</th>
-              <th className="p-2 text-left w-20">تكاليف</th>
-              <th className="p-2 text-left w-24">التكلفة</th>
-              <th className="p-2 text-left w-24">الإجمالي</th>
-              <th className="p-2 w-8"></th>
+              <th className="p-2 text-right w-[18%]">المنتج</th>
+              <th className="p-2 text-center w-[9%]">الكمية</th>
+              <th className="p-2 text-left w-[10%]">سعر القائمة</th>
+              <th className="p-2 text-left w-[9%]">خصم %</th>
+              <th className="p-2 text-left w-[10%]">صافي شراء</th>
+              <th className="p-2 text-left w-[9%]">تكاليف</th>
+              <th className="p-2 text-left w-[10%]">التكلفة</th>
+              <th className="p-2 text-left w-[10%]">الإجمالي</th>
+              <th className="p-2 text-center w-[10%]">ستيكر</th>
+              <th className="p-2 w-[5%]"></th>
             </tr>
           </thead>
           <tbody>
             {items.map((item, idx) => (
               <tr key={idx} className="border-b">
-                <td className="p-2 font-medium">{item.productName}</td>
-                <td className="p-2"><Input type="number" className="h-7 text-xs text-center w-14" value={item.quantity} onChange={e => updateItem(idx, "quantity", parseFloat(e.target.value) || 1)} /></td>
-                <td className="p-2"><Input type="number" className="h-7 text-xs w-20" value={item.listPrice} onChange={e => updateItem(idx, "listPrice", parseFloat(e.target.value) || 0)} /></td>
-                <td className="p-2"><Input type="number" className="h-7 text-xs w-16" value={item.supplierDiscount} onChange={e => updateItem(idx, "supplierDiscount", parseFloat(e.target.value) || 0)} /></td>
+                <td className="p-2 font-medium truncate">{item.productName}</td>
+                <td className="p-2"><Input type="number" disabled={readOnly} className="h-7 text-xs text-center w-full" value={item.quantity} onChange={e => updateItem(idx, "quantity", e.target.value === "" ? item.quantity : (parseFloat(e.target.value) || 0))} /></td>
+                <td className="p-2"><Input type="number" disabled={readOnly} className="h-7 text-xs w-full" value={item.listPrice} onChange={e => updateItem(idx, "listPrice", parseFloat(e.target.value) || 0)} /></td>
+                <td className="p-2"><Input type="number" disabled={readOnly} className="h-7 text-xs w-full" value={item.supplierDiscount} onChange={e => updateItem(idx, "supplierDiscount", parseFloat(e.target.value) || 0)} /></td>
                 <td className="p-2 text-left text-muted-foreground">{formatCurrency(item.netPrice)}</td>
-                <td className="p-2"><Input type="number" className="h-7 text-xs w-16" value={item.extraCost} onChange={e => updateItem(idx, "extraCost", parseFloat(e.target.value) || 0)} /></td>
+                <td className="p-2"><Input type="number" disabled={readOnly} className="h-7 text-xs w-full" value={item.extraCost} onChange={e => updateItem(idx, "extraCost", parseFloat(e.target.value) || 0)} /></td>
                 <td className="p-2 text-left font-medium">{formatCurrency(item.trueCost)}</td>
                 <td className="p-2 text-left font-bold">{formatCurrency(item.total)}</td>
-                <td className="p-2"><Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => setItems(prev => prev.filter((_, i) => i !== idx))}><Trash2 className="h-3 w-3" /></Button></td>
+                <td className="p-2 text-center">
+                  {item.barcode ? (
+                    readOnly ? (
+                      <span className="text-xs font-semibold">{Math.round(item.quantity)}</span>
+                    ) : (
+                      <div className="flex items-center justify-center gap-1">
+                        <Button variant="ghost" size="icon" className={`h-7 w-7 ${item.print ? "text-emerald-600" : "text-muted-foreground"}`} onClick={() => togglePrint(idx)} title={item.print ? "هيطبع ستيكر" : "مش هيطبع"}>
+                          {item.print ? <Printer className="h-3.5 w-3.5" /> : <Ban className="h-3.5 w-3.5" />}
+                        </Button>
+                        <span className="text-xs font-semibold w-5 text-center">{item.print ? Math.round(item.quantity) : "—"}</span>
+                      </div>
+                    )
+                  ) : <span className="text-xs text-muted-foreground">بدون باركود</span>}
+                </td>
+                <td className="p-2">{!readOnly && <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => setItems(prev => prev.filter((_, i) => i !== idx))}><Trash2 className="h-3 w-3" /></Button>}</td>
               </tr>
             ))}
           </tbody>
@@ -224,12 +356,28 @@ function NewPurchaseDialog({ onClose, open }: { onClose: () => void; open: boole
       )}
 
       <DialogFooter>
-        <Button variant="outline" onClick={onClose}>إلغاء</Button>
-        <Button variant="outline" onClick={() => handleSave(false)} disabled={createPurchase.isPending}>حفظ مسودة</Button>
-        <Button onClick={() => handleSave(true)} disabled={createPurchase.isPending || finalizePurchase.isPending}>
-          <CheckCircle className="h-4 w-4 ml-2" />
-          إنهاء الفاتورة
-        </Button>
+        {readOnly ? (
+          <>
+            <Button variant="outline" onClick={onClose}>إغلاق</Button>
+            <Button onClick={handleReprint}><Printer className="h-4 w-4 ml-2" />إعادة طباعة الباركود</Button>
+          </>
+        ) : (
+          <>
+            {isExisting && (
+              <Button variant="ghost" className="text-destructive me-auto" onClick={handleDelete} disabled={deletePurchase.isPending}>
+                <Trash2 className="h-4 w-4 ml-2" />حذف المسودة
+              </Button>
+            )}
+            <Button variant="outline" onClick={onClose}>إلغاء</Button>
+            <Button variant="outline" onClick={() => handleSave(false)} disabled={createPurchase.isPending || updatePurchase.isPending}>
+              {isExisting ? "حفظ التعديلات" : "حفظ مسودة"}
+            </Button>
+            <Button onClick={() => handleSave(true)} disabled={createPurchase.isPending || updatePurchase.isPending || finalizePurchase.isPending}>
+              <CheckCircle className="h-4 w-4 ml-2" />
+              إنهاء الفاتورة
+            </Button>
+          </>
+        )}
       </DialogFooter>
     </DialogContent>
   );
@@ -238,20 +386,29 @@ function NewPurchaseDialog({ onClose, open }: { onClose: () => void; open: boole
 export default function PurchasesPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
-  const [showAdd, setShowAdd] = useState(false);
+  // null  = nothing open · "new" = blank invoice · number = an existing invoice's id
+  const [openId, setOpenId] = useState<number | "new" | null>(null);
   const params = { search: search || undefined, status: statusFilter || undefined, limit: 100 };
   const { data, isLoading } = useListPurchaseInvoices(params, { query: { queryKey: getListPurchaseInvoicesQueryKey(params) } });
   const invoices = (data as any)?.items || [];
+  const closeDialog = () => setOpenId(null);
 
   return (
     <div className="space-y-4">
-      <Dialog open={showAdd} onOpenChange={setShowAdd}>
-        <NewPurchaseDialog open={showAdd} onClose={() => setShowAdd(false)} />
+      <Dialog open={openId !== null} onOpenChange={(o) => { if (!o) closeDialog(); }}>
+        {openId !== null && (
+          <NewPurchaseDialog
+            key={openId}
+            open
+            invoiceId={openId === "new" ? null : openId}
+            onClose={closeDialog}
+          />
+        )}
       </Dialog>
 
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">المشتريات</h1>
-        <Button onClick={() => setShowAdd(true)}><Plus className="h-4 w-4 ml-2" />فاتورة مشتريات</Button>
+        <Button onClick={() => setOpenId("new")}><Plus className="h-4 w-4 ml-2" />فاتورة مشتريات</Button>
       </div>
 
       <Card><CardContent className="p-4">
@@ -285,7 +442,7 @@ export default function PurchasesPage() {
           <tbody>
             {isLoading ? <tr><td colSpan={6} className="p-8 text-center text-muted-foreground">جاري التحميل...</td></tr> :
               invoices.map((inv: any) => (
-                <tr key={inv.id} className="border-b hover:bg-muted/30">
+                <tr key={inv.id} className="border-b hover:bg-muted/30 cursor-pointer" onClick={() => setOpenId(inv.id)} title={inv.status === "draft" ? "فتح المسودة لإكمالها" : "عرض الفاتورة"}>
                   <td className="p-3 font-mono font-medium text-primary">{inv.serial}</td>
                   <td className="p-3 text-muted-foreground">{new Date(inv.createdAt).toLocaleDateString("ar-EG")}</td>
                   <td className="p-3">{inv.supplierName || "—"}</td>
