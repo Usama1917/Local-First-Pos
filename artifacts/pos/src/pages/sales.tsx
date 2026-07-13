@@ -16,9 +16,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import { AuditInfo } from "@/components/ui/audit-info";
 import { formatCurrency } from "@/lib/format";
 import { useBarcodeScanner } from "@/hooks/use-barcode-scanner";
-import { Search, Printer, Receipt, Eye, HardHat } from "lucide-react";
+import { printInvoice } from "@/lib/print-invoice";
+import { PRINT_FORMATS, normalizeFormat } from "@/lib/print-document";
+import { Search, Printer, Receipt, Eye, HardHat, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 
 const STATUS_LABELS: Record<string, { label: string; variant: any }> = {
@@ -58,6 +62,7 @@ function InvoiceDetail({ invoiceId }: { invoiceId: number }) {
   const { data: settings } = useGetSettings();
   const inv = invoice as any;
   const shop = settings as any;
+  const defaultFormat = normalizeFormat(shop?.defaultPrintTemplate);
 
   if (!inv) {
     return (
@@ -78,10 +83,28 @@ function InvoiceDetail({ invoiceId }: { invoiceId: number }) {
       {/* Toolbar — not printed */}
       <div className="no-print flex items-center justify-between border-b px-6 py-3">
         <DialogTitle>فاتورة {inv.serial}</DialogTitle>
-        <Button variant="outline" size="sm" onClick={() => window.print()}>
-          <Printer className="h-4 w-4 ml-2" />
-          طباعة
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm">
+              <Printer className="h-4 w-4 ml-2" />
+              طباعة
+              <ChevronDown className="h-3.5 w-3.5 mr-1 opacity-60" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {PRINT_FORMATS.map((f) => (
+              <DropdownMenuItem
+                key={f.key}
+                onClick={() => {
+                  if (!printInvoice(inv, shop, f.key)) toast.error("فعّل النوافذ المنبثقة (Popup) للطباعة");
+                }}
+              >
+                طباعة {f.label}
+                {defaultFormat === f.key && <span className="mr-auto text-xs text-muted-foreground">افتراضي</span>}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {/* Printable invoice document */}
@@ -312,9 +335,12 @@ export default function SalesPage() {
                     <td className="p-3 text-left font-semibold">{formatCurrency(inv.total)}</td>
                     <td className="p-3 text-left">{inv.remainingAmount > 0 ? <span className="text-destructive font-semibold">{formatCurrency(inv.remainingAmount)}</span> : <span className="text-emerald-600">مسدد</span>}</td>
                     <td className="p-3">
-                      <Button variant="ghost" size="sm" onClick={() => setSelectedId(inv.id)}>
-                        <Eye className="h-4 w-4 ml-1" /> عرض
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        <Button variant="ghost" size="sm" onClick={() => setSelectedId(inv.id)}>
+                          <Eye className="h-4 w-4 ml-1" /> عرض
+                        </Button>
+                        <AuditInfo createdBy={inv.createdBy} createdAt={inv.createdAt} updatedBy={inv.updatedBy} updatedAt={inv.updatedAt} />
+                      </div>
                     </td>
                   </tr>
                 ))

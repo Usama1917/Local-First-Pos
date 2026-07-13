@@ -1,5 +1,6 @@
 import { Router } from "express";
 import db from "../lib/db.js";
+import { actorName } from "../lib/actor.js";
 import { nextSerial, getSettings } from "../lib/db.js";
 import { archivePurchase } from "../lib/archive.js";
 
@@ -52,9 +53,9 @@ router.post("/purchases", (req, res) => {
   const remaining = total - finalPaid;
 
   const r = db.prepare(`
-    INSERT INTO purchase_invoices (serial, status, paymentType, supplierId, subtotal, total, paidAmount, remainingAmount, notes, invoiceDate)
-    VALUES (?,?,?,?,?,?,?,?,?,?)
-  `).run(serial, status, paymentType, supplierId || null, subtotal, total, finalPaid, remaining, notes || null, invoiceDate || null);
+    INSERT INTO purchase_invoices (serial, status, paymentType, supplierId, subtotal, total, paidAmount, remainingAmount, notes, invoiceDate, createdBy)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?)
+  `).run(serial, status, paymentType, supplierId || null, subtotal, total, finalPaid, remaining, notes || null, invoiceDate || null, actorName(req));
   const purId = r.lastInsertRowid as number;
 
   const insertItem = db.prepare("INSERT INTO purchase_invoice_items (purchaseId, productId, quantity, listPrice, supplierDiscount, netPrice, extraCost, trueCost, total) VALUES (?,?,?,?,?,?,?,?,?)");
@@ -93,8 +94,8 @@ router.patch("/purchases/:id", (req, res) => {
   db.prepare(`UPDATE purchase_invoices SET
     supplierId = COALESCE(?, supplierId), paymentType = COALESCE(?, paymentType),
     paidAmount = COALESCE(?, paidAmount), notes = COALESCE(?, notes),
-    invoiceDate = COALESCE(?, invoiceDate), updatedAt = datetime('now') WHERE id = ?
-  `).run(supplierId || null, paymentType || null, paidAmount ?? null, notes || null, invoiceDate || null, id);
+    invoiceDate = COALESCE(?, invoiceDate), updatedBy = ?, updatedAt = datetime('now') WHERE id = ?
+  `).run(supplierId || null, paymentType || null, paidAmount ?? null, notes || null, invoiceDate || null, actorName(req), id);
 
   res.json({ ...db.prepare(`${PURCHASE_SELECT} WHERE pi.id = ?`).get(id), items: getItems(id) });
 });
@@ -124,7 +125,7 @@ router.post("/purchases/:id/finalize", (req, res) => {
 
   db.exec("BEGIN");
   try {
-    db.prepare("UPDATE purchase_invoices SET status = ?, paymentType = ?, paidAmount = ?, remainingAmount = ?, updatedAt = datetime('now') WHERE id = ?").run(status, pt, fp, remaining, id);
+    db.prepare("UPDATE purchase_invoices SET status = ?, paymentType = ?, paidAmount = ?, remainingAmount = ?, updatedBy = ?, updatedAt = datetime('now') WHERE id = ?").run(status, pt, fp, remaining, actorName(req), id);
 
     const addStock = db.prepare("UPDATE products SET currentStock = currentStock + ?, updatedAt = datetime('now') WHERE id = ?");
     const setCost = db.prepare("UPDATE products SET trueCost = ? WHERE id = ?");

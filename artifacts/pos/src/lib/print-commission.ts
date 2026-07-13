@@ -1,4 +1,5 @@
 import { formatCurrency } from "./format";
+import { PrintFormat, printHtml, shopHeaderHtml, escapeHtml, fmtDate } from "./print-document";
 
 export interface CommissionReceiptItem {
   serial: string;
@@ -27,30 +28,13 @@ export interface CommissionReceipt {
   items: CommissionReceiptItem[];
 }
 
-function escapeHtml(s: string): string {
-  return String(s).replace(/[&<>"']/g, (c) =>
-    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] as string),
-  );
-}
-
-function fmtDate(d?: string): string {
-  if (!d) return "—";
-  try {
-    return new Date(d).toLocaleDateString("ar-EG");
-  } catch {
-    return "—";
-  }
-}
-
 /**
- * Opens a dedicated A4 print window with a craftsman commission-payout receipt:
- * the craftsman's details, every invoice that contributed to the payout (with its
- * own total + commission), and the amount drawn against each. Returns false if the
- * browser blocked the popup.
+ * Craftsman commission-payout receipt in the chosen paper format (A4 / A5 / thermal):
+ * the craftsman's details, every invoice that contributed to the payout (with its own
+ * total + commission), and the amount drawn against each. Returns false if the popup
+ * was blocked.
  */
-export function printCommissionReceipt(r: CommissionReceipt, shop: ShopInfo = {}): boolean {
-  const shopName = shop.shopName || "المحل";
-  const shopMeta = [shop.shopAddress, shop.shopPhone ? `☎ ${shop.shopPhone}` : ""].filter(Boolean).join(" · ");
+export function printCommissionReceipt(r: CommissionReceipt, shop: ShopInfo = {}, format: PrintFormat = "a4"): boolean {
   const rows = (r.items || [])
     .map(
       (it, i) => `
@@ -66,44 +50,8 @@ export function printCommissionReceipt(r: CommissionReceipt, shop: ShopInfo = {}
     )
     .join("");
 
-  const win = window.open("", "_blank", "width=800,height=900");
-  if (!win) return false;
-
-  win.document.write(`<!doctype html>
-<html dir="rtl" lang="ar"><head><meta charset="utf-8"><title>إيصال سحب عمولة ${escapeHtml(r.serial)}</title>
-<style>
-  @page { size: A4; margin: 14mm; }
-  * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  body { font-family: "Segoe UI", Tahoma, sans-serif; color: #111; margin: 0; }
-  .shop { text-align: center; border-bottom: 2px solid #111; padding-bottom: 8px; margin-bottom: 10px; }
-  .shop .name { font-size: 20pt; font-weight: 800; }
-  .shop .meta { font-size: 10pt; color: #444; margin-top: 2px; }
-  .head { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid #ccc; padding-bottom: 8px; }
-  .head h1 { font-size: 18pt; margin: 0 0 4px; }
-  .head .serial { font-family: monospace; font-size: 11pt; color: #444; }
-  .info { margin: 12px 0; font-size: 11pt; line-height: 1.7; }
-  .info b { display: inline-block; min-width: 90px; color: #444; }
-  table { width: 100%; border-collapse: collapse; font-size: 10.5pt; margin-top: 6px; }
-  th, td { border: 1px solid #bbb; padding: 6px 8px; text-align: right; }
-  th { background: #f1f5f9; font-weight: 700; }
-  td.l, th.l { text-align: left; }
-  td.c, th.c { text-align: center; }
-  td.mono { font-family: monospace; }
-  td.b { font-weight: 700; }
-  tfoot td { font-size: 12pt; font-weight: 700; background: #f8fafc; }
-  .total { margin-top: 14px; display: flex; justify-content: space-between; align-items: center;
-           border: 2px solid #111; border-radius: 6px; padding: 10px 14px; font-size: 14pt; font-weight: 700; }
-  .notes { margin-top: 12px; font-size: 10.5pt; color: #444; }
-  .sign { margin-top: 40px; display: flex; justify-content: space-between; font-size: 11pt; }
-  .sign div { border-top: 1px solid #111; padding-top: 6px; width: 40%; text-align: center; }
-</style>
-<script>window.onafterprint=function(){setTimeout(function(){window.close();},150);};</script>
-</head>
-<body onload="window.focus();window.print();">
-  <div class="shop">
-    <div class="name">${escapeHtml(shopName)}</div>
-    ${shopMeta ? `<div class="meta">${escapeHtml(shopMeta)}</div>` : ""}
-  </div>
+  const body = `
+  ${shopHeaderHtml(shop)}
   <div class="head">
     <div>
       <h1>إيصال سحب عمولة</h1>
@@ -134,7 +82,7 @@ export function printCommissionReceipt(r: CommissionReceipt, shop: ShopInfo = {}
     <tbody>${rows || `<tr><td colspan="7" class="c">لا توجد فواتير</td></tr>`}</tbody>
   </table>
 
-  <div class="total">
+  <div class="total-box">
     <span>إجمالي المبلغ المسحوب</span>
     <span>${formatCurrency(r.amount || 0)}</span>
   </div>
@@ -145,7 +93,7 @@ export function printCommissionReceipt(r: CommissionReceipt, shop: ShopInfo = {}
     <div>توقيع الصنايعي (المستلم)</div>
     <div>توقيع المحل</div>
   </div>
-</body></html>`);
-  win.document.close();
-  return true;
+  `;
+
+  return printHtml({ title: `إيصال سحب عمولة ${r.serial}`, bodyHtml: body, format });
 }

@@ -18,6 +18,8 @@ import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { formatCurrency } from "@/lib/format";
 import { printReturnReceipt } from "@/lib/print-return";
+import { normalizeFormat } from "@/lib/print-document";
+import { AuditInfo } from "@/components/ui/audit-info";
 import { useBarcodeScanner } from "@/hooks/use-barcode-scanner";
 import { Search, RotateCcw, Repeat, Printer, Plus, Trash2, Undo2, PackageX } from "lucide-react";
 import { toast } from "sonner";
@@ -119,7 +121,7 @@ export default function ReturnsPage() {
       qc.invalidateQueries({ queryKey: getListReturnsQueryKey({}) });
       qc.invalidateQueries({ queryKey: getListCustomersQueryKey({}) });
       toast.success(isExchange ? "تم تسجيل الاستبدال" : "تم تسجيل المرتجع");
-      if (!printReturnReceipt(receipt as any, shop)) toast.error("فعّل النوافذ المنبثقة (Popup) للطباعة");
+      if (!printReturnReceipt(receipt as any, shop, normalizeFormat(shop.defaultPrintTemplate))) toast.error("فعّل النوافذ المنبثقة (Popup) للطباعة");
       resetAll();
     } catch (e: any) { toast.error(e?.message || "خطأ"); }
   };
@@ -127,7 +129,7 @@ export default function ReturnsPage() {
   const reprint = async (id: number) => {
     try {
       const receipt = await getReturn(id);
-      if (!printReturnReceipt(receipt as any, shop)) toast.error("فعّل النوافذ المنبثقة (Popup) للطباعة");
+      if (!printReturnReceipt(receipt as any, shop, normalizeFormat(shop.defaultPrintTemplate))) toast.error("فعّل النوافذ المنبثقة (Popup) للطباعة");
     } catch (e: any) { toast.error(e?.message || "خطأ"); }
   };
 
@@ -333,7 +335,10 @@ export default function ReturnsPage() {
                 <td className="p-3 text-xs">{r.settlementType === "account" ? "على الحساب" : "كاش"}</td>
                 <td className="p-3 text-muted-foreground text-xs">{new Date(r.createdAt).toLocaleDateString("ar-EG")}</td>
                 <td className="p-3 text-center">
-                  <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => reprint(r.id)} title="إعادة طباعة الإيصال"><Printer className="h-4 w-4" /></Button>
+                  <div className="flex items-center justify-center gap-1">
+                    <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => reprint(r.id)} title="إعادة طباعة الإيصال"><Printer className="h-4 w-4" /></Button>
+                    <AuditInfo createdBy={r.createdBy} createdAt={r.createdAt} />
+                  </div>
                 </td>
               </tr>
             ))}

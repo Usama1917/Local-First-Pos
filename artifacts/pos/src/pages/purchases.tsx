@@ -8,6 +8,7 @@ import {
   useDeletePurchaseInvoice,
   useListSuppliers,
   useListProducts,
+  useGetSettings,
   useSearchProducts,
   getSearchProductsQueryKey,
   getGetPurchaseInvoiceQueryKey,
@@ -25,6 +26,7 @@ import { formatCurrency } from "@/lib/format";
 import { useBarcodeScanner, findProductByCode } from "@/hooks/use-barcode-scanner";
 import { useDraftAutosave } from "@/hooks/use-draft-autosave";
 import { printLabels } from "@/lib/print-labels";
+import { AuditInfo } from "@/components/ui/audit-info";
 import { Search, Plus, ShoppingBag, CheckCircle, Trash2, Printer, Ban } from "lucide-react";
 import { toast } from "sonner";
 
@@ -54,6 +56,8 @@ function NewPurchaseDialog({ onClose, open, invoiceId }: { onClose: () => void; 
   const qc = useQueryClient();
   const isExisting = invoiceId != null;
   const { data: suppliers } = useListSuppliers({});
+  const { data: settings } = useGetSettings();
+  const shopName = (settings as any)?.shopName as string | undefined;
   const { data: searchResults } = useSearchProducts({ q: productSearch }, { query: { enabled: productSearch.length >= 1, queryKey: getSearchProductsQueryKey({ q: productSearch }) } });
   const { data: loaded } = useGetPurchaseInvoice(invoiceId as number, { query: { enabled: isExisting, queryKey: getGetPurchaseInvoiceQueryKey(invoiceId as number) } });
   const createPurchase = useCreatePurchaseInvoice();
@@ -212,7 +216,7 @@ function NewPurchaseDialog({ onClose, open, invoiceId }: { onClose: () => void; 
         // Stock just went up → print a sticker per added unit. Items with no
         // barcode (sold-by-weight) are skipped automatically.
         const labels = buildLabels(true);
-        if (labels.length && !printLabels(labels)) toast.error("فعّل النوافذ المنبثقة (Popup) للطباعة");
+        if (labels.length && !printLabels(labels, shopName)) toast.error("فعّل النوافذ المنبثقة (Popup) للطباعة");
       } else {
         toast.success(isExisting ? "تم حفظ التعديلات" : "تم حفظ الفاتورة كمسودة");
       }
@@ -237,7 +241,7 @@ function NewPurchaseDialog({ onClose, open, invoiceId }: { onClose: () => void; 
   const handleReprint = () => {
     const labels = buildLabels(false);
     if (!labels.length) { toast.error("مفيش أصناف بباركود للطباعة"); return; }
-    if (!printLabels(labels)) toast.error("فعّل النوافذ المنبثقة (Popup) للطباعة");
+    if (!printLabels(labels, shopName)) toast.error("فعّل النوافذ المنبثقة (Popup) للطباعة");
   };
 
   return (
@@ -437,10 +441,11 @@ export default function PurchasesPage() {
               <th className="p-3">الحالة</th>
               <th className="p-3 text-left">الإجمالي</th>
               <th className="p-3 text-left">المتبقي</th>
+              <th className="p-3"></th>
             </tr>
           </thead>
           <tbody>
-            {isLoading ? <tr><td colSpan={6} className="p-8 text-center text-muted-foreground">جاري التحميل...</td></tr> :
+            {isLoading ? <tr><td colSpan={7} className="p-8 text-center text-muted-foreground">جاري التحميل...</td></tr> :
               invoices.map((inv: any) => (
                 <tr key={inv.id} className="border-b hover:bg-muted/30 cursor-pointer" onClick={() => setOpenId(inv.id)} title={inv.status === "draft" ? "فتح المسودة لإكمالها" : "عرض الفاتورة"}>
                   <td className="p-3 font-mono font-medium text-primary">{inv.serial}</td>
@@ -449,10 +454,13 @@ export default function PurchasesPage() {
                   <td className="p-3"><Badge variant={STATUS_LABELS[inv.status]?.variant}>{STATUS_LABELS[inv.status]?.label}</Badge></td>
                   <td className="p-3 text-left font-semibold">{formatCurrency(inv.total)}</td>
                   <td className="p-3 text-left">{inv.remainingAmount > 0 ? <span className="text-destructive font-semibold">{formatCurrency(inv.remainingAmount)}</span> : <span className="text-emerald-600">مسدد</span>}</td>
+                  <td className="p-3" onClick={(e) => e.stopPropagation()}>
+                    <AuditInfo createdBy={inv.createdBy} createdAt={inv.createdAt} updatedBy={inv.updatedBy} updatedAt={inv.updatedAt} />
+                  </td>
                 </tr>
               ))}
             {!isLoading && invoices.length === 0 && (
-              <tr><td colSpan={6} className="p-8 text-center text-muted-foreground">
+              <tr><td colSpan={7} className="p-8 text-center text-muted-foreground">
                 <ShoppingBag className="h-10 w-10 mx-auto mb-2 opacity-30" />لا توجد فواتير مشتريات
               </td></tr>
             )}

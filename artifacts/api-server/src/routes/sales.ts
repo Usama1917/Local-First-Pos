@@ -2,6 +2,7 @@ import { Router } from "express";
 import db from "../lib/db.js";
 import { nextSerial, getSettings } from "../lib/db.js";
 import { archiveSale } from "../lib/archive.js";
+import { actorName } from "../lib/actor.js";
 
 const router = Router();
 
@@ -63,9 +64,9 @@ router.post("/sales", (req, res) => {
   }
 
   const r = db.prepare(`
-    INSERT INTO sales_invoices (serial, status, paymentType, customerId, craftsmanId, subtotal, discount, total, paidAmount, remainingAmount, craftsmanCommission, notes)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
-  `).run(serial, status, paymentType, customerId || null, craftsmanId || null, subtotal, discount, total, finalPaid, remaining, commission, notes || null);
+    INSERT INTO sales_invoices (serial, status, paymentType, customerId, craftsmanId, subtotal, discount, total, paidAmount, remainingAmount, craftsmanCommission, notes, createdBy)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+  `).run(serial, status, paymentType, customerId || null, craftsmanId || null, subtotal, discount, total, finalPaid, remaining, commission, notes || null, actorName(req));
   const invId = r.lastInsertRowid as number;
 
   const insertItem = db.prepare("INSERT INTO sales_invoice_items (invoiceId, productId, quantity, unitPrice, discount, total) VALUES (?,?,?,?,?,?)");
@@ -121,8 +122,8 @@ router.patch("/sales/:id", (req, res) => {
     customerId = COALESCE(?, customerId), craftsmanId = COALESCE(?, craftsmanId),
     discount = ?, notes = COALESCE(?, notes),
     paymentType = ?, paidAmount = ?, subtotal = ?, total = ?, remainingAmount = ?,
-    updatedAt = datetime('now') WHERE id = ?
-  `).run(customerId || null, craftsmanId || null, effDiscount, notes || null, effPaymentType, fp, subtotal, total, remaining, id);
+    updatedBy = ?, updatedAt = datetime('now') WHERE id = ?
+  `).run(customerId || null, craftsmanId || null, effDiscount, notes || null, effPaymentType, fp, subtotal, total, remaining, actorName(req), id);
 
   res.json({ ...db.prepare(`${INVOICE_SELECT} WHERE si.id = ?`).get(id), items: getItems(id) });
 });
@@ -161,8 +162,8 @@ router.post("/sales/:id/finalize", (req, res) => {
 
   db.exec("BEGIN");
   try {
-    db.prepare(`UPDATE sales_invoices SET status = ?, paymentType = ?, paidAmount = ?, remainingAmount = ?, craftsmanCommission = ?, updatedAt = datetime('now') WHERE id = ?`)
-      .run(status, pt, finalPaid, remaining, commission, id);
+    db.prepare(`UPDATE sales_invoices SET status = ?, paymentType = ?, paidAmount = ?, remainingAmount = ?, craftsmanCommission = ?, updatedBy = ?, updatedAt = datetime('now') WHERE id = ?`)
+      .run(status, pt, finalPaid, remaining, commission, actorName(req), id);
 
     const updateStock = db.prepare("UPDATE products SET currentStock = currentStock - ?, updatedAt = datetime('now') WHERE id = ?");
     const insertMove = db.prepare("INSERT INTO stock_movements (productId, type, quantity, balanceBefore, balanceAfter, referenceType, referenceId, notes) VALUES (?,?,?,?,?,?,?,?)");

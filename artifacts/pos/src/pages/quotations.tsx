@@ -21,6 +21,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { AuditInfo } from "@/components/ui/audit-info";
 import { formatCurrency } from "@/lib/format";
 import { useBarcodeScanner, findProductByCode } from "@/hooks/use-barcode-scanner";
 import { useDraftAutosave } from "@/hooks/use-draft-autosave";
@@ -34,7 +35,12 @@ const STATUS_LABELS: Record<string, { label: string; variant: any }> = {
   cancelled: { label: "ملغية", variant: "destructive" },
 };
 
-interface CartItem { productId: number; productName: string; quantity: number; unitPrice: number; discount: number; total: number; }
+interface CartItem { productId: number; productName: string; quantity: number; unitPrice: number; discountPercent: number; total: number; }
+
+/** Per-item discount as a % of the line (qty × price). A NEGATIVE % is a surcharge (addition). */
+const discountAmount = (qty: number, unitPrice: number, discountPercent: number) => qty * unitPrice * ((discountPercent || 0) / 100);
+/** Line total after the per-item %: qty × price − discountAmount (a negative % increases it). */
+const lineTotal = (qty: number, unitPrice: number, discountPercent: number) => qty * unitPrice - discountAmount(qty, unitPrice, discountPercent);
 
 function NewQuotationDialog({ onClose, open }: { onClose: () => void; open: boolean }) {
   const [productSearch, setProductSearch] = useState("");
@@ -52,8 +58,8 @@ function NewQuotationDialog({ onClose, open }: { onClose: () => void; open: bool
   const addToCart = (p: any) => {
     setCart(prev => {
       const ex = prev.find(i => i.productId === p.id);
-      if (ex) return prev.map(i => i.productId === p.id ? { ...i, quantity: i.quantity + 1, total: (i.quantity + 1) * i.unitPrice - i.discount } : i);
-      return [...prev, { productId: p.id, productName: p.nameAr, quantity: 1, unitPrice: p.sellingPrice, discount: 0, total: p.sellingPrice }];
+      if (ex) return prev.map(i => i.productId === p.id ? { ...i, quantity: i.quantity + 1, total: lineTotal(i.quantity + 1, i.unitPrice, i.discountPercent) } : i);
+      return [...prev, { productId: p.id, productName: p.nameAr, quantity: 1, unitPrice: p.sellingPrice, discountPercent: 0, total: lineTotal(1, p.sellingPrice, 0) }];
     });
     setProductSearch("");
   };
@@ -100,7 +106,7 @@ function NewQuotationDialog({ onClose, open }: { onClose: () => void; open: bool
         customerId: customerId ? Number(customerId) : undefined,
         craftsmanId: craftsmanId ? Number(craftsmanId) : undefined,
         discount, validUntil: validUntil || undefined, status: "confirmed",
-        items: cart.map(i => ({ productId: i.productId, quantity: i.quantity, unitPrice: i.unitPrice, discount: i.discount })),
+        items: cart.map(i => ({ productId: i.productId, quantity: i.quantity, unitPrice: i.unitPrice, discount: discountAmount(i.quantity, i.unitPrice, i.discountPercent) })),
       },
     });
     qc.invalidateQueries({ queryKey: getListQuotationsQueryKey({}) });
@@ -111,7 +117,7 @@ function NewQuotationDialog({ onClose, open }: { onClose: () => void; open: bool
   };
 
   return (
-    <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+    <DialogContent className="max-w-[1340px] w-[96vw] max-h-[90vh] overflow-y-auto">
       <DialogHeader><DialogTitle>تسعيرة جديدة</DialogTitle></DialogHeader>
       {restored && (
         <div className="flex items-center justify-between rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
@@ -157,30 +163,47 @@ function NewQuotationDialog({ onClose, open }: { onClose: () => void; open: bool
           {!(searchResults as any[])?.length && <div className="p-3 text-center text-muted-foreground">لا توجد نتائج</div>}
         </div>
       )}
-      <table className="w-full text-sm">
+      <table className="w-full text-sm table-fixed">
         <thead className="bg-muted/50"><tr>
-          <th className="p-2 text-right">المنتج</th>
-          <th className="p-2 text-center w-24">الكمية</th>
-          <th className="p-2 text-left w-28">السعر</th>
-          <th className="p-2 text-left w-24">الإجمالي</th>
-          <th className="p-2 w-8"></th>
+          <th className="p-2 text-right w-[30%]">المنتج</th>
+          <th className="p-2 text-center w-[18%]">الكمية</th>
+          <th className="p-2 text-left w-[16%]">السعر</th>
+          <th className="p-2 text-left w-[16%]">الخصم %</th>
+          <th className="p-2 text-left w-[15%]">الإجمالي</th>
+          <th className="p-2 w-[5%]"></th>
         </tr></thead>
         <tbody>
           {cart.map((item, idx) => (
             <tr key={idx} className="border-b">
-              <td className="p-2">{item.productName}</td>
+              <td className="p-2 truncate" title={item.productName}>{item.productName}</td>
               <td className="p-2">
                 <div className="flex items-center justify-center gap-1">
-                  <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => setCart(prev => prev.map((i, ix) => ix !== idx ? i : { ...i, quantity: Math.max(1, i.quantity - 1), total: Math.max(1, i.quantity - 1) * i.unitPrice }))}>
+                  <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => setCart(prev => prev.map((i, ix) => { if (ix !== idx) return i; const q = Math.max(1, i.quantity - 1); return { ...i, quantity: q, total: lineTotal(q, i.unitPrice, i.discountPercent) }; }))}>
                     <Minus className="h-3 w-3" />
                   </Button>
                   <span className="w-8 text-center">{item.quantity}</span>
-                  <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => setCart(prev => prev.map((i, ix) => ix !== idx ? i : { ...i, quantity: i.quantity + 1, total: (i.quantity + 1) * i.unitPrice }))}>
+                  <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => setCart(prev => prev.map((i, ix) => { if (ix !== idx) return i; const q = i.quantity + 1; return { ...i, quantity: q, total: lineTotal(q, i.unitPrice, i.discountPercent) }; }))}>
                     <Plus className="h-3 w-3" />
                   </Button>
                 </div>
               </td>
               <td className="p-2 text-left">{formatCurrency(item.unitPrice)}</td>
+              <td className="p-2">
+                <div className="flex items-center gap-1">
+                  <Input
+                    type="number"
+                    className="h-7 text-left"
+                    placeholder="0"
+                    title="نسبة خصم % — قيمة سالبة تعني إضافة على السعر"
+                    value={item.discountPercent || ""}
+                    onChange={e => {
+                      const d = parseFloat(e.target.value) || 0;
+                      setCart(prev => prev.map((i, ix) => ix !== idx ? i : { ...i, discountPercent: d, total: lineTotal(i.quantity, i.unitPrice, d) }));
+                    }}
+                  />
+                  <span className="text-xs text-muted-foreground">%</span>
+                </div>
+              </td>
               <td className="p-2 text-left font-semibold">{formatCurrency(item.total)}</td>
               <td className="p-2"><Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => setCart(prev => prev.filter((_, i) => i !== idx))}><Trash2 className="h-3 w-3" /></Button></td>
             </tr>
@@ -317,6 +340,7 @@ export default function QuotationsPage() {
                         <Button variant="ghost" size="sm" onClick={() => handleDuplicate(q.id)}>
                           <Copy className="h-3 w-3" />
                         </Button>
+                        <AuditInfo createdBy={q.createdBy} createdAt={q.createdAt} updatedBy={q.updatedBy} updatedAt={q.updatedAt} />
                       </div>
                     </td>
                   </tr>

@@ -7,6 +7,18 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Layout } from "@/components/layout";
 import LoginPage from "@/pages/login";
 import { allowedPages, type SessionUser } from "@/lib/pages";
+import { setActorHeaderGetter } from "@workspace/api-client-react";
+
+// Attach the logged-in user's name to every API request (X-Actor-Name header) so
+// the backend records who created / modified each record. Reads localStorage each
+// time so it always reflects the current session (and survives login/logout).
+setActorHeaderGetter(() => {
+  try {
+    return JSON.parse(localStorage.getItem("pos_user") || "null");
+  } catch {
+    return null;
+  }
+});
 
 const queryClient = new QueryClient({
   defaultOptions: {

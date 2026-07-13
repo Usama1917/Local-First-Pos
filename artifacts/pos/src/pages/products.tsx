@@ -7,6 +7,7 @@ import {
   useListUnits,
   useCreateProduct,
   useUpdateProduct,
+  useGetSettings,
   getNextBarcode,
   getListProductsQueryKey,
 } from "@workspace/api-client-react";
@@ -278,6 +279,8 @@ export default function ProductsPage() {
   const { data: brands } = useListBrands({});
   const { data: suppliers } = useListSuppliers({});
   const { data: units } = useListUnits({});
+  const { data: settings } = useGetSettings();
+  const shopName = (settings as any)?.shopName as string | undefined;
   const createProduct = useCreateProduct();
   const updateProduct = useUpdateProduct();
   const lists = { cats, brands, suppliers, units };
@@ -330,7 +333,7 @@ export default function ProductsPage() {
     setShowAddDialog(false);
     setQueue([]);
     setForm(EMPTY_FORM);
-    if (labels.length && !printLabels(labels)) toast.error("فعّل النوافذ المنبثقة (Popup) للطباعة");
+    if (labels.length && !printLabels(labels, shopName)) toast.error("فعّل النوافذ المنبثقة (Popup) للطباعة");
   };
 
   const openEdit = (p: any) => { setEditForm(productToForm(p)); setEditId(p.id); };

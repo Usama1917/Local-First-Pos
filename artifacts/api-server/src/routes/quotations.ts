@@ -1,5 +1,6 @@
 import { Router } from "express";
 import db from "../lib/db.js";
+import { actorName } from "../lib/actor.js";
 import { nextSerial, getSettings } from "../lib/db.js";
 
 const router = Router();
@@ -53,9 +54,9 @@ router.post("/quotations", (req, res) => {
   const total = subtotal - discount;
 
   const r = db.prepare(`
-    INSERT INTO quotations (serial, status, customerId, craftsmanId, subtotal, discount, total, notes, validUntil)
-    VALUES (?,?,?,?,?,?,?,?,?)
-  `).run(serial, status, customerId || null, craftsmanId || null, subtotal, discount, total, notes || null, validUntil || null);
+    INSERT INTO quotations (serial, status, customerId, craftsmanId, subtotal, discount, total, notes, validUntil, createdBy)
+    VALUES (?,?,?,?,?,?,?,?,?,?)
+  `).run(serial, status, customerId || null, craftsmanId || null, subtotal, discount, total, notes || null, validUntil || null, actorName(req));
   const qId = r.lastInsertRowid as number;
 
   const insertItem = db.prepare("INSERT INTO quotation_items (quotationId, productId, quantity, unitPrice, discount, total, notes) VALUES (?,?,?,?,?,?,?)");
@@ -93,8 +94,8 @@ router.patch("/quotations/:id", (req, res) => {
   db.prepare(`UPDATE quotations SET
     customerId = COALESCE(?, customerId), craftsmanId = COALESCE(?, craftsmanId),
     discount = COALESCE(?, discount), notes = COALESCE(?, notes), validUntil = COALESCE(?, validUntil),
-    status = COALESCE(?, status), updatedAt = datetime('now') WHERE id = ?
-  `).run(customerId || null, craftsmanId || null, discount ?? null, notes || null, validUntil || null, status || null, id);
+    status = COALESCE(?, status), updatedBy = ?, updatedAt = datetime('now') WHERE id = ?
+  `).run(customerId || null, craftsmanId || null, discount ?? null, notes || null, validUntil || null, status || null, actorName(req), id);
 
   res.json({ ...db.prepare(`${QUOTATION_SELECT} WHERE q.id = ?`).get(id), items: getItems(id) });
 });
@@ -132,9 +133,9 @@ router.post("/quotations/:id/convert", (req, res) => {
   try {
     const serial = nextSerial(s?.invoicePrefix || "INV");
     const r = db.prepare(`
-      INSERT INTO sales_invoices (serial, status, paymentType, customerId, craftsmanId, subtotal, discount, total, paidAmount, remainingAmount, craftsmanCommission, quotationId)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
-    `).run(serial, invoiceStatus, paymentType, q.customerId, q.craftsmanId, q.subtotal, q.discount, q.total, finalPaid, remaining, commission, id);
+      INSERT INTO sales_invoices (serial, status, paymentType, customerId, craftsmanId, subtotal, discount, total, paidAmount, remainingAmount, craftsmanCommission, quotationId, createdBy)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+    `).run(serial, invoiceStatus, paymentType, q.customerId, q.craftsmanId, q.subtotal, q.discount, q.total, finalPaid, remaining, commission, id, actorName(req));
     invId = r.lastInsertRowid as number;
 
     const insertItem = db.prepare("INSERT INTO sales_invoice_items (invoiceId, productId, quantity, unitPrice, discount, total) VALUES (?,?,?,?,?,?)");
@@ -149,7 +150,7 @@ router.post("/quotations/:id/convert", (req, res) => {
       insertMove.run(item.productId, "sale", item.quantity, before, before - item.quantity, "sales_invoice", invId, `فاتورة ${serial}`);
     }
 
-    db.prepare("UPDATE quotations SET status = 'converted', convertedInvoiceId = ?, updatedAt = datetime('now') WHERE id = ?").run(invId, id);
+    db.prepare("UPDATE quotations SET status = 'converted', convertedInvoiceId = ?, updatedBy = ?, updatedAt = datetime('now') WHERE id = ?").run(invId, actorName(req), id);
     db.exec("COMMIT");
   } catch (e) {
     db.exec("ROLLBACK");
@@ -176,9 +177,9 @@ router.post("/quotations/:id/duplicate", (req, res) => {
   const s = getSettings();
   const serial = nextSerial(s?.quotationPrefix || "QUO");
   const r = db.prepare(`
-    INSERT INTO quotations (serial, status, customerId, craftsmanId, subtotal, discount, total, notes, validUntil)
-    VALUES (?,?,?,?,?,?,?,?,?)
-  `).run(serial, "draft", q.customerId, q.craftsmanId, q.subtotal, q.discount, q.total, q.notes, q.validUntil);
+    INSERT INTO quotations (serial, status, customerId, craftsmanId, subtotal, discount, total, notes, validUntil, createdBy)
+    VALUES (?,?,?,?,?,?,?,?,?,?)
+  `).run(serial, "draft", q.customerId, q.craftsmanId, q.subtotal, q.discount, q.total, q.notes, q.validUntil, actorName(req));
   const newId = r.lastInsertRowid as number;
 
   const insertItem = db.prepare("INSERT INTO quotation_items (quotationId, productId, quantity, unitPrice, discount, total, notes) VALUES (?,?,?,?,?,?,?)");

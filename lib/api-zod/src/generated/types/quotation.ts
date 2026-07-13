@@ -30,5 +30,9 @@ export interface Quotation {
   /** @nullable */
   convertedInvoiceSerial?: string | null;
   createdAt: string;
+  /** @nullable */
+  createdBy?: string | null;
   updatedAt?: string;
+  /** @nullable */
+  updatedBy?: string | null;
 }

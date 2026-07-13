@@ -1,5 +1,6 @@
 import { Router } from "express";
 import db from "../lib/db.js";
+import { actorName } from "../lib/actor.js";
 
 const router = Router();
 
@@ -70,7 +71,7 @@ router.post("/suppliers/:id/payments", (req, res) => {
   const id = Number(req.params.id);
   const { amount, date, notes } = req.body;
   if (!amount || !date) return res.status(400).json({ error: "المبلغ والتاريخ مطلوبان" });
-  const r = db.prepare("INSERT INTO supplier_payments (supplierId, amount, date, notes) VALUES (?,?,?,?)").run(id, amount, date, notes || null);
+  const r = db.prepare("INSERT INTO supplier_payments (supplierId, amount, date, notes, createdBy) VALUES (?,?,?,?,?)").run(id, amount, date, notes || null, actorName(req));
   res.status(201).json(db.prepare("SELECT * FROM supplier_payments WHERE id = ?").get(r.lastInsertRowid));
 });
 

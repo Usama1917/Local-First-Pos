@@ -39,4 +39,6 @@ export interface SalesInvoiceDetail {
   updatedAt?: string;
   /** @nullable */
   createdBy?: string | null;
+  /** @nullable */
+  updatedBy?: string | null;
 }

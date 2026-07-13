@@ -18,6 +18,19 @@ const DEFAULT_JSON_ACCEPT = "application/json, application/problem+json";
 let _baseUrl: string | null = null;
 let _authTokenGetter: AuthTokenGetter | null = null;
 
+export type ActorGetter = () => { name?: string | null } | null | undefined;
+let _actorGetter: ActorGetter | null = null;
+
+/**
+ * Register a getter that supplies the current app user. Its `name` is attached to
+ * every request as an `X-Actor-Name` header so the backend can record who created /
+ * modified each record (audit trail). RBAC here is client-side, so this is how the
+ * server learns the actor. Pass `null` to clear.
+ */
+export function setActorHeaderGetter(getter: ActorGetter | null): void {
+  _actorGetter = getter;
+}
+
 /**
  * Set a base URL that is prepended to every relative request URL
  * (i.e. paths that start with `/`).
@@ -355,6 +368,15 @@ export async function customFetch<T = unknown>(
     const token = await _authTokenGetter();
     if (token) {
       headers.set("authorization", `Bearer ${token}`);
+    }
+  }
+
+  // Attach the current app user's name (URL-encoded — header values must be latin1)
+  // so the backend can stamp who created / modified each record.
+  if (_actorGetter && !headers.has("x-actor-name")) {
+    const actor = _actorGetter();
+    if (actor?.name) {
+      headers.set("x-actor-name", encodeURIComponent(actor.name));
     }
   }
 

@@ -21,6 +21,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatCurrency } from "@/lib/format";
 import { printCommissionReceipt } from "@/lib/print-commission";
+import { normalizeFormat } from "@/lib/print-document";
 import { Search, Plus, HardHat, Eye, Users, Receipt, FileText, Wallet, Printer, Banknote } from "lucide-react";
 import { toast } from "sonner";
 
@@ -71,14 +72,14 @@ function CraftsmanProfile({ id }: { id: number; onClose: () => void }) {
       qc.invalidateQueries({ queryKey: getListCraftsmenQueryKey({}) });
       toast.success("تم سحب العمولة");
       setShowWithdraw(false);
-      if (!printCommissionReceipt(receipt as any, shop)) toast.error("فعّل النوافذ المنبثقة (Popup) للطباعة");
+      if (!printCommissionReceipt(receipt as any, shop, normalizeFormat(shop.defaultPrintTemplate))) toast.error("فعّل النوافذ المنبثقة (Popup) للطباعة");
     } catch (e: any) { toast.error(e?.message || "خطأ"); }
   };
 
   const reprint = async (payoutId: number) => {
     try {
       const receipt = await getCraftsmanPayout(payoutId);
-      if (!printCommissionReceipt(receipt as any, shop)) toast.error("فعّل النوافذ المنبثقة (Popup) للطباعة");
+      if (!printCommissionReceipt(receipt as any, shop, normalizeFormat(shop.defaultPrintTemplate))) toast.error("فعّل النوافذ المنبثقة (Popup) للطباعة");
     } catch (e: any) { toast.error(e?.message || "خطأ"); }
   };
 

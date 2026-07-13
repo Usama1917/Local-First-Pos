@@ -32,4 +32,7 @@ export interface SalesInvoice {
   createdAt: string;
   /** @nullable */
   createdBy?: string | null;
+  updatedAt?: string;
+  /** @nullable */
+  updatedBy?: string | null;
 }

@@ -1,4 +1,5 @@
 import JsBarcode from "jsbarcode";
+import { APP_FONT, FONT_IMPORT } from "./print-document";
 
 export interface LabelItem {
   /** The value encoded in the bars and shown as the number underneath. */
@@ -51,10 +52,17 @@ function barcodeSvg(value: string): string {
  *
  * Opens a dedicated print window so it never collides with the app's A4 invoice
  * print rules. Returns false if the browser blocked the popup.
+ *
+ * `shopName` (from settings) is printed as a small line directly above the barcode
+ * on every sticker.
  */
-export function printLabels(items: LabelItem[]): boolean {
+export function printLabels(items: LabelItem[], shopName?: string): boolean {
   const printable = items.filter((i) => i.barcode && Math.round(i.copies) >= 1);
   if (printable.length === 0) return true;
+
+  const shopLine = shopName && shopName.trim()
+    ? `<div class="shop">${escapeHtml(shopName.trim())}</div>`
+    : "";
 
   const labels: string[] = [];
   printable.forEach((it, idx) => {
@@ -62,7 +70,7 @@ export function printLabels(items: LabelItem[]): boolean {
     const svg = barcodeSvg(it.barcode);
     for (let i = 0; i < copies; i++) {
       labels.push(
-        `<div class="label"><div class="bc">${svg}</div><div class="sku">${escapeHtml(it.sku)}</div></div>`,
+        `<div class="label">${shopLine}<div class="bc">${svg}</div><div class="sku">${escapeHtml(it.sku)}</div></div>`,
       );
     }
     // Blank separator sticker between products (not after the last one).
@@ -75,18 +83,21 @@ export function printLabels(items: LabelItem[]): boolean {
   win.document.write(`<!doctype html>
 <html dir="rtl"><head><meta charset="utf-8"><title>طباعة الباركود</title>
 <style>
+  ${FONT_IMPORT}
   @page { size: 40mm 15mm; margin: 0; }
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  body { width: 40mm; font-family: sans-serif; }
+  body { width: 40mm; font-family: ${APP_FONT}; }
   .label {
     width: 40mm; height: 15mm;
     display: flex; flex-direction: column; align-items: center; justify-content: center;
-    gap: 0.3mm; overflow: hidden; page-break-after: always; break-after: page;
+    gap: 0.2mm; overflow: hidden; page-break-after: always; break-after: page;
   }
   .label:last-of-type { page-break-after: auto; break-after: auto; }
-  .bc { width: 38mm; height: 10.5mm; display: flex; align-items: center; justify-content: center; }
+  .shop { font-size: 6pt; font-weight: 700; line-height: 1; text-align: center;
+          max-width: 39mm; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bc { width: 38mm; height: 9mm; display: flex; align-items: center; justify-content: center; }
   .bc svg { width: 100%; height: 100%; }
-  .sku { font-family: monospace; font-size: 7.5pt; font-weight: 700; line-height: 1; }
+  .sku { font-family: monospace; font-size: 7pt; font-weight: 700; line-height: 1; }
   .blank { }
 </style>
 <script>window.onafterprint=function(){setTimeout(function(){window.close();},150);};</script>

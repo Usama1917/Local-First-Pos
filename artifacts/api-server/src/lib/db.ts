@@ -374,6 +374,20 @@ export function initializeSchema() {
   ensureColumn("sales_invoices", "commissionPaid", "REAL NOT NULL DEFAULT 0");
   // Per-user allowed page keys (JSON array). NULL for admins (full access).
   ensureColumn("users", "permissions", "TEXT");
+
+  // Audit trail: who created / last modified each transactional record. `createdBy`
+  // exists in the CREATE TABLE definitions but pre-existing installs need the ALTER;
+  // `updatedBy` is new for the editable documents. (`createdAt`/`updatedAt` already exist.)
+  for (const t of [
+    "quotations", "sales_invoices", "purchase_invoices", "returns",
+    "customer_payments", "supplier_payments", "craftsman_payouts",
+    "stock_movements", "stock_counts",
+  ]) {
+    ensureColumn(t, "createdBy", "TEXT");
+  }
+  for (const t of ["quotations", "sales_invoices", "purchase_invoices"]) {
+    ensureColumn(t, "updatedBy", "TEXT");
+  }
 }
 
 // Adds a column to an existing table if it isn't there yet (idempotent).

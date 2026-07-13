@@ -9,10 +9,20 @@ import {
   useCreateBrand,
   useUpdateBrand,
   useDeleteBrand,
+  useListCategories,
+  useCreateCategory,
+  useUpdateCategory,
+  useDeleteCategory,
+  useListUnits,
+  useCreateUnit,
+  useUpdateUnit,
+  useDeleteUnit,
   getListSuppliersQueryKey,
   getGetSupplierQueryKey,
   getGetSupplierPaymentsQueryKey,
   getListBrandsQueryKey,
+  getListCategoriesQueryKey,
+  getListUnitsQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
@@ -22,7 +32,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { formatCurrency } from "@/lib/format";
-import { Search, Plus, Truck, Eye, CreditCard, Tag, Pencil, Trash2 } from "lucide-react";
+import { Search, Plus, Truck, Eye, CreditCard, Tag, Pencil, Trash2, Layers, Ruler, type LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 
 function SupplierProfile({ id }: { id: number }) {
@@ -94,10 +104,54 @@ export default function SuppliersPage() {
       <Tabs defaultValue="suppliers">
         <TabsList>
           <TabsTrigger value="suppliers"><Truck className="h-4 w-4 ml-2" />الموردين</TabsTrigger>
+          <TabsTrigger value="categories"><Layers className="h-4 w-4 ml-2" />التصنيفات</TabsTrigger>
           <TabsTrigger value="brands"><Tag className="h-4 w-4 ml-2" />الماركات</TabsTrigger>
+          <TabsTrigger value="units"><Ruler className="h-4 w-4 ml-2" />وحدات القياس</TabsTrigger>
         </TabsList>
         <TabsContent value="suppliers"><SuppliersTab /></TabsContent>
-        <TabsContent value="brands"><BrandsTab /></TabsContent>
+        <TabsContent value="categories">
+          <AttributeTab
+            singular="التصنيف"
+            addLabel="إضافة تصنيف"
+            emptyLabel="لا توجد تصنيفات"
+            headerLabel="التصنيف"
+            Icon={Layers}
+            showCount
+            useList={useListCategories}
+            useCreate={useCreateCategory}
+            useUpdate={useUpdateCategory}
+            useDelete={useDeleteCategory}
+            getQueryKey={getListCategoriesQueryKey}
+          />
+        </TabsContent>
+        <TabsContent value="brands">
+          <AttributeTab
+            singular="الماركة"
+            addLabel="إضافة ماركة"
+            emptyLabel="لا توجد ماركات"
+            headerLabel="الماركة"
+            Icon={Tag}
+            useList={useListBrands}
+            useCreate={useCreateBrand}
+            useUpdate={useUpdateBrand}
+            useDelete={useDeleteBrand}
+            getQueryKey={getListBrandsQueryKey}
+          />
+        </TabsContent>
+        <TabsContent value="units">
+          <AttributeTab
+            singular="الوحدة"
+            addLabel="إضافة وحدة"
+            emptyLabel="لا توجد وحدات قياس"
+            headerLabel="الوحدة"
+            Icon={Ruler}
+            useList={useListUnits}
+            useCreate={useCreateUnit}
+            useUpdate={useUpdateUnit}
+            useDelete={useDeleteUnit}
+            getQueryKey={getListUnitsQueryKey}
+          />
+        </TabsContent>
       </Tabs>
     </div>
   );
@@ -191,89 +245,137 @@ function SuppliersTab() {
   );
 }
 
-function BrandsTab() {
+interface AttrItem { id: number; name: string; nameEn?: string | null; productCount?: number }
+
+/**
+ * Generic CRUD tab for a simple {name, nameEn} lookup list (categories / brands /
+ * units). These lists feed the التصنيف / الماركة / وحدة القياس dropdowns in the
+ * product add/edit form (and anywhere else that reads the same entities), so adding
+ * an entry here makes it selectable everywhere immediately.
+ */
+function AttributeTab({
+  singular,
+  addLabel,
+  emptyLabel,
+  headerLabel,
+  Icon,
+  showCount = false,
+  useList,
+  useCreate,
+  useUpdate,
+  useDelete,
+  getQueryKey,
+}: {
+  singular: string;
+  addLabel: string;
+  emptyLabel: string;
+  headerLabel: string;
+  Icon: LucideIcon;
+  showCount?: boolean;
+  // The generated hooks/query-key helpers for the chosen entity.
+  useList: any;
+  useCreate: any;
+  useUpdate: any;
+  useDelete: any;
+  getQueryKey: () => readonly unknown[];
+}) {
   const qc = useQueryClient();
-  const { data, isLoading } = useListBrands({ query: { queryKey: getListBrandsQueryKey() } });
-  const createBrand = useCreateBrand();
-  const updateBrand = useUpdateBrand();
-  const deleteBrand = useDeleteBrand();
+  const { data, isLoading } = useList({ query: { queryKey: getQueryKey() } });
+  const create = useCreate();
+  const update = useUpdate();
+  const del = useDelete();
 
   const [showAdd, setShowAdd] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
   const [form, setForm] = useState({ name: "", nameEn: "" });
 
-  const brands = (data as any[]) || [];
-  const invalidate = () => qc.invalidateQueries({ queryKey: getListBrandsQueryKey() });
+  const items = (data as AttrItem[]) || [];
+  const invalidate = () => qc.invalidateQueries({ queryKey: getQueryKey() });
+  const colSpan = showCount ? 4 : 3;
 
   const openAdd = () => { setEditId(null); setForm({ name: "", nameEn: "" }); setShowAdd(true); };
-  const openEdit = (b: any) => { setEditId(b.id); setForm({ name: b.name || "", nameEn: b.nameEn || "" }); setShowAdd(true); };
+  const openEdit = (it: AttrItem) => { setEditId(it.id); setForm({ name: it.name || "", nameEn: it.nameEn || "" }); setShowAdd(true); };
 
   const handleSave = async () => {
-    if (!form.name) { toast.error("الاسم مطلوب"); return; }
-    if (editId) {
-      await updateBrand.mutateAsync({ id: editId, data: { name: form.name, nameEn: form.nameEn || undefined } });
-      toast.success("تم تعديل الماركة");
-    } else {
-      await createBrand.mutateAsync({ data: { name: form.name, nameEn: form.nameEn || undefined } });
-      toast.success("تم إضافة الماركة");
+    if (!form.name.trim()) { toast.error("الاسم مطلوب"); return; }
+    try {
+      if (editId) {
+        await update.mutateAsync({ id: editId, data: { name: form.name.trim(), nameEn: form.nameEn.trim() || undefined } });
+        toast.success(`تم تعديل ${singular}`);
+      } else {
+        await create.mutateAsync({ data: { name: form.name.trim(), nameEn: form.nameEn.trim() || undefined } });
+        toast.success(`تم إضافة ${singular}`);
+      }
+      invalidate();
+      setShowAdd(false);
+    } catch {
+      toast.error("حدث خطأ، حاول مرة أخرى");
     }
-    invalidate();
-    setShowAdd(false);
   };
 
-  const handleDelete = async (b: any) => {
-    if (!confirm(`حذف الماركة "${b.name}"؟`)) return;
-    await deleteBrand.mutateAsync({ id: b.id });
-    invalidate();
-    toast.success("تم حذف الماركة");
+  const handleDelete = async (it: AttrItem) => {
+    const count = it.productCount ?? 0;
+    const msg = showCount && count > 0
+      ? `"${it.name}" مرتبط بـ ${count} منتج. الحذف هيشيل الارتباط من المنتجات دي. تكمّل؟`
+      : `حذف ${singular} "${it.name}"؟`;
+    if (!confirm(msg)) return;
+    try {
+      await del.mutateAsync({ id: it.id });
+      invalidate();
+      toast.success(`تم حذف ${singular}`);
+    } catch {
+      toast.error("تعذّر الحذف");
+    }
   };
 
   return (
     <div className="space-y-4">
       <Dialog open={showAdd} onOpenChange={setShowAdd}>
         <DialogContent className="max-w-sm">
-          <DialogHeader><DialogTitle>{editId ? "تعديل ماركة" : "إضافة ماركة"}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{editId ? `تعديل ${singular}` : addLabel}</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div className="space-y-1"><Label>الاسم *</Label><Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} /></div>
             <div className="space-y-1"><Label>الاسم بالإنجليزية</Label><Input value={form.nameEn} onChange={e => setForm(f => ({ ...f, nameEn: e.target.value }))} /></div>
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" onClick={() => setShowAdd(false)}>إلغاء</Button>
-            <Button onClick={handleSave} disabled={createBrand.isPending || updateBrand.isPending}>حفظ</Button>
+            <Button onClick={handleSave} disabled={create.isPending || update.isPending}>حفظ</Button>
           </div>
         </DialogContent>
       </Dialog>
 
       <div className="flex items-center justify-end">
-        <Button onClick={openAdd}><Plus className="h-4 w-4 ml-2" />إضافة ماركة</Button>
+        <Button onClick={openAdd}><Plus className="h-4 w-4 ml-2" />{addLabel}</Button>
       </div>
 
       <Card><CardContent className="p-0">
         <table className="w-full text-sm">
           <thead className="bg-muted/50">
             <tr className="text-right">
-              <th className="p-3">الماركة</th>
+              <th className="p-3">{headerLabel}</th>
               <th className="p-3">بالإنجليزية</th>
+              {showCount && <th className="p-3 text-left">عدد المنتجات</th>}
               <th className="p-3 w-24"></th>
             </tr>
           </thead>
           <tbody>
-            {isLoading ? <tr><td colSpan={3} className="p-8 text-center text-muted-foreground">جاري التحميل...</td></tr> :
-              brands.map((b: any) => (
-                <tr key={b.id} className="border-b hover:bg-muted/30">
-                  <td className="p-3 font-medium">{b.name}</td>
-                  <td className="p-3 text-muted-foreground">{b.nameEn || "—"}</td>
+            {isLoading ? <tr><td colSpan={colSpan} className="p-8 text-center text-muted-foreground">جاري التحميل...</td></tr> :
+              items.map((it) => (
+                <tr key={it.id} className="border-b hover:bg-muted/30">
+                  <td className="p-3 font-medium">{it.name}</td>
+                  <td className="p-3 text-muted-foreground">{it.nameEn || "—"}</td>
+                  {showCount && <td className="p-3 text-left text-muted-foreground">{it.productCount ?? 0}</td>}
                   <td className="p-3">
                     <div className="flex gap-1 justify-end">
-                      <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEdit(b)} title="تعديل"><Pencil className="h-4 w-4" /></Button>
-                      <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => handleDelete(b)} title="حذف"><Trash2 className="h-4 w-4" /></Button>
+                      <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEdit(it)} title="تعديل"><Pencil className="h-4 w-4" /></Button>
+                      <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => handleDelete(it)} title="حذف"><Trash2 className="h-4 w-4" /></Button>
                     </div>
                   </td>
                 </tr>
               ))}
-            {!isLoading && brands.length === 0 && (
-              <tr><td colSpan={3} className="p-8 text-center text-muted-foreground">
-                <Tag className="h-10 w-10 mx-auto mb-2 opacity-30" />لا توجد ماركات
+            {!isLoading && items.length === 0 && (
+              <tr><td colSpan={colSpan} className="p-8 text-center text-muted-foreground">
+                <Icon className="h-10 w-10 mx-auto mb-2 opacity-30" />{emptyLabel}
               </td></tr>
             )}
           </tbody>

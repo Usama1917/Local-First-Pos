@@ -1,5 +1,6 @@
 import { Router } from "express";
 import db from "../lib/db.js";
+import { actorName } from "../lib/actor.js";
 import { nextPayoutSerial } from "../lib/db.js";
 import { archivePayout } from "../lib/archive.js";
 
@@ -65,7 +66,7 @@ router.get("/craftsmen/:id", (req, res) => {
   if (!row) return res.status(404).json({ error: "غير موجود" });
 
   const recentPayouts = db.prepare(`
-    SELECT id, serial, amount, notes, createdAt FROM craftsman_payouts
+    SELECT id, serial, amount, notes, createdBy, createdAt FROM craftsman_payouts
     WHERE craftsmanId = ? ORDER BY createdAt DESC LIMIT 50
   `).all(id);
 
@@ -182,8 +183,8 @@ router.post("/craftsmen/:id/payouts", (req, res) => {
   db.exec("BEGIN");
   try {
     const r = db.prepare(
-      "INSERT INTO craftsman_payouts (serial, craftsmanId, amount, notes) VALUES (?,?,?,?)",
-    ).run(nextPayoutSerial(), id, amount, notes || null);
+      "INSERT INTO craftsman_payouts (serial, craftsmanId, amount, notes, createdBy) VALUES (?,?,?,?,?)",
+    ).run(nextPayoutSerial(), id, amount, notes || null, actorName(req));
     const payoutId = r.lastInsertRowid as number;
 
     // FIFO: settle the oldest invoices first.
@@ -218,7 +219,7 @@ router.post("/craftsmen/:id/payouts", (req, res) => {
 router.get("/craftsmen/:id/payouts", (req, res) => {
   const id = Number(req.params.id);
   const items = db.prepare(
-    "SELECT id, serial, amount, notes, createdAt FROM craftsman_payouts WHERE craftsmanId = ? ORDER BY createdAt DESC",
+    "SELECT id, serial, amount, notes, createdBy, createdAt FROM craftsman_payouts WHERE craftsmanId = ? ORDER BY createdAt DESC",
   ).all(id);
   res.json({ items, total: items.length });
 });

@@ -1,5 +1,6 @@
 import { Router } from "express";
 import db from "../lib/db.js";
+import { actorName } from "../lib/actor.js";
 import { nextReturnSerial } from "../lib/db.js";
 import { archiveReturn } from "../lib/archive.js";
 
@@ -131,10 +132,10 @@ router.post("/returns", (req, res) => {
   db.exec("BEGIN");
   try {
     const r = db.prepare(`
-      INSERT INTO returns (serial, originalInvoiceId, originalSerial, customerId, type, settlementType, returnedTotal, newItemsTotal, netAmount, notes)
-      VALUES (?,?,?,?,?,?,?,?,?,?)
+      INSERT INTO returns (serial, originalInvoiceId, originalSerial, customerId, type, settlementType, returnedTotal, newItemsTotal, netAmount, notes, createdBy)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?)
     `).run(nextReturnSerial(), inv.id, inv.serial, inv.customerId || null, type, settlementType,
-      Math.round(returnedTotal * 100) / 100, Math.round(newItemsTotal * 100) / 100, netAmount, notes || null);
+      Math.round(returnedTotal * 100) / 100, Math.round(newItemsTotal * 100) / 100, netAmount, notes || null, actorName(req));
     const returnId = r.lastInsertRowid as number;
 
     const addItem = db.prepare(

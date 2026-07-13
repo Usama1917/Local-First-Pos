@@ -26,4 +26,7 @@ export interface PurchaseInvoice {
   createdAt: string;
   /** @nullable */
   createdBy?: string | null;
+  updatedAt?: string;
+  /** @nullable */
+  updatedBy?: string | null;
 }

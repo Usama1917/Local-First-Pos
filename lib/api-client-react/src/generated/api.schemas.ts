@@ -333,6 +333,9 @@ export interface SalesInvoice {
   createdAt: string;
   /** @nullable */
   createdBy?: string | null;
+  updatedAt?: string;
+  /** @nullable */
+  updatedBy?: string | null;
 }
 
 export interface CustomerProfile {
@@ -568,6 +571,9 @@ export interface PurchaseInvoice {
   createdAt: string;
   /** @nullable */
   createdBy?: string | null;
+  updatedAt?: string;
+  /** @nullable */
+  updatedBy?: string | null;
 }
 
 export interface SupplierProfile {
@@ -652,7 +658,11 @@ export interface Quotation {
   /** @nullable */
   convertedInvoiceSerial?: string | null;
   createdAt: string;
+  /** @nullable */
+  createdBy?: string | null;
   updatedAt?: string;
+  /** @nullable */
+  updatedBy?: string | null;
 }
 
 export interface QuotationDetail {
@@ -680,7 +690,11 @@ export interface QuotationDetail {
   /** @nullable */
   convertedInvoiceSerial?: string | null;
   createdAt: string;
+  /** @nullable */
+  createdBy?: string | null;
   updatedAt?: string;
+  /** @nullable */
+  updatedBy?: string | null;
 }
 
 export interface QuotationInput {
@@ -765,6 +779,8 @@ export interface SalesInvoiceDetail {
   updatedAt?: string;
   /** @nullable */
   createdBy?: string | null;
+  /** @nullable */
+  updatedBy?: string | null;
 }
 
 export type SalesInvoiceInputPaymentType = typeof SalesInvoiceInputPaymentType[keyof typeof SalesInvoiceInputPaymentType];
@@ -987,6 +1003,8 @@ export interface PurchaseInvoiceDetail {
   updatedAt?: string;
   /** @nullable */
   createdBy?: string | null;
+  /** @nullable */
+  updatedBy?: string | null;
 }
 
 export interface PurchaseItemInput {

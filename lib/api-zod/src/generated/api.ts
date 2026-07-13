@@ -149,7 +149,9 @@ export const GetRecentInvoicesResponseItem = zod.object({
   "quotationId": zod.number().nullish(),
   "notes": zod.string().nullish(),
   "createdAt": zod.string(),
-  "createdBy": zod.string().nullish()
+  "createdBy": zod.string().nullish(),
+  "updatedAt": zod.string().optional(),
+  "updatedBy": zod.string().nullish()
 })
 export const GetRecentInvoicesResponse = zod.array(GetRecentInvoicesResponseItem)
 
@@ -173,7 +175,9 @@ export const GetRecentQuotationsResponseItem = zod.object({
   "convertedInvoiceId": zod.number().nullish(),
   "convertedInvoiceSerial": zod.string().nullish(),
   "createdAt": zod.string(),
-  "updatedAt": zod.string().optional()
+  "createdBy": zod.string().nullish(),
+  "updatedAt": zod.string().optional(),
+  "updatedBy": zod.string().nullish()
 })
 export const GetRecentQuotationsResponse = zod.array(GetRecentQuotationsResponseItem)
 
@@ -705,7 +709,9 @@ export const GetCustomerResponse = zod.object({
   "quotationId": zod.number().nullish(),
   "notes": zod.string().nullish(),
   "createdAt": zod.string(),
-  "createdBy": zod.string().nullish()
+  "createdBy": zod.string().nullish(),
+  "updatedAt": zod.string().optional(),
+  "updatedBy": zod.string().nullish()
 })),
   "totalDebt": zod.number(),
   "totalPaid": zod.number(),
@@ -836,7 +842,9 @@ export const GetCustomerInvoicesResponse = zod.object({
   "quotationId": zod.number().nullish(),
   "notes": zod.string().nullish(),
   "createdAt": zod.string(),
-  "createdBy": zod.string().nullish()
+  "createdBy": zod.string().nullish(),
+  "updatedAt": zod.string().optional(),
+  "updatedBy": zod.string().nullish()
 })),
   "total": zod.number()
 })
@@ -863,7 +871,9 @@ export const GetCustomerQuotationsResponse = zod.object({
   "convertedInvoiceId": zod.number().nullish(),
   "convertedInvoiceSerial": zod.string().nullish(),
   "createdAt": zod.string(),
-  "updatedAt": zod.string().optional()
+  "createdBy": zod.string().nullish(),
+  "updatedAt": zod.string().optional(),
+  "updatedBy": zod.string().nullish()
 })),
   "total": zod.number()
 })
@@ -950,7 +960,9 @@ export const GetCraftsmanResponse = zod.object({
   "quotationId": zod.number().nullish(),
   "notes": zod.string().nullish(),
   "createdAt": zod.string(),
-  "createdBy": zod.string().nullish()
+  "createdBy": zod.string().nullish(),
+  "updatedAt": zod.string().optional(),
+  "updatedBy": zod.string().nullish()
 })),
   "totalSales": zod.number(),
   "totalCommission": zod.number()
@@ -1146,7 +1158,9 @@ export const GetSupplierResponse = zod.object({
   "notes": zod.string().nullish(),
   "invoiceDate": zod.string().nullish(),
   "createdAt": zod.string(),
-  "createdBy": zod.string().nullish()
+  "createdBy": zod.string().nullish(),
+  "updatedAt": zod.string().optional(),
+  "updatedBy": zod.string().nullish()
 })),
   "totalDebt": zod.number(),
   "totalPaid": zod.number()
@@ -1244,7 +1258,9 @@ export const ListQuotationsResponse = zod.object({
   "convertedInvoiceId": zod.number().nullish(),
   "convertedInvoiceSerial": zod.string().nullish(),
   "createdAt": zod.string(),
-  "updatedAt": zod.string().optional()
+  "createdBy": zod.string().nullish(),
+  "updatedAt": zod.string().optional(),
+  "updatedBy": zod.string().nullish()
 })),
   "total": zod.number()
 })
@@ -1303,7 +1319,9 @@ export const GetQuotationResponse = zod.object({
   "convertedInvoiceId": zod.number().nullish(),
   "convertedInvoiceSerial": zod.string().nullish(),
   "createdAt": zod.string(),
-  "updatedAt": zod.string().optional()
+  "createdBy": zod.string().nullish(),
+  "updatedAt": zod.string().optional(),
+  "updatedBy": zod.string().nullish()
 })
 
 
@@ -1356,7 +1374,9 @@ export const UpdateQuotationResponse = zod.object({
   "convertedInvoiceId": zod.number().nullish(),
   "convertedInvoiceSerial": zod.string().nullish(),
   "createdAt": zod.string(),
-  "updatedAt": zod.string().optional()
+  "createdBy": zod.string().nullish(),
+  "updatedAt": zod.string().optional(),
+  "updatedBy": zod.string().nullish()
 })
 
 
@@ -1424,7 +1444,9 @@ export const ListSalesInvoicesResponse = zod.object({
   "quotationId": zod.number().nullish(),
   "notes": zod.string().nullish(),
   "createdAt": zod.string(),
-  "createdBy": zod.string().nullish()
+  "createdBy": zod.string().nullish(),
+  "updatedAt": zod.string().optional(),
+  "updatedBy": zod.string().nullish()
 })),
   "total": zod.number()
 })
@@ -1490,7 +1512,8 @@ export const GetSalesInvoiceResponse = zod.object({
   "barcode": zod.string().nullish(),
   "createdAt": zod.string(),
   "updatedAt": zod.string().optional(),
-  "createdBy": zod.string().nullish()
+  "createdBy": zod.string().nullish(),
+  "updatedBy": zod.string().nullish()
 })
 
 
@@ -1549,7 +1572,8 @@ export const UpdateSalesInvoiceResponse = zod.object({
   "barcode": zod.string().nullish(),
   "createdAt": zod.string(),
   "updatedAt": zod.string().optional(),
-  "createdBy": zod.string().nullish()
+  "createdBy": zod.string().nullish(),
+  "updatedBy": zod.string().nullish()
 })
 
 
@@ -1606,7 +1630,8 @@ export const FinalizeSalesInvoiceResponse = zod.object({
   "barcode": zod.string().nullish(),
   "createdAt": zod.string(),
   "updatedAt": zod.string().optional(),
-  "createdBy": zod.string().nullish()
+  "createdBy": zod.string().nullish(),
+  "updatedBy": zod.string().nullish()
 })
 
 
@@ -1648,7 +1673,8 @@ export const CancelSalesInvoiceResponse = zod.object({
   "barcode": zod.string().nullish(),
   "createdAt": zod.string(),
   "updatedAt": zod.string().optional(),
-  "createdBy": zod.string().nullish()
+  "createdBy": zod.string().nullish(),
+  "updatedBy": zod.string().nullish()
 })
 
 
@@ -1693,7 +1719,8 @@ export const LookupSalesInvoiceBySerialResponse = zod.object({
   "barcode": zod.string().nullish(),
   "createdAt": zod.string(),
   "updatedAt": zod.string().optional(),
-  "createdBy": zod.string().nullish()
+  "createdBy": zod.string().nullish(),
+  "updatedBy": zod.string().nullish()
 })
 
 
@@ -1843,7 +1870,9 @@ export const ListPurchaseInvoicesResponse = zod.object({
   "notes": zod.string().nullish(),
   "invoiceDate": zod.string().nullish(),
   "createdAt": zod.string(),
-  "createdBy": zod.string().nullish()
+  "createdBy": zod.string().nullish(),
+  "updatedAt": zod.string().optional(),
+  "updatedBy": zod.string().nullish()
 })),
   "total": zod.number()
 })
@@ -1904,7 +1933,8 @@ export const GetPurchaseInvoiceResponse = zod.object({
   "invoiceDate": zod.string().nullish(),
   "createdAt": zod.string(),
   "updatedAt": zod.string().optional(),
-  "createdBy": zod.string().nullish()
+  "createdBy": zod.string().nullish(),
+  "updatedBy": zod.string().nullish()
 })
 
 
@@ -1958,7 +1988,8 @@ export const UpdatePurchaseInvoiceResponse = zod.object({
   "invoiceDate": zod.string().nullish(),
   "createdAt": zod.string(),
   "updatedAt": zod.string().optional(),
-  "createdBy": zod.string().nullish()
+  "createdBy": zod.string().nullish(),
+  "updatedBy": zod.string().nullish()
 })
 
 
@@ -2009,7 +2040,8 @@ export const FinalizePurchaseInvoiceResponse = zod.object({
   "invoiceDate": zod.string().nullish(),
   "createdAt": zod.string(),
   "updatedAt": zod.string().optional(),
-  "createdBy": zod.string().nullish()
+  "createdBy": zod.string().nullish(),
+  "updatedBy": zod.string().nullish()
 })
 
 

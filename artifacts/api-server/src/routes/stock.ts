@@ -1,5 +1,6 @@
 import { Router } from "express";
 import db from "../lib/db.js";
+import { actorName } from "../lib/actor.js";
 
 const router = Router();
 
@@ -34,8 +35,8 @@ router.post("/stock/adjustment", (req, res) => {
   const after = before + Number(quantity);
 
   db.prepare("UPDATE products SET currentStock = ?, updatedAt = datetime('now') WHERE id = ?").run(after, productId);
-  const r = db.prepare("INSERT INTO stock_movements (productId, type, quantity, balanceBefore, balanceAfter, referenceType, notes) VALUES (?,?,?,?,?,?,?)").run(
-    productId, type, quantity, before, after, "manual", notes || null,
+  const r = db.prepare("INSERT INTO stock_movements (productId, type, quantity, balanceBefore, balanceAfter, referenceType, notes, createdBy) VALUES (?,?,?,?,?,?,?,?)").run(
+    productId, type, quantity, before, after, "manual", notes || null, actorName(req),
   );
   res.status(201).json(db.prepare("SELECT * FROM stock_movements WHERE id = ?").get(r.lastInsertRowid));
 });
@@ -48,7 +49,7 @@ function listStockCounts(req: any, res: any) {
 function createStockCount(req: any, res: any) {
   const { name, notes } = req.body;
   const products = db.prepare("SELECT id, currentStock FROM products WHERE isActive = 1").all() as any[];
-  const r = db.prepare("INSERT INTO stock_counts (name, notes, status) VALUES (?,?,'draft')").run(name || `جرد ${new Date().toLocaleDateString("ar-EG")}`, notes || null);
+  const r = db.prepare("INSERT INTO stock_counts (name, notes, status, createdBy) VALUES (?,?,'draft',?)").run(name || `جرد ${new Date().toLocaleDateString("ar-EG")}`, notes || null, actorName(req));
   const countId = r.lastInsertRowid as number;
   const insertItem = db.prepare("INSERT INTO stock_count_items (stockCountId, productId, systemQty, countedQty) VALUES (?,?,?,?)");
   for (const p of products) insertItem.run(countId, p.id, p.currentStock, p.currentStock);

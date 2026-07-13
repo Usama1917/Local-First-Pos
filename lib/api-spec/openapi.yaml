@@ -2315,7 +2315,9 @@ components:
         convertedInvoiceId: { type: ["integer", "null"] }
         convertedInvoiceSerial: { type: ["string", "null"] }
         createdAt: { type: string }
+        createdBy: { type: ["string", "null"] }
         updatedAt: { type: string }
+        updatedBy: { type: ["string", "null"] }
     QuotationDetail:
       type: object
       required: [id, serial, status, items, total, createdAt]
@@ -2339,7 +2341,9 @@ components:
         convertedInvoiceId: { type: ["integer", "null"] }
         convertedInvoiceSerial: { type: ["string", "null"] }
         createdAt: { type: string }
+        createdBy: { type: ["string", "null"] }
         updatedAt: { type: string }
+        updatedBy: { type: ["string", "null"] }
     QuotationInput:
       type: object
       properties:
@@ -2409,6 +2413,8 @@ components:
         notes: { type: ["string", "null"] }
         createdAt: { type: string }
         createdBy: { type: ["string", "null"] }
+        updatedAt: { type: string }
+        updatedBy: { type: ["string", "null"] }
     SalesInvoiceDetail:
       type: object
       required: [id, serial, status, items, total, createdAt]
@@ -2438,6 +2444,7 @@ components:
         createdAt: { type: string }
         updatedAt: { type: string }
         createdBy: { type: ["string", "null"] }
+        updatedBy: { type: ["string", "null"] }
     SalesInvoiceInput:
       type: object
       properties:
@@ -2610,6 +2617,8 @@ components:
         invoiceDate: { type: ["string", "null"] }
         createdAt: { type: string }
         createdBy: { type: ["string", "null"] }
+        updatedAt: { type: string }
+        updatedBy: { type: ["string", "null"] }
     PurchaseInvoiceDetail:
       type: object
       required: [id, serial, status, items, total, createdAt]
@@ -2633,6 +2642,7 @@ components:
         createdAt: { type: string }
         updatedAt: { type: string }
         createdBy: { type: ["string", "null"] }
+        updatedBy: { type: ["string", "null"] }
     PurchaseItem:
       type: object
       required: [id, productId, quantity, listPrice, netPrice, total]
