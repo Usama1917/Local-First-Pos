@@ -257,9 +257,9 @@ function NewPurchaseDialog({ onClose, open, invoiceId }: { onClose: () => void; 
         </div>
       )}
       {restored && (
-        <div className="flex items-center justify-between rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+        <div className="flex items-center justify-between rounded-md border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/40 px-3 py-2 text-xs text-amber-800 dark:text-amber-200">
           <span>↩️ تم استرجاع مسودة محفوظة تلقائيًا</span>
-          <Button variant="ghost" size="sm" className="h-6 text-amber-800" onClick={() => { resetForm(); clearDraft(); }}>ابدأ من جديد</Button>
+          <Button variant="ghost" size="sm" className="h-6 text-amber-800 dark:text-amber-200" onClick={() => { resetForm(); clearDraft(); }}>ابدأ من جديد</Button>
         </div>
       )}
       <div className="grid grid-cols-4 gap-3">
@@ -337,7 +337,7 @@ function NewPurchaseDialog({ onClose, open, invoiceId }: { onClose: () => void; 
                       <span className="text-xs font-semibold">{Math.round(item.quantity)}</span>
                     ) : (
                       <div className="flex items-center justify-center gap-1">
-                        <Button variant="ghost" size="icon" className={`h-7 w-7 ${item.print ? "text-emerald-600" : "text-muted-foreground"}`} onClick={() => togglePrint(idx)} title={item.print ? "هيطبع ستيكر" : "مش هيطبع"}>
+                        <Button variant="ghost" size="icon" className={`h-7 w-7 ${item.print ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"}`} onClick={() => togglePrint(idx)} title={item.print ? "هيطبع ستيكر" : "مش هيطبع"}>
                           {item.print ? <Printer className="h-3.5 w-3.5" /> : <Ban className="h-3.5 w-3.5" />}
                         </Button>
                         <span className="text-xs font-semibold w-5 text-center">{item.print ? Math.round(item.quantity) : "—"}</span>
@@ -453,7 +453,7 @@ export default function PurchasesPage() {
                   <td className="p-3">{inv.supplierName || "—"}</td>
                   <td className="p-3"><Badge variant={STATUS_LABELS[inv.status]?.variant}>{STATUS_LABELS[inv.status]?.label}</Badge></td>
                   <td className="p-3 text-left font-semibold">{formatCurrency(inv.total)}</td>
-                  <td className="p-3 text-left">{inv.remainingAmount > 0 ? <span className="text-destructive font-semibold">{formatCurrency(inv.remainingAmount)}</span> : <span className="text-emerald-600">مسدد</span>}</td>
+                  <td className="p-3 text-left">{inv.remainingAmount > 0 ? <span className="text-destructive font-semibold">{formatCurrency(inv.remainingAmount)}</span> : <span className="text-emerald-600 dark:text-emerald-400">مسدد</span>}</td>
                   <td className="p-3" onClick={(e) => e.stopPropagation()}>
                     <AuditInfo createdBy={inv.createdBy} createdAt={inv.createdAt} updatedBy={inv.updatedBy} updatedAt={inv.updatedAt} />
                   </td>

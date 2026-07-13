@@ -15,7 +15,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatCurrency } from "@/lib/format";
-import { Save, Download, HardDrive, Settings, FolderOpen } from "lucide-react";
+import { getTheme, setTheme, type Theme } from "@/lib/theme";
+import { motion } from "framer-motion";
+import { Save, Download, HardDrive, Settings, FolderOpen, Sun, Moon } from "lucide-react";
 import { toast } from "sonner";
 
 export default function SettingsPage() {
@@ -27,6 +29,8 @@ export default function SettingsPage() {
   const { data: dbInfo } = useQuery({ queryKey: ["backup-info"], queryFn: () => fetch("/api/backup/info").then(r => r.json()) });
   const [newDataDir, setNewDataDir] = useState("");
   const [newArchiveDir, setNewArchiveDir] = useState("");
+  const [theme, setThemeState] = useState<Theme>(getTheme());
+  const changeTheme = (t: Theme) => { setTheme(t); setThemeState(t); };
   const s = settings as any;
 
   const [form, setForm] = useState<any>({
@@ -153,6 +157,49 @@ export default function SettingsPage() {
               </div>
             </CardContent>
           </Card>
+
+          <Card>
+            <CardHeader><CardTitle>المظهر</CardTitle></CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <Label>مظهر النظام</Label>
+                  <p className="text-xs text-muted-foreground mt-1">اختَر بين الوضع الفاتح والداكن — بيتطبّق على طول.</p>
+                </div>
+                <div className="flex gap-1 rounded-lg border bg-muted/40 p-1">
+                  {(["light", "dark"] as Theme[]).map((t) => {
+                    const active = theme === t;
+                    const Icon = t === "light" ? Sun : Moon;
+                    return (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => changeTheme(t)}
+                        className={`relative flex items-center gap-1.5 rounded-md px-4 py-1.5 text-sm font-medium outline-none transition-colors ${active ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                      >
+                        {active && (
+                          <motion.span
+                            layoutId="theme-toggle-pill"
+                            className="absolute inset-0 rounded-md bg-primary shadow-sm"
+                            transition={{ type: "spring", stiffness: 420, damping: 34 }}
+                          />
+                        )}
+                        <motion.span
+                          className="relative z-10 inline-flex"
+                          animate={active ? { rotate: [0, -20, 0], scale: [1, 1.25, 1] } : { rotate: 0, scale: 1 }}
+                          whileTap={{ scale: 0.8 }}
+                          transition={{ duration: 0.45 }}
+                        >
+                          <Icon className="h-4 w-4" />
+                        </motion.span>
+                        <span className="relative z-10">{t === "light" ? "فاتح" : "داكن"}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="numbering">
@@ -273,7 +320,7 @@ export default function SettingsPage() {
                 </div>
                 <p className="text-xs text-muted-foreground">✅ يُطبَّق فورًا — مش محتاج إعادة تشغيل. الفواتير القديمة متتأرشفش، بس اللي جاي.</p>
                 {(dbInfo as any)?.pdfEngineAvailable === false && (
-                  <p className="text-xs text-amber-600">⚠️ مفيش متصفّح (Edge/Chrome) متثبّت على الجهاز — مطلوب لإنشاء ملفات الـ PDF.</p>
+                  <p className="text-xs text-amber-600 dark:text-amber-400">⚠️ مفيش متصفّح (Edge/Chrome) متثبّت على الجهاز — مطلوب لإنشاء ملفات الـ PDF.</p>
                 )}
               </div>
             </CardContent>

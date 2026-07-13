@@ -86,7 +86,7 @@ function SupplierProfile({ id }: { id: number }) {
           {(payments as any[])?.map((p: any) => (
             <tr key={p.id} className="border-b">
               <td className="p-2">{new Date(p.date).toLocaleDateString("ar-EG")}</td>
-              <td className="p-2 text-left text-emerald-600 font-semibold">{formatCurrency(p.amount)}</td>
+              <td className="p-2 text-left text-emerald-600 dark:text-emerald-400 font-semibold">{formatCurrency(p.amount)}</td>
               <td className="p-2 text-muted-foreground">{p.notes || "—"}</td>
             </tr>
           ))}

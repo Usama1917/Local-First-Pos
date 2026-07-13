@@ -177,7 +177,7 @@ function InvoiceDetail({ invoiceId }: { invoiceId: number }) {
             <div className="flex justify-between"><span className="text-muted-foreground">الإجمالي الفرعي:</span><span>{formatCurrency(grossSubtotal)}</span></div>
             {totalDiscount > 0 && <div className="flex justify-between text-destructive"><span>إجمالي الخصم:</span><span>- {formatCurrency(totalDiscount)}</span></div>}
             <div className="flex justify-between border-t border-foreground/40 pt-1 text-base font-bold"><span>الإجمالي:</span><span>{formatCurrency(inv.total)}</span></div>
-            {inv.paidAmount > 0 && <div className="flex justify-between text-emerald-700"><span>المدفوع:</span><span>{formatCurrency(inv.paidAmount)}</span></div>}
+            {inv.paidAmount > 0 && <div className="flex justify-between text-emerald-700 dark:text-emerald-400"><span>المدفوع:</span><span>{formatCurrency(inv.paidAmount)}</span></div>}
             {inv.remainingAmount > 0 && <div className="flex justify-between font-semibold text-destructive"><span>المتبقي (على العميل):</span><span>{formatCurrency(inv.remainingAmount)}</span></div>}
           </div>
         </div>
@@ -327,13 +327,13 @@ export default function SalesPage() {
                     <td className="p-3">{inv.customerName || <span className="text-muted-foreground">نقدي</span>}</td>
                     <td className="p-3">
                       {inv.craftsmanName
-                        ? <span className="flex items-center gap-1 text-amber-700 text-xs"><HardHat className="h-3 w-3" />{inv.craftsmanName}</span>
+                        ? <span className="flex items-center gap-1 text-amber-700 dark:text-amber-400 text-xs"><HardHat className="h-3 w-3" />{inv.craftsmanName}</span>
                         : <span className="text-muted-foreground">—</span>}
                     </td>
                     <td className="p-3"><Badge variant={STATUS_LABELS[inv.status]?.variant}>{STATUS_LABELS[inv.status]?.label}</Badge></td>
                     <td className="p-3">{PAYMENT_LABELS[inv.paymentType] || inv.paymentType}</td>
                     <td className="p-3 text-left font-semibold">{formatCurrency(inv.total)}</td>
-                    <td className="p-3 text-left">{inv.remainingAmount > 0 ? <span className="text-destructive font-semibold">{formatCurrency(inv.remainingAmount)}</span> : <span className="text-emerald-600">مسدد</span>}</td>
+                    <td className="p-3 text-left">{inv.remainingAmount > 0 ? <span className="text-destructive font-semibold">{formatCurrency(inv.remainingAmount)}</span> : <span className="text-emerald-600 dark:text-emerald-400">مسدد</span>}</td>
                     <td className="p-3">
                       <div className="flex items-center gap-1">
                         <Button variant="ghost" size="sm" onClick={() => setSelectedId(inv.id)}>

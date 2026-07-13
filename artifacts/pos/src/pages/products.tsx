@@ -397,7 +397,7 @@ export default function ProductsPage() {
                         <td className="p-2">
                           <div className="flex gap-1 justify-end">
                             {q.barcode && (
-                              <Button size="icon" variant="ghost" className={`h-8 w-8 ${q.print === false ? "text-muted-foreground" : "text-emerald-600"}`} onClick={() => togglePrint(i)} title={q.print === false ? "تشغيل الطباعة" : "عدم الطباعة"}>
+                              <Button size="icon" variant="ghost" className={`h-8 w-8 ${q.print === false ? "text-muted-foreground" : "text-emerald-600 dark:text-emerald-400"}`} onClick={() => togglePrint(i)} title={q.print === false ? "تشغيل الطباعة" : "عدم الطباعة"}>
                                 {q.print === false ? <Ban className="h-4 w-4" /> : <Printer className="h-4 w-4" />}
                               </Button>
                             )}

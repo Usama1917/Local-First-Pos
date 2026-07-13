@@ -59,8 +59,8 @@ export default function Dashboard() {
           <CardContent>
             <div className="text-2xl font-bold">{isSummaryLoading ? "..." : formatCurrency(summary?.todaySales)}</div>
             <p className="text-xs text-muted-foreground mt-1 flex gap-2">
-              <span className="text-emerald-600">نقدي: {formatCurrency(summary?.todayCash)}</span>
-              <span className="text-amber-600">آجل: {formatCurrency(summary?.todayCredit)}</span>
+              <span className="text-emerald-600 dark:text-emerald-400">نقدي: {formatCurrency(summary?.todayCash)}</span>
+              <span className="text-amber-600 dark:text-amber-400">آجل: {formatCurrency(summary?.todayCredit)}</span>
             </p>
           </CardContent>
         </Card>

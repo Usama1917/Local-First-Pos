@@ -73,7 +73,7 @@ function StockCountDetail({ countId, onClose }: { countId: number; onClose: () =
               const counted = localItems[item.productId] ?? item.countedQty;
               const diff = counted - item.systemQty;
               return (
-                <tr key={item.id} className={`border-b ${diff !== 0 ? "bg-amber-50/50" : ""}`}>
+                <tr key={item.id} className={`border-b ${diff !== 0 ? "bg-amber-50/50 dark:bg-amber-500/10" : ""}`}>
                   <td className="p-2 font-medium">{item.productName}</td>
                   <td className="p-2 text-center font-mono text-xs text-muted-foreground">{item.sku}</td>
                   <td className="p-2 text-center font-semibold">{item.systemQty}</td>
@@ -89,7 +89,7 @@ function StockCountDetail({ countId, onClose }: { countId: number; onClose: () =
                   </td>
                   <td className="p-2 text-center">
                     {diff !== 0 && (
-                      <span className={`font-bold flex items-center justify-center gap-1 ${diff > 0 ? "text-emerald-600" : "text-destructive"}`}>
+                      <span className={`font-bold flex items-center justify-center gap-1 ${diff > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-destructive"}`}>
                         {diff > 0 ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
                         {Math.abs(diff)}
                       </span>
@@ -242,7 +242,7 @@ export default function InventoryPage() {
                   <tr key={m.id} className="border-b hover:bg-muted/30">
                     <td className="p-3 font-medium">{m.productName}</td>
                     <td className="p-3"><Badge variant="outline">{MOVE_LABELS[m.type] || m.type}</Badge></td>
-                    <td className={`p-3 text-center font-bold ${m.quantity > 0 ? "text-emerald-600" : "text-destructive"}`}>{m.quantity > 0 ? "+" : ""}{m.quantity}</td>
+                    <td className={`p-3 text-center font-bold ${m.quantity > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-destructive"}`}>{m.quantity > 0 ? "+" : ""}{m.quantity}</td>
                     <td className="p-3 text-center text-muted-foreground">{m.balanceBefore}</td>
                     <td className="p-3 text-center font-semibold">{m.balanceAfter}</td>
                     <td className="p-3 text-muted-foreground text-xs">{m.notes || "—"}</td>

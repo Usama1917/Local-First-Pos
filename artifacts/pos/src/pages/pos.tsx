@@ -358,7 +358,7 @@ export default function POSPage() {
                         <p className="font-medium text-sm">{item.productName}</p>
                         <p className="text-xs text-muted-foreground">{item.sku}</p>
                         {belowMin && (
-                          <p className="mt-1 flex items-center gap-1 text-xs text-amber-600">
+                          <p className="mt-1 flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400">
                             <AlertTriangle className="h-3 w-3 shrink-0" />
                             السعر أقل من الحد المسموح ({formatCurrency(item.minSellingPrice)})
                           </p>

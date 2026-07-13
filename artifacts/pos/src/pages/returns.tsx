@@ -210,7 +210,7 @@ export default function ReturnsPage() {
                           <button
                             type="button"
                             onClick={() => setRestock((p) => ({ ...p, [it.productId]: !rs }))}
-                            className={`inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-medium ${rs ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"}`}
+                            className={`inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-medium ${rs ? "bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400" : "bg-red-100 dark:bg-red-950/50 text-red-700 dark:text-red-400"}`}
                           >
                             {rs ? <><RotateCcw className="h-3 w-3" />سليم (للمخزن)</> : <><PackageX className="h-3 w-3" />تالف</>}
                           </button>
@@ -275,9 +275,9 @@ export default function ReturnsPage() {
                 {isExchange && <div className="flex justify-between"><span className="text-muted-foreground">إجمالي البديل</span><span className="font-semibold">{formatCurrency(newItemsTotal)}</span></div>}
                 <div className="flex justify-between border-t pt-2 mt-1 text-base font-bold">
                   {net > 0
-                    ? <><span className="text-red-600">مطلوب من العميل</span><span className="text-red-600">{formatCurrency(net)}</span></>
+                    ? <><span className="text-red-600 dark:text-red-400">مطلوب من العميل</span><span className="text-red-600 dark:text-red-400">{formatCurrency(net)}</span></>
                     : net < 0
-                      ? <><span className="text-emerald-700">مسترد للعميل</span><span className="text-emerald-700">{formatCurrency(Math.abs(net))}</span></>
+                      ? <><span className="text-emerald-700 dark:text-emerald-400">مسترد للعميل</span><span className="text-emerald-700 dark:text-emerald-400">{formatCurrency(Math.abs(net))}</span></>
                       : <><span>لا يوجد فرق</span><span>{formatCurrency(0)}</span></>}
                 </div>
               </div>
@@ -287,7 +287,7 @@ export default function ReturnsPage() {
                   <Button type="button" variant={settlement === "cash" ? "default" : "outline"} className="flex-1" onClick={() => setSettlement("cash")}>كاش</Button>
                   <Button type="button" variant={settlement === "account" ? "default" : "outline"} className="flex-1" onClick={() => setSettlement("account")} disabled={!invoice.customerId} title={!invoice.customerId ? "الفاتورة نقدية — مفيش عميل مسجّل" : ""}>على الحساب</Button>
                 </div>
-                {settlement === "account" && !invoice.customerId && <p className="text-xs text-red-600">الفاتورة دي نقدية، التسوية على الحساب محتاجة عميل مسجّل.</p>}
+                {settlement === "account" && !invoice.customerId && <p className="text-xs text-red-600 dark:text-red-400">الفاتورة دي نقدية، التسوية على الحساب محتاجة عميل مسجّل.</p>}
                 <Input placeholder="ملاحظات (اختياري)" value={notes} onChange={(e) => setNotes(e.target.value)} />
               </div>
             </div>
@@ -327,9 +327,9 @@ export default function ReturnsPage() {
                 <td className="p-3">{r.customerName || "نقدي"}</td>
                 <td className="p-3 text-left font-semibold">
                   {r.netAmount > 0
-                    ? <span className="text-red-600">{formatCurrency(r.netAmount)}</span>
+                    ? <span className="text-red-600 dark:text-red-400">{formatCurrency(r.netAmount)}</span>
                     : r.netAmount < 0
-                      ? <span className="text-emerald-700">-{formatCurrency(Math.abs(r.netAmount))}</span>
+                      ? <span className="text-emerald-700 dark:text-emerald-400">-{formatCurrency(Math.abs(r.netAmount))}</span>
                       : formatCurrency(0)}
                 </td>
                 <td className="p-3 text-xs">{r.settlementType === "account" ? "على الحساب" : "كاش"}</td>

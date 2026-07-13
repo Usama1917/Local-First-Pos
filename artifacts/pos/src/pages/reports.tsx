@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { formatCurrency } from "@/lib/format";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from "recharts";
+import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from "recharts";
 import { Calendar, TrendingUp, Package, Star, HardHat, ShoppingBag } from "lucide-react";
 
 function DateRangePicker({ from, to, onFrom, onTo }: { from: string; to: string; onFrom: (v: string) => void; onTo: (v: string) => void }) {
@@ -74,11 +74,11 @@ export default function ReportsPage() {
                   <p className="text-xs text-muted-foreground">إجمالي المبيعات</p>
                 </CardContent></Card>
                 <Card><CardContent className="p-4">
-                  <p className="text-2xl font-bold text-emerald-600">{formatCurrency(sales?.summary?.totalCash)}</p>
+                  <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{formatCurrency(sales?.summary?.totalCash)}</p>
                   <p className="text-xs text-muted-foreground">نقدي</p>
                 </CardContent></Card>
                 <Card><CardContent className="p-4">
-                  <p className="text-2xl font-bold text-amber-600">{formatCurrency(sales?.summary?.totalCredit)}</p>
+                  <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{formatCurrency(sales?.summary?.totalCredit)}</p>
                   <p className="text-xs text-muted-foreground">آجل</p>
                 </CardContent></Card>
                 <Card><CardContent className="p-4">
@@ -90,15 +90,24 @@ export default function ReportsPage() {
                 <Card>
                   <CardHeader><CardTitle>المبيعات اليومية</CardTitle></CardHeader>
                   <CardContent>
-                    <ResponsiveContainer width="100%" height={250}>
-                      <BarChart data={sales.daily} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="date" tick={{ fontSize: 11 }} />
-                        <YAxis tick={{ fontSize: 11 }} />
-                        <Tooltip formatter={(v: any) => [formatCurrency(v), ""]} />
-                        <Bar dataKey="sales" fill="hsl(var(--primary))" name="المبيعات" radius={[3,3,0,0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
+                    {/* dir=ltr: Recharts is LTR-native; without it the RTL page clips the Y-axis
+                        labels. A monotone line shows the sales trend over time. */}
+                    <div dir="ltr">
+                      <ResponsiveContainer width="100%" height={260}>
+                        <LineChart data={sales.daily} margin={{ top: 12, right: 16, left: 8, bottom: 5 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                          <XAxis dataKey="date" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} stroke="hsl(var(--border))" tickMargin={8} />
+                          <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} stroke="hsl(var(--border))" width={64} tickMargin={8} />
+                          <Tooltip
+                            formatter={(v: any) => [formatCurrency(v), "المبيعات"]}
+                            contentStyle={{ background: "hsl(var(--popover))", border: "1px solid hsl(var(--border))", borderRadius: 8, color: "hsl(var(--popover-foreground))" }}
+                            labelStyle={{ color: "hsl(var(--muted-foreground))" }}
+                            cursor={{ stroke: "hsl(var(--border))", strokeWidth: 1 }}
+                          />
+                          <Line type="monotone" dataKey="sales" name="المبيعات" stroke="hsl(var(--primary))" strokeWidth={2.5} dot={{ r: 3, fill: "hsl(var(--primary))", strokeWidth: 0 }} activeDot={{ r: 5 }} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
                   </CardContent>
                 </Card>
               )}
@@ -146,7 +155,7 @@ export default function ReportsPage() {
                   <p className="text-xs text-muted-foreground">أصناف ناقصة</p>
                 </CardContent></Card>
                 <Card><CardContent className="p-4">
-                  <p className="text-2xl font-bold text-amber-600">{inv?.summary?.outOfStockCount}</p>
+                  <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{inv?.summary?.outOfStockCount}</p>
                   <p className="text-xs text-muted-foreground">نفد من المخزون</p>
                 </CardContent></Card>
               </div>
@@ -226,7 +235,7 @@ export default function ReportsPage() {
                     <td className="p-3 text-muted-foreground">{c.jobType || "—"}</td>
                     <td className="p-3 text-center">{c.invoiceCount}</td>
                     <td className="p-3 text-left">{formatCurrency(c.totalSales)}</td>
-                    <td className="p-3 text-left text-amber-600 font-bold">{formatCurrency(c.totalCommission)}</td>
+                    <td className="p-3 text-left text-amber-600 dark:text-amber-400 font-bold">{formatCurrency(c.totalCommission)}</td>
                     <td className="p-3 text-center text-muted-foreground">{c.commissionPercent || 0}%</td>
                   </tr>
                 ))}
@@ -243,7 +252,7 @@ export default function ReportsPage() {
               <p className="text-xs text-muted-foreground">إجمالي المشتريات</p>
             </CardContent></Card>
             <Card><CardContent className="p-4">
-              <p className="text-2xl font-bold text-emerald-600">{formatCurrency(purchases?.summary?.totalPaid)}</p>
+              <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{formatCurrency(purchases?.summary?.totalPaid)}</p>
               <p className="text-xs text-muted-foreground">المدفوع</p>
             </CardContent></Card>
             <Card><CardContent className="p-4">

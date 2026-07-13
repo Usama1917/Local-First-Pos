@@ -87,7 +87,7 @@ function CustomerProfile({ customerId, onClose }: { customerId: number; onClose:
           <p className="text-xs text-muted-foreground">إجمالي الفواتير</p>
         </CardContent></Card>
         <Card><CardContent className="p-3 text-center">
-          <p className="text-2xl font-bold text-emerald-600">{formatCurrency(stmt?.totalPaid)}</p>
+          <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{formatCurrency(stmt?.totalPaid)}</p>
           <p className="text-xs text-muted-foreground">إجمالي المدفوع</p>
         </CardContent></Card>
       </div>
@@ -138,7 +138,7 @@ function CustomerProfile({ customerId, onClose }: { customerId: number; onClose:
                     <td className="p-2 text-muted-foreground text-xs">{new Date(inv.createdAt).toLocaleDateString("ar-EG")}</td>
                     <td className="p-2">
                       {inv.craftsmanName
-                        ? <span className="flex items-center gap-1 text-amber-700"><HardHat className="h-3 w-3" />{inv.craftsmanName}</span>
+                        ? <span className="flex items-center gap-1 text-amber-700 dark:text-amber-400"><HardHat className="h-3 w-3" />{inv.craftsmanName}</span>
                         : <span className="text-muted-foreground">—</span>}
                     </td>
                     <td className="p-2">
@@ -148,7 +148,7 @@ function CustomerProfile({ customerId, onClose }: { customerId: number; onClose:
                     <td className="p-2 text-left">
                       {inv.remainingAmount > 0
                         ? <span className="text-destructive font-semibold">{formatCurrency(inv.remainingAmount)}</span>
-                        : <span className="text-emerald-600 text-xs">مسدد</span>}
+                        : <span className="text-emerald-600 dark:text-emerald-400 text-xs">مسدد</span>}
                     </td>
                   </tr>
                 ))}
@@ -182,7 +182,7 @@ function CustomerProfile({ customerId, onClose }: { customerId: number; onClose:
                     <td className="p-2 text-muted-foreground text-xs">{new Date(q.createdAt).toLocaleDateString("ar-EG")}</td>
                     <td className="p-2">
                       {q.craftsmanName
-                        ? <span className="flex items-center gap-1 text-amber-700"><HardHat className="h-3 w-3" />{q.craftsmanName}</span>
+                        ? <span className="flex items-center gap-1 text-amber-700 dark:text-amber-400"><HardHat className="h-3 w-3" />{q.craftsmanName}</span>
                         : <span className="text-muted-foreground">—</span>}
                     </td>
                     <td className="p-2">
@@ -214,7 +214,7 @@ function CustomerProfile({ customerId, onClose }: { customerId: number; onClose:
                   <td className="p-2 text-muted-foreground text-xs">{new Date(e.date).toLocaleDateString("ar-EG")}</td>
                   <td className="p-2">{e.description}</td>
                   <td className="p-2 text-left text-destructive">{e.debit ? formatCurrency(e.debit) : "—"}</td>
-                  <td className="p-2 text-left text-emerald-600">{e.credit ? formatCurrency(e.credit) : "—"}</td>
+                  <td className="p-2 text-left text-emerald-600 dark:text-emerald-400">{e.credit ? formatCurrency(e.credit) : "—"}</td>
                   <td className="p-2 text-left font-semibold">{formatCurrency(e.balance)}</td>
                 </tr>
               ))}
@@ -233,7 +233,7 @@ function CustomerProfile({ customerId, onClose }: { customerId: number; onClose:
               {(payments as any[])?.map((p: any) => (
                 <tr key={p.id} className="border-b">
                   <td className="p-2">{new Date(p.date).toLocaleDateString("ar-EG")}</td>
-                  <td className="p-2 text-left text-emerald-600 font-semibold">{formatCurrency(p.amount)}</td>
+                  <td className="p-2 text-left text-emerald-600 dark:text-emerald-400 font-semibold">{formatCurrency(p.amount)}</td>
                   <td className="p-2 text-muted-foreground">{p.notes || "—"}</td>
                 </tr>
               ))}

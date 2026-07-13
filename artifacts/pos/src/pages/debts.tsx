@@ -98,9 +98,9 @@ export default function DebtsPage() {
         </Card>
         <Card>
           <CardContent className="p-4 flex items-center gap-4">
-            <div className="bg-amber-500/10 p-3 rounded-full"><TrendingDown className="h-6 w-6 text-amber-600" /></div>
+            <div className="bg-amber-500/10 p-3 rounded-full"><TrendingDown className="h-6 w-6 text-amber-600 dark:text-amber-400" /></div>
             <div>
-              <p className="text-2xl font-bold text-amber-600">{formatCurrency(totalPayables)}</p>
+              <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{formatCurrency(totalPayables)}</p>
               <p className="text-sm text-muted-foreground">إجمالي المستحق للموردين</p>
             </div>
           </CardContent>
@@ -168,7 +168,7 @@ export default function DebtsPage() {
                       <td className="p-3 font-medium">{d.name}</td>
                       <td className="p-3 text-muted-foreground">{d.phone || "—"}</td>
                       <td className="p-3 text-center">{d.openInvoices}</td>
-                      <td className="p-3 text-left font-bold text-amber-600">{formatCurrency(d.balance)}</td>
+                      <td className="p-3 text-left font-bold text-amber-600 dark:text-amber-400">{formatCurrency(d.balance)}</td>
                       <td className="p-3">
                         <Button variant="outline" size="sm" onClick={() => openPay(d, "supplier")}>
                           <CreditCard className="h-4 w-4 ml-1" /> سداد

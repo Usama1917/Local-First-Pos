@@ -94,7 +94,7 @@ function CraftsmanProfile({ id }: { id: number; onClose: () => void }) {
     <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
       <DialogHeader>
         <DialogTitle className="flex items-center gap-2">
-          <HardHat className="h-5 w-5 text-amber-600" />
+          <HardHat className="h-5 w-5 text-amber-600 dark:text-amber-400" />
           {craftsman.name}
         </DialogTitle>
         <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
@@ -111,15 +111,15 @@ function CraftsmanProfile({ id }: { id: number; onClose: () => void }) {
           <p className="text-xs text-muted-foreground">إجمالي المبيعات</p>
         </CardContent></Card>
         <Card><CardContent className="p-3 text-center">
-          <p className="text-xl font-bold text-amber-600">{formatCurrency(craftsman.totalCommission)}</p>
+          <p className="text-xl font-bold text-amber-600 dark:text-amber-400">{formatCurrency(craftsman.totalCommission)}</p>
           <p className="text-xs text-muted-foreground">إجمالي العمولة</p>
         </CardContent></Card>
         <Card><CardContent className="p-3 text-center">
           <p className="text-xl font-bold text-muted-foreground">{formatCurrency(craftsman.paidCommission || 0)}</p>
           <p className="text-xs text-muted-foreground">المسحوب</p>
         </CardContent></Card>
-        <Card className="border-emerald-200 bg-emerald-50/40"><CardContent className="p-3 text-center">
-          <p className="text-xl font-bold text-emerald-700">{formatCurrency(outstanding)}</p>
+        <Card className="border-emerald-200 dark:border-emerald-900 bg-emerald-50/40 dark:bg-emerald-950/40"><CardContent className="p-3 text-center">
+          <p className="text-xl font-bold text-emerald-700 dark:text-emerald-400">{formatCurrency(outstanding)}</p>
           <p className="text-xs text-muted-foreground">المستحق حاليًا</p>
         </CardContent></Card>
       </div>
@@ -130,7 +130,7 @@ function CraftsmanProfile({ id }: { id: number; onClose: () => void }) {
           <div className="flex items-center justify-between">
             <div className="text-sm">
               <span className="text-muted-foreground">العمولة المستحقة للسحب: </span>
-              <span className="font-bold text-emerald-700">{formatCurrency(outstanding)}</span>
+              <span className="font-bold text-emerald-700 dark:text-emerald-400">{formatCurrency(outstanding)}</span>
             </div>
             <Button size="sm" onClick={openWithdraw} disabled={outstanding <= 0}>
               <Wallet className="h-4 w-4 ml-1" />سحب العمولة
@@ -210,9 +210,9 @@ function CraftsmanProfile({ id }: { id: number; onClose: () => void }) {
                     <td className="p-2 text-left">
                       {inv.remainingAmount > 0
                         ? <span className="text-destructive font-semibold">{formatCurrency(inv.remainingAmount)}</span>
-                        : <span className="text-emerald-600 text-xs">مسدد</span>}
+                        : <span className="text-emerald-600 dark:text-emerald-400 text-xs">مسدد</span>}
                     </td>
-                    <td className="p-2 text-left text-amber-600">{inv.craftsmanCommission ? formatCurrency(inv.craftsmanCommission) : "—"}</td>
+                    <td className="p-2 text-left text-amber-600 dark:text-amber-400">{inv.craftsmanCommission ? formatCurrency(inv.craftsmanCommission) : "—"}</td>
                     <td className="p-2 text-muted-foreground text-xs">{new Date(inv.createdAt).toLocaleDateString("ar-EG")}</td>
                   </tr>
                 ))}
@@ -278,7 +278,7 @@ function CraftsmanProfile({ id }: { id: number; onClose: () => void }) {
                 {payouts.map((p: any) => (
                   <tr key={p.id} className="border-b hover:bg-muted/30">
                     <td className="p-2 font-mono font-medium text-primary">{p.serial}</td>
-                    <td className="p-2 text-left font-semibold text-emerald-700">{formatCurrency(p.amount)}</td>
+                    <td className="p-2 text-left font-semibold text-emerald-700 dark:text-emerald-400">{formatCurrency(p.amount)}</td>
                     <td className="p-2 text-muted-foreground">{p.notes || "—"}</td>
                     <td className="p-2 text-muted-foreground text-xs">{new Date(p.createdAt).toLocaleDateString("ar-EG")}</td>
                     <td className="p-2 text-center">
@@ -424,10 +424,10 @@ export default function CraftsmenPage() {
                   <td className="p-3 text-muted-foreground">{c.jobType || "—"}</td>
                   <td className="p-3 text-muted-foreground">{c.phone || "—"}</td>
                   <td className="p-3 text-left">{formatCurrency(c.totalSales)}</td>
-                  <td className="p-3 text-left text-amber-600 font-semibold">{formatCurrency(c.totalCommission)}</td>
+                  <td className="p-3 text-left text-amber-600 dark:text-amber-400 font-semibold">{formatCurrency(c.totalCommission)}</td>
                   <td className="p-3 text-left font-semibold">
                     {c.outstandingCommission > 0
-                      ? <span className="text-emerald-700">{formatCurrency(c.outstandingCommission)}</span>
+                      ? <span className="text-emerald-700 dark:text-emerald-400">{formatCurrency(c.outstandingCommission)}</span>
                       : <span className="text-muted-foreground text-xs">—</span>}
                   </td>
                   <td className="p-3"><Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setSelectedId(c.id); }}><Eye className="h-4 w-4 ml-1" />عرض</Button></td>

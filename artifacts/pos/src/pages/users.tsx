@@ -53,7 +53,7 @@ function PermissionsDialog({ user, onClose }: { user: any; onClose: () => void }
         <DialogTitle className="flex items-center gap-2"><ShieldCheck className="h-5 w-5 text-primary" />صلاحيات: {user.name}</DialogTitle>
       </DialogHeader>
       {admin ? (
-        <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+        <div className="rounded-md border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/40 p-3 text-sm text-amber-800 dark:text-amber-200">
           المدير له صلاحية الوصول لكل الصفحات تلقائيًا — مفيش حاجة تتحدد هنا.
         </div>
       ) : (
@@ -249,7 +249,7 @@ export default function UsersPage() {
                   <Badge variant={roleIsAdmin(u.role) ? "default" : "secondary"}>{ROLE_LABEL[u.role] || u.role}</Badge>
                 </td>
                 <td className="p-3">
-                  {u.isActive ? <span className="text-emerald-600 text-xs">مفعّل</span> : <span className="text-muted-foreground text-xs">موقوف</span>}
+                  {u.isActive ? <span className="text-emerald-600 dark:text-emerald-400 text-xs">مفعّل</span> : <span className="text-muted-foreground text-xs">موقوف</span>}
                 </td>
                 <td className="p-3">
                   <div className="flex items-center justify-center gap-1">

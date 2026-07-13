@@ -120,9 +120,9 @@ function NewQuotationDialog({ onClose, open }: { onClose: () => void; open: bool
     <DialogContent className="max-w-[1340px] w-[96vw] max-h-[90vh] overflow-y-auto">
       <DialogHeader><DialogTitle>تسعيرة جديدة</DialogTitle></DialogHeader>
       {restored && (
-        <div className="flex items-center justify-between rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+        <div className="flex items-center justify-between rounded-md border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/40 px-3 py-2 text-xs text-amber-800 dark:text-amber-200">
           <span>↩️ تم استرجاع مسودة محفوظة تلقائيًا</span>
-          <Button variant="ghost" size="sm" className="h-6 text-amber-800" onClick={() => { resetForm(); clearDraft(); }}>ابدأ من جديد</Button>
+          <Button variant="ghost" size="sm" className="h-6 text-amber-800 dark:text-amber-200" onClick={() => { resetForm(); clearDraft(); }}>ابدأ من جديد</Button>
         </div>
       )}
       <div className="flex gap-2">
@@ -325,7 +325,7 @@ export default function QuotationsPage() {
                     <td className="p-3">{q.customerName || <span className="text-muted-foreground">غير محدد</span>}</td>
                     <td className="p-3">
                       {q.craftsmanName
-                        ? <span className="flex items-center gap-1 text-amber-700 text-xs"><HardHat className="h-3 w-3" />{q.craftsmanName}</span>
+                        ? <span className="flex items-center gap-1 text-amber-700 dark:text-amber-400 text-xs"><HardHat className="h-3 w-3" />{q.craftsmanName}</span>
                         : <span className="text-muted-foreground">—</span>}
                     </td>
                     <td className="p-3"><Badge variant={STATUS_LABELS[q.status]?.variant}>{STATUS_LABELS[q.status]?.label}</Badge></td>
