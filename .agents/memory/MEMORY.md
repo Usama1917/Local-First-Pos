@@ -1,2 +1,3 @@
 - [POS System route conventions](pos-route-conventions.md) — generated client uses `/api/stock-counts` (hyphen); backend originally had `/api/stock/counts` (slash). Both paths now served as aliases in stock.ts.
 - [SelectItem empty-value fix](selectitem-empty-value.md) — shadcn Select forbids value="". Use sentinel `"__none__"` on SelectItem + `value={state || "__none__"}` on Select + onValueChange converts `"__none__"` back to `""`.
+- [Shop production mode (Windows one-click)](shop-production-mode.md) — shop runs one-origin on `http://localhost:8080` via the «نظام المحل» desktop shortcut; `:24730` is dev-only; owner is non-technical; never delete/commit the real DB, backups, or logs.

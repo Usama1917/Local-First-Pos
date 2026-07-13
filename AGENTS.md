@@ -26,6 +26,44 @@
 
 ---
 
+## 0.5 Production / shop-mode facts (verified on the real Windows shop PC)
+
+The app was **installed and run successfully on the actual Windows shop machine**
+(Node 24 + Git + pnpm), demo/seed data was safely cleaned (backup first, DB **not**
+deleted, schema unchanged, dashboard totals went to zero), and daily operation works.
+Keep these facts intact:
+
+- **Local-first POS** — one local machine, no cloud. **Shop URL = `http://localhost:8080`**
+  (health: `http://localhost:8080/api/healthz` → `{"status":"ok"}`).
+- **Shop mode = one origin on `8080`.** The **API server serves both `/api/*` and the
+  built frontend** (`artifacts/pos/dist/public`). The owner does **not** use `:24730`.
+- **`:24730` is development mode only** (separate Vite dev server, proxies `/api` → 8080).
+  Dev can still run the two-server split; the shop never does.
+- **Daily use = one double-click** on the desktop shortcut **«نظام المحل»** (runs
+  `Start POS Hidden.vbs` → `Start POS.bat`, opens the browser). The **owner is
+  non-technical**: no terminal, no commands, no ports. If it won't open → contact
+  admin/developer.
+- **Launcher scripts** (root): `Setup POS.bat` (first-time admin setup),
+  `Start POS.bat` / `Start POS Hidden.vbs` (daily one-click, won't start a 2nd server if
+  8080 is already listening, logs to `logs/pos-server.log`), `Stop POS.bat` (admin/support),
+  `Update POS.bat` (admin — **backs up `data/store.db` before `git pull`**),
+  `Create Desktop Shortcut.vbs` (makes the «نظام المحل» shortcut).
+- **`data/store.db`** is the local SQLite DB (created on first boot). **Never delete it.
+  Never commit the real shop DB or backups or logs** (`.gitignore` covers `data/*.db`,
+  `backups/`, `logs/`, `PRODUCTION_DATA_CLEANUP_NOTE.txt`). **Always back up before updates.**
+- **Do not change invoice / inventory / debt / customer / craftsman / supplier / report
+  business logic** unless explicitly asked.
+- Staff usage-support prompt for a separate ChatGPT project: `docs/SHOP_CHATGPT_ASSISTANT_PROMPT_AR.md`.
+
+> **Local-dev note (macOS):** newer pnpm (via corepack) escalates
+> `ERR_PNPM_IGNORED_BUILDS` to a hard error in its pre-run deps check, which broke
+> `pnpm run dev`/`build:shop`. Fixed in `pnpm-workspace.yaml` → `allowBuilds:`
+> (`esbuild: true`, `better-sqlite3: false` — the latter is an unused leftover dep; the
+> app uses built-in `node:sqlite`). Don't let pnpm rewrite those back to the
+> `set this to true or false` placeholder.
+
+---
+
 ## 1. How to run locally (verified working)
 
 ```bash

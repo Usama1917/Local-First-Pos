@@ -78,3 +78,13 @@ overrides:
   # drizzle-kit uses esbuild internally on an older version that's vulnerable, this overrides it
   "@esbuild-kit/esm-loader": "npm:tsx@^4.21.0"
   esbuild: "0.27.3"
+
+# Explicit build-script approvals. Newer pnpm otherwise leaves these unresolved
+# and reports ERR_PNPM_IGNORED_BUILDS, which the pre-run deps check escalates to
+# a hard error and breaks `pnpm run dev` / `build:shop`.
+#   esbuild:        true  — needed to build the API bundle (verified: works).
+#   better-sqlite3: false — unused leftover dep; the app uses built-in node:sqlite,
+#                           so we skip its native (node-gyp) build on purpose.
+allowBuilds:
+  better-sqlite3: false
+  esbuild: true
