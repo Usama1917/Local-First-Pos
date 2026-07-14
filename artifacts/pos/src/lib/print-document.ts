@@ -64,9 +64,11 @@ function baseCss(format: PrintFormat): string {
   body { font-family: ${APP_FONT}; color: #111; direction: rtl; }
   body.fmt-a4 { font-size: 11pt; }
   body.fmt-a5 { font-size: 9.5pt; }
-  /* width = full 80mm roll; 6mm side padding keeps content inside the printable area
-     (box-sizing: border-box → real content width ≈ 68mm, safely clear of both edges). */
-  body.fmt-thermal { font-size: 8.5pt; width: 80mm; padding: 3mm 6mm 6mm; margin: 0 auto; }
+  /* Thermal print area is a fixed 60mm column centered on the 80mm roll (10mm side
+     padding), independent of the printer/dialog — so nothing ever clips. Heavy weight
+     (Cairo 700+) because thin strokes fade on a low-dpi thermal head. */
+  body.fmt-thermal { font-family: 'Cairo','Tajawal','Segoe UI',sans-serif; font-weight: 700;
+                     font-size: 8.5pt; width: 80mm; padding: 3mm 10mm 6mm; margin: 0 auto; }
 
   .shop { text-align: center; border-bottom: 2px solid #111; padding-bottom: 8px; margin-bottom: 10px; }
   .shop .name { font-weight: 800; font-size: 1.8em; line-height: 1.2; }
@@ -110,14 +112,22 @@ function baseCss(format: PrintFormat): string {
   .sign div { border-top: 1px solid #111; padding-top: 6px; width: 45%; text-align: center; }
   .footer { margin-top: 18px; text-align: center; color: #666; font-size: 0.85em; }
 
-  /* Thermal (80mm roll): single narrow column, tighter, no signature lines. */
-  body.fmt-thermal .shop .name { font-size: 1.4em; }
+  /* Thermal (80mm roll): single narrow column, tighter, no signature lines.
+     Everything bold + pure black so it prints crisp; no thin/gray text (it fades). */
+  body.fmt-thermal .shop .name { font-size: 1.4em; font-weight: 800; }
   body.fmt-thermal .head { flex-direction: column; gap: 2px; }
+  body.fmt-thermal .head h1 { font-weight: 800; }
   body.fmt-thermal .info { flex-direction: column; gap: 2px; }
-  body.fmt-thermal table { font-size: 0.92em; margin-top: 6px; }
-  body.fmt-thermal th, body.fmt-thermal td { padding: 2px 3px; }
+  body.fmt-thermal h2 { font-weight: 800; }
+  body.fmt-thermal table { font-size: 0.85em; margin-top: 6px; }
+  body.fmt-thermal th, body.fmt-thermal td { padding: 2px 3px; font-weight: 700; }
   body.fmt-thermal .totals { width: 100%; }
+  body.fmt-thermal .totals .net { font-weight: 800; }
   body.fmt-thermal .sign { display: none; }
+  /* Kill faded grays on thermal — force strong ink everywhere. */
+  body.fmt-thermal, body.fmt-thermal .shop .meta, body.fmt-thermal .info b,
+  body.fmt-thermal .head .serial, body.fmt-thermal .sku, body.fmt-thermal .totals .muted,
+  body.fmt-thermal .footer, body.fmt-thermal .notes { color: #000; }
   `;
 }
 
