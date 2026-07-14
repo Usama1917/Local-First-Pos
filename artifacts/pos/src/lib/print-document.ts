@@ -64,11 +64,12 @@ function baseCss(format: PrintFormat): string {
   body { font-family: ${APP_FONT}; color: #111; direction: rtl; }
   body.fmt-a4 { font-size: 11pt; }
   body.fmt-a5 { font-size: 9.5pt; }
-  /* Thermal print area is a fixed 60mm column centered on the 80mm roll (10mm side
-     padding), independent of the printer/dialog — so nothing ever clips. Heavy weight
-     (Cairo 700+) because thin strokes fade on a low-dpi thermal head. */
+  /* Thermal print area is a fixed 60mm column on the 80mm roll, independent of the
+     printer/dialog — so nothing ever clips. Nudged toward the left (15mm right / 5mm
+     left padding) to counter this thermal head's right-bias so it looks centered.
+     Heavy weight (Cairo 700+) because thin strokes fade on a low-dpi thermal head. */
   body.fmt-thermal { font-family: 'Cairo','Tajawal','Segoe UI',sans-serif; font-weight: 700;
-                     font-size: 8.5pt; width: 80mm; padding: 3mm 10mm 6mm; margin: 0 auto; }
+                     font-size: 8.5pt; width: 80mm; padding: 3mm 15mm 6mm 5mm; margin: 0 auto; }
 
   .shop { text-align: center; border-bottom: 2px solid #111; padding-bottom: 8px; margin-bottom: 10px; }
   .shop .name { font-weight: 800; font-size: 1.8em; line-height: 1.2; }
