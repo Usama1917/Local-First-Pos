@@ -123,11 +123,13 @@ function baseCss(format: PrintFormat): string {
   body.fmt-thermal table { font-size: 0.85em; margin-top: 6px; }
   body.fmt-thermal th, body.fmt-thermal td { padding: 2px 3px; font-weight: 700; }
   body.fmt-thermal .totals { width: 100%; }
-  body.fmt-thermal .totals .net { font-weight: 800; }
+  body.fmt-thermal .totals > div { font-weight: 800; }
   body.fmt-thermal .sign { display: none; }
-  /* Kill faded grays on thermal — force strong ink everywhere. */
+  /* Kill faded colors on thermal — green "paid"/red "remaining" print faint, so force
+     strong black ink everywhere (weight already handled above). */
   body.fmt-thermal, body.fmt-thermal .shop .meta, body.fmt-thermal .info b,
   body.fmt-thermal .head .serial, body.fmt-thermal .sku, body.fmt-thermal .totals .muted,
+  body.fmt-thermal .totals .pos, body.fmt-thermal .totals .neg,
   body.fmt-thermal .footer, body.fmt-thermal .notes { color: #000; }
   `;
 }
