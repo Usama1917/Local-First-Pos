@@ -44,8 +44,10 @@ export const APP_FONT =
 const PAGE: Record<PrintFormat, string> = {
   a4: "@page { size: A4; margin: 14mm; }",
   a5: "@page { size: A5; margin: 10mm; }",
-  // 80mm roll; height grows with content. Small margin so the narrow paper is used.
-  thermal: "@page { size: 80mm auto; margin: 3mm; }",
+  // 80mm roll; height grows with content. No @page margin — horizontal spacing is
+  // done with body padding instead, so right-aligned Arabic never reaches the paper's
+  // unprintable edge (which was clipping the start of each line).
+  thermal: "@page { size: 80mm auto; margin: 0; }",
 };
 
 /**
@@ -62,7 +64,9 @@ function baseCss(format: PrintFormat): string {
   body { font-family: ${APP_FONT}; color: #111; direction: rtl; }
   body.fmt-a4 { font-size: 11pt; }
   body.fmt-a5 { font-size: 9.5pt; }
-  body.fmt-thermal { font-size: 8.5pt; width: 74mm; margin: 0 auto; }
+  /* width = full 80mm roll; 6mm side padding keeps content inside the printable area
+     (box-sizing: border-box → real content width ≈ 68mm, safely clear of both edges). */
+  body.fmt-thermal { font-size: 8.5pt; width: 80mm; padding: 3mm 6mm 6mm; margin: 0 auto; }
 
   .shop { text-align: center; border-bottom: 2px solid #111; padding-bottom: 8px; margin-bottom: 10px; }
   .shop .name { font-weight: 800; font-size: 1.8em; line-height: 1.2; }
