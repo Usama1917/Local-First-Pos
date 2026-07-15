@@ -181,7 +181,7 @@ function NewPurchaseDialog({ onClose, open, invoiceId }: { onClose: () => void; 
   const buildLabels = (respectToggle: boolean) =>
     items
       .filter(i => i.barcode && (!respectToggle || i.print !== false))
-      .map(i => ({ barcode: i.barcode, sku: i.sku, copies: Math.round(i.quantity) }))
+      .map(i => ({ barcode: i.barcode, name: i.productName, sku: i.sku, copies: Math.round(i.quantity) }))
       .filter(l => l.copies >= 1);
 
   const handleSave = async (finalize = false) => {

@@ -109,6 +109,11 @@ function baseCss(format: PrintFormat): string {
                border: 2px solid #111; border-radius: 6px; padding: 10px 14px; font-size: 1.25em; font-weight: 700; }
 
   .notes { margin-top: 12px; color: #444; font-size: 0.9em; }
+  .terms { margin-top: 14px; border-top: 1px dashed #999; padding-top: 8px; font-size: 0.85em; color: #333; }
+  .terms .terms-title { font-weight: 700; margin-bottom: 4px; color: #111; }
+  .terms ul { margin: 0; padding: 0; list-style: none; }
+  .terms li { line-height: 1.6; padding-inline-start: 14px; position: relative; }
+  .terms li::before { content: "•"; position: absolute; inset-inline-start: 0; }
   .sign { margin-top: 40px; display: flex; justify-content: space-between; gap: 24px; }
   .sign div { border-top: 1px solid #111; padding-top: 6px; width: 45%; text-align: center; }
   .footer { margin-top: 18px; text-align: center; color: #666; font-size: 0.85em; }
@@ -130,7 +135,8 @@ function baseCss(format: PrintFormat): string {
   body.fmt-thermal, body.fmt-thermal .shop .meta, body.fmt-thermal .info b,
   body.fmt-thermal .head .serial, body.fmt-thermal .sku, body.fmt-thermal .totals .muted,
   body.fmt-thermal .totals .pos, body.fmt-thermal .totals .neg,
-  body.fmt-thermal .footer, body.fmt-thermal .notes { color: #000; }
+  body.fmt-thermal .footer, body.fmt-thermal .notes,
+  body.fmt-thermal .terms, body.fmt-thermal .terms .terms-title { color: #000; }
   `;
 }
 

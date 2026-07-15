@@ -19,4 +19,5 @@ export interface SettingsUpdate {
   invoicePrefix?: string;
   quotationPrefix?: string;
   purchasePrefix?: string;
+  invoiceTerms?: string;
 }

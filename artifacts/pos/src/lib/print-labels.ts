@@ -4,6 +4,8 @@ import { APP_FONT, FONT_IMPORT } from "./print-document";
 export interface LabelItem {
   /** The value encoded in the bars and shown as the number underneath. */
   barcode: string;
+  /** Product name (Arabic), printed under the shop name. */
+  name?: string;
   /** Our internal code (SKU), printed under the number. */
   sku: string;
   /** How many stickers to print for this product (= its quantity). */
@@ -53,8 +55,9 @@ function barcodeSvg(value: string): string {
  * Opens a dedicated print window so it never collides with the app's A4 invoice
  * print rules. Returns false if the browser blocked the popup.
  *
- * `shopName` (from settings) is printed as a small line directly above the barcode
- * on every sticker.
+ * Each sticker shows, top to bottom: shop name, product name, the barcode (with its
+ * number underneath), then the SKU. `shopName` (from settings) is the same on every
+ * sticker; the product name comes from each item.
  */
 export function printLabels(items: LabelItem[], shopName?: string): boolean {
   const printable = items.filter((i) => i.barcode && Math.round(i.copies) >= 1);
@@ -68,9 +71,12 @@ export function printLabels(items: LabelItem[], shopName?: string): boolean {
   printable.forEach((it, idx) => {
     const copies = Math.max(1, Math.round(it.copies));
     const svg = barcodeSvg(it.barcode);
+    const nameLine = it.name && it.name.trim()
+      ? `<div class="name">${escapeHtml(it.name.trim())}</div>`
+      : "";
     for (let i = 0; i < copies; i++) {
       labels.push(
-        `<div class="label">${shopLine}<div class="bc">${svg}</div><div class="sku">${escapeHtml(it.sku)}</div></div>`,
+        `<div class="label">${shopLine}${nameLine}<div class="bc">${svg}</div><div class="sku">${escapeHtml(it.sku)}</div></div>`,
       );
     }
     // Blank separator sticker between products (not after the last one).
@@ -90,14 +96,16 @@ export function printLabels(items: LabelItem[], shopName?: string): boolean {
   .label {
     width: 40mm; height: 15mm;
     display: flex; flex-direction: column; align-items: center; justify-content: center;
-    gap: 0.2mm; overflow: hidden; page-break-after: always; break-after: page;
+    gap: 0.15mm; overflow: hidden; page-break-after: always; break-after: page;
   }
   .label:last-of-type { page-break-after: auto; break-after: auto; }
-  .shop { font-size: 6pt; font-weight: 700; line-height: 1; text-align: center;
+  .shop { font-size: 5.5pt; font-weight: 700; line-height: 1; text-align: center;
           max-width: 39mm; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .bc { width: 38mm; height: 9mm; display: flex; align-items: center; justify-content: center; }
+  .name { font-size: 6pt; font-weight: 700; line-height: 1; text-align: center;
+          max-width: 39mm; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bc { width: 38mm; height: 8.5mm; display: flex; align-items: center; justify-content: center; }
   .bc svg { width: 100%; height: 100%; }
-  .sku { font-family: monospace; font-size: 7pt; font-weight: 700; line-height: 1; }
+  .sku { font-family: monospace; font-size: 6pt; font-weight: 700; line-height: 1; }
   .blank { }
 </style>
 <script>window.onafterprint=function(){setTimeout(function(){window.close();},150);};</script>

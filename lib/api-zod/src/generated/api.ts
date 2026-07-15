@@ -2396,6 +2396,7 @@ export const GetSettingsResponse = zod.object({
   "invoicePrefix": zod.string().optional(),
   "quotationPrefix": zod.string().optional(),
   "purchasePrefix": zod.string().optional(),
+  "invoiceTerms": zod.string().nullish(),
   "lastBackupAt": zod.string().nullish()
 })
 
@@ -2412,7 +2413,8 @@ export const UpdateSettingsBody = zod.object({
   "language": zod.string().optional(),
   "invoicePrefix": zod.string().optional(),
   "quotationPrefix": zod.string().optional(),
-  "purchasePrefix": zod.string().optional()
+  "purchasePrefix": zod.string().optional(),
+  "invoiceTerms": zod.string().optional()
 })
 
 export const UpdateSettingsResponse = zod.object({
@@ -2428,6 +2430,7 @@ export const UpdateSettingsResponse = zod.object({
   "invoicePrefix": zod.string().optional(),
   "quotationPrefix": zod.string().optional(),
   "purchasePrefix": zod.string().optional(),
+  "invoiceTerms": zod.string().nullish(),
   "lastBackupAt": zod.string().nullish()
 })
 

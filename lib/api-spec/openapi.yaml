@@ -2905,6 +2905,7 @@ components:
         invoicePrefix: { type: string }
         quotationPrefix: { type: string }
         purchasePrefix: { type: string }
+        invoiceTerms: { type: ["string", "null"] }
         lastBackupAt: { type: ["string", "null"] }
     SettingsUpdate:
       type: object
@@ -2921,6 +2922,7 @@ components:
         invoicePrefix: { type: string }
         quotationPrefix: { type: string }
         purchasePrefix: { type: string }
+        invoiceTerms: { type: string }
 
     # Backup
     BackupInfo:

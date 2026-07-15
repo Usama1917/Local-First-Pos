@@ -11,7 +11,7 @@ router.patch("/settings", (req, res) => {
   const {
     shopName, shopPhone, shopAddress, currency, defaultPrintTemplate,
     lowStockThreshold, enableCraftsmanCommission, enableDarkMode,
-    language, invoicePrefix, quotationPrefix, purchasePrefix,
+    language, invoicePrefix, quotationPrefix, purchasePrefix, invoiceTerms,
   } = req.body;
 
   db.prepare(`
@@ -28,6 +28,7 @@ router.patch("/settings", (req, res) => {
     invoicePrefix = COALESCE(?, invoicePrefix),
     quotationPrefix = COALESCE(?, quotationPrefix),
     purchasePrefix = COALESCE(?, purchasePrefix),
+    invoiceTerms = COALESCE(?, invoiceTerms),
     updatedAt = datetime('now')
     WHERE id = 1
   `).run(
@@ -39,6 +40,7 @@ router.patch("/settings", (req, res) => {
     enableCraftsmanCommission !== undefined ? (enableCraftsmanCommission ? 1 : 0) : null,
     enableDarkMode !== undefined ? (enableDarkMode ? 1 : 0) : null,
     language || null, invoicePrefix || null, quotationPrefix || null, purchasePrefix || null,
+    invoiceTerms === undefined ? null : invoiceTerms,
   );
 
   res.json(db.prepare("SELECT * FROM settings WHERE id = 1").get());

@@ -327,7 +327,7 @@ export default function ProductsPage() {
     qc.invalidateQueries({ queryKey: getListProductsQueryKey({}) });
     const labels = items
       .filter((it) => it.print !== false)
-      .map((it) => ({ barcode: it.barcode, sku: it.sku, copies: Math.round(parseFloat(it.currentStock) || 0) }))
+      .map((it) => ({ barcode: it.barcode, name: it.nameAr, sku: it.sku, copies: Math.round(parseFloat(it.currentStock) || 0) }))
       .filter((l) => l.barcode && l.copies >= 1);
     toast.success(`تم إضافة ${items.length} منتج`);
     setShowAddDialog(false);

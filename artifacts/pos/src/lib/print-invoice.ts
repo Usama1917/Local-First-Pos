@@ -6,6 +6,8 @@ export interface ShopInfo {
   shopName?: string | null;
   shopAddress?: string | null;
   shopPhone?: string | null;
+  /** Shop's custom sale terms, one per line — printed above the signatures. */
+  invoiceTerms?: string | null;
 }
 
 const PAYMENT_LABELS: Record<string, string> = {
@@ -37,6 +39,17 @@ export function printInvoice(inv: any, shop: ShopInfo = {}, format: PrintFormat 
   const itemsDiscount = items.reduce((s, i) => s + (i.discount || 0), 0);
   const totalDiscount = itemsDiscount + (inv?.discount || 0);
   const barcode = barcodeDataUrl(inv?.serial || "");
+
+  // Shop's custom sale terms (one per line in settings), printed above the signatures.
+  const terms = String(shop?.invoiceTerms || "")
+    .split("\n")
+    .map((t) => t.trim())
+    .filter(Boolean);
+  const termsHtml = terms.length
+    ? `<div class="terms"><div class="terms-title">الشروط والأحكام</div><ul>${terms
+        .map((t) => `<li>${escapeHtml(t)}</li>`)
+        .join("")}</ul></div>`
+    : "";
 
   const rows = items.length
     ? items
@@ -94,6 +107,8 @@ export function printInvoice(inv: any, shop: ShopInfo = {}, format: PrintFormat 
   </div>
 
   ${inv?.notes ? `<div class="notes"><b>ملاحظات:</b> ${escapeHtml(inv.notes)}</div>` : ""}
+
+  ${termsHtml}
 
   <div class="sign">
     <div>توقيع صاحب المحل</div>

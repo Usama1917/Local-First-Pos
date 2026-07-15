@@ -1234,6 +1234,8 @@ export interface Settings {
   quotationPrefix?: string;
   purchasePrefix?: string;
   /** @nullable */
+  invoiceTerms?: string | null;
+  /** @nullable */
   lastBackupAt?: string | null;
 }
 
@@ -1250,6 +1252,7 @@ export interface SettingsUpdate {
   invoicePrefix?: string;
   quotationPrefix?: string;
   purchasePrefix?: string;
+  invoiceTerms?: string;
 }
 
 export interface BackupInfo {

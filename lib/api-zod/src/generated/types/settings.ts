@@ -22,5 +22,7 @@ export interface Settings {
   quotationPrefix?: string;
   purchasePrefix?: string;
   /** @nullable */
+  invoiceTerms?: string | null;
+  /** @nullable */
   lastBackupAt?: string | null;
 }

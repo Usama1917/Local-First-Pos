@@ -37,6 +37,7 @@ export function initializeSchema() {
       invoiceCounter INTEGER NOT NULL DEFAULT 0,
       quotationCounter INTEGER NOT NULL DEFAULT 0,
       purchaseCounter INTEGER NOT NULL DEFAULT 0,
+      invoiceTerms TEXT,                             -- shop's sale terms, one per line; printed on invoices above the signatures
       lastBackupAt TEXT,
       updatedAt TEXT NOT NULL DEFAULT (datetime('now'))
     );
@@ -374,6 +375,8 @@ export function initializeSchema() {
   ensureColumn("sales_invoices", "commissionPaid", "REAL NOT NULL DEFAULT 0");
   // Per-user allowed page keys (JSON array). NULL for admins (full access).
   ensureColumn("users", "permissions", "TEXT");
+  // Shop's custom sale terms (one per line) printed on invoices above the signatures.
+  ensureColumn("settings", "invoiceTerms", "TEXT");
 
   // Audit trail: who created / last modified each transactional record. `createdBy`
   // exists in the CREATE TABLE definitions but pre-existing installs need the ALTER;

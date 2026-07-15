@@ -17,7 +17,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatCurrency } from "@/lib/format";
 import { getTheme, setTheme, type Theme } from "@/lib/theme";
 import { motion } from "framer-motion";
-import { Save, Download, HardDrive, Settings, FolderOpen, Sun, Moon } from "lucide-react";
+import { Save, Download, HardDrive, Settings, FolderOpen, Sun, Moon, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 export default function SettingsPage() {
@@ -31,6 +31,11 @@ export default function SettingsPage() {
   const [newArchiveDir, setNewArchiveDir] = useState("");
   const [theme, setThemeState] = useState<Theme>(getTheme());
   const changeTheme = (t: Theme) => { setTheme(t); setThemeState(t); };
+  // Shop's custom sale terms, edited as a list; stored as one term per line.
+  const [terms, setTerms] = useState<string[]>([]);
+  const addTerm = () => setTerms((t) => [...t, ""]);
+  const updateTerm = (i: number, v: string) => setTerms((t) => t.map((x, idx) => (idx === i ? v : x)));
+  const removeTerm = (i: number) => setTerms((t) => t.filter((_, idx) => idx !== i));
   const s = settings as any;
 
   const [form, setForm] = useState<any>({
@@ -55,12 +60,14 @@ export default function SettingsPage() {
         quotationPrefix: s.quotationPrefix || "QUO",
         purchasePrefix: s.purchasePrefix || "PUR",
       });
+      setTerms(s.invoiceTerms ? String(s.invoiceTerms).split("\n") : []);
     }
   }, [s]);
 
   const handleSave = async () => {
     try {
-      await updateSettings.mutateAsync({ data: form });
+      const invoiceTerms = terms.map((t) => t.trim()).filter(Boolean).join("\n");
+      await updateSettings.mutateAsync({ data: { ...form, invoiceTerms } });
       qc.invalidateQueries({ queryKey: getGetSettingsQueryKey() });
       toast.success("تم حفظ الإعدادات");
     } catch (e: any) {
@@ -154,6 +161,35 @@ export default function SettingsPage() {
               <div className="flex items-center justify-between">
                 <Label>تفعيل عمولة الصنايعية</Label>
                 <Switch checked={form.enableCraftsmanCommission} onCheckedChange={v => setForm((f: any) => ({ ...f, enableCraftsmanCommission: v }))} />
+              </div>
+
+              <div className="space-y-2 border-t pt-4">
+                <div>
+                  <Label>بنود / شروط الفاتورة</Label>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    بتظهر في أسفل كل فاتورة قبل خانة التوقيع (بأي مقاس طباعة: A4 / A5 / حراري). مثال: «البضاعة المباعة لا تُستبدل بعد 15 يوم».
+                  </p>
+                </div>
+                {terms.length > 0 && (
+                  <div className="space-y-2">
+                    {terms.map((t, i) => (
+                      <div key={i} className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground w-5 text-center shrink-0">{i + 1}.</span>
+                        <Input
+                          value={t}
+                          onChange={e => updateTerm(i, e.target.value)}
+                          placeholder="اكتب البند هنا..."
+                        />
+                        <Button variant="ghost" size="icon" onClick={() => removeTerm(i)} aria-label="حذف البند" className="shrink-0 text-destructive hover:text-destructive">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <Button type="button" variant="outline" size="sm" onClick={addTerm}>
+                  <Plus className="h-4 w-4 ml-1" /> إضافة بند
+                </Button>
               </div>
             </CardContent>
           </Card>
