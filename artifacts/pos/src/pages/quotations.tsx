@@ -26,6 +26,8 @@ import { Label } from "@/components/ui/label";
 import { AuditInfo } from "@/components/ui/audit-info";
 import { formatCurrency } from "@/lib/format";
 import { useBarcodeScanner, findProductByCode } from "@/hooks/use-barcode-scanner";
+import { useListKeyboardNav } from "@/hooks/use-list-keyboard-nav";
+import { cn } from "@/lib/utils";
 import { useDraftAutosave } from "@/hooks/use-draft-autosave";
 import { Search, Plus, FileText, ArrowRight, Copy, Trash2, Minus, HardHat } from "lucide-react";
 import { toast } from "sonner";
@@ -65,6 +67,14 @@ function NewQuotationDialog({ onClose, open }: { onClose: () => void; open: bool
     });
     setProductSearch("");
   };
+
+  // Keyboard navigation for the search results (Arrow Up/Down + Enter).
+  const productResults: any[] = productSearch && Array.isArray(searchResults) ? searchResults : [];
+  const { activeIndex, onKeyDown: onSearchKeyDown, getItemProps } = useListKeyboardNav<any>({
+    items: productResults,
+    onSelect: addToCart,
+    resetKey: productSearch,
+  });
 
   // Hardware laser scanner: scan a product → adds it to the quotation.
   useBarcodeScanner(
@@ -152,17 +162,17 @@ function NewQuotationDialog({ onClose, open }: { onClose: () => void; open: bool
       )}
       <div className="relative">
         <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input className="pr-9" placeholder="ابحث عن منتج..." value={productSearch} onChange={e => setProductSearch(e.target.value)} />
+        <Input className="pr-9" placeholder="ابحث عن منتج..." value={productSearch} onChange={e => setProductSearch(e.target.value)} onKeyDown={onSearchKeyDown} />
       </div>
       {productSearch && (
         <div className="border rounded-lg overflow-hidden">
-          {(searchResults as any[])?.map((p: any) => (
-            <div key={p.id} className="flex justify-between p-2 hover:bg-muted cursor-pointer border-b" onClick={() => addToCart(p)}>
+          {productResults.map((p: any, i: number) => (
+            <div key={p.id} {...getItemProps(i)} className={cn("flex justify-between p-2 cursor-pointer border-b", activeIndex === i ? "nav-active" : "hover:bg-muted")} onClick={() => addToCart(p)}>
               <span>{p.nameAr} <span className="text-xs text-muted-foreground">({p.sku})</span></span>
               <span className="font-semibold">{formatCurrency(p.sellingPrice)}</span>
             </div>
           ))}
-          {!(searchResults as any[])?.length && <div className="p-3 text-center text-muted-foreground">لا توجد نتائج</div>}
+          {!productResults.length && <div className="p-3 text-center text-muted-foreground">لا توجد نتائج</div>}
         </div>
       )}
       <table className="w-full text-sm table-fixed">

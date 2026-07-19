@@ -24,6 +24,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { formatCurrency } from "@/lib/format";
 import { useBarcodeScanner, findProductByCode } from "@/hooks/use-barcode-scanner";
+import { useListKeyboardNav } from "@/hooks/use-list-keyboard-nav";
+import { cn } from "@/lib/utils";
 import { useDraftAutosave } from "@/hooks/use-draft-autosave";
 import { printLabels } from "@/lib/print-labels";
 import { AuditInfo } from "@/components/ui/audit-info";
@@ -120,6 +122,14 @@ function NewPurchaseDialog({ onClose, open, invoiceId }: { onClose: () => void; 
     });
     setProductSearch("");
   };
+
+  // Keyboard navigation for the search results (Arrow Up/Down + Enter).
+  const productResults: any[] = productSearch && Array.isArray(searchResults) ? searchResults : [];
+  const { activeIndex, onKeyDown: onSearchKeyDown, getItemProps } = useListKeyboardNav<any>({
+    items: productResults,
+    onSelect: addProduct,
+    resetKey: productSearch,
+  });
 
   // Hardware laser scanner: scan a product → adds it to the purchase invoice.
   useBarcodeScanner(
@@ -287,11 +297,11 @@ function NewPurchaseDialog({ onClose, open, invoiceId }: { onClose: () => void; 
       {!readOnly && (
         <div className="relative">
           <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
-          <Input className="pr-9" placeholder="ابحث عن منتج للإضافة..." value={productSearch} onChange={e => setProductSearch(e.target.value)} />
-          {productSearch && (searchResults as any[])?.length > 0 && (
+          <Input className="pr-9" placeholder="ابحث عن منتج للإضافة..." value={productSearch} onChange={e => setProductSearch(e.target.value)} onKeyDown={onSearchKeyDown} />
+          {productSearch && productResults.length > 0 && (
             <div className="absolute inset-x-0 top-full z-50 mt-1 max-h-72 overflow-y-auto rounded-md border bg-popover text-popover-foreground shadow-md">
-              {(searchResults as any[]).map((p: any) => (
-                <div key={p.id} className="flex justify-between gap-2 p-2 cursor-pointer hover:bg-muted border-b last:border-b-0" onClick={() => addProduct(p)}>
+              {productResults.map((p: any, i: number) => (
+                <div key={p.id} {...getItemProps(i)} className={cn("flex justify-between gap-2 p-2 cursor-pointer border-b last:border-b-0", activeIndex === i ? "nav-active" : "hover:bg-muted")} onClick={() => addProduct(p)}>
                   <span>{p.nameAr} <span className="text-xs text-muted-foreground">({p.sku})</span></span>
                   <span className="text-sm text-muted-foreground whitespace-nowrap">قائمة: {formatCurrency(p.listPrice)}</span>
                 </div>
@@ -392,6 +402,12 @@ export default function PurchasesPage() {
   const params = { search: search || undefined, status: statusFilter || undefined, limit: 100 };
   const { data, isLoading } = useListPurchaseInvoices(params, { query: { queryKey: getListPurchaseInvoicesQueryKey(params) } });
   const invoices = (data as any)?.items || [];
+  // Keyboard navigation for the invoices table (Arrow Up/Down + Enter opens the row).
+  const { activeIndex, onKeyDown: onSearchKeyDown, getItemProps } = useListKeyboardNav<any>({
+    items: invoices,
+    onSelect: (inv: any) => setOpenId(inv.id),
+    resetKey: search,
+  });
   const closeDialog = () => setOpenId(null);
   const qc = useQueryClient();
   const deletePurchase = useDeletePurchaseInvoice();
@@ -425,7 +441,7 @@ export default function PurchasesPage() {
         <div className="flex gap-3">
           <div className="relative flex-1">
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input className="pr-9" placeholder="رقم الفاتورة أو المورد..." value={search} onChange={e => setSearch(e.target.value)} />
+            <Input className="pr-9" placeholder="رقم الفاتورة أو المورد..." value={search} onChange={e => setSearch(e.target.value)} onKeyDown={onSearchKeyDown} />
           </div>
           <Select value={statusFilter || "__none__"} onValueChange={(v) => setStatusFilter(v === "__none__" ? "" : v)}>
             <SelectTrigger className="w-36"><SelectValue placeholder="كل الحالات" /></SelectTrigger>
@@ -452,8 +468,8 @@ export default function PurchasesPage() {
           </thead>
           <tbody>
             {isLoading ? <tr><td colSpan={7} className="p-8 text-center text-muted-foreground">جاري التحميل...</td></tr> :
-              invoices.map((inv: any) => (
-                <tr key={inv.id} className="border-b hover:bg-muted/30 cursor-pointer" onClick={() => setOpenId(inv.id)} title={inv.status === "draft" ? "فتح المسودة لإكمالها" : "عرض الفاتورة"}>
+              invoices.map((inv: any, i: number) => (
+                <tr key={inv.id} {...getItemProps(i)} className={cn("border-b cursor-pointer", activeIndex === i ? "nav-active" : "hover:bg-muted/30")} onClick={() => setOpenId(inv.id)} title={inv.status === "draft" ? "فتح المسودة لإكمالها" : "عرض الفاتورة"}>
                   <td className="p-3 font-mono font-medium text-primary">{inv.serial}</td>
                   <td className="p-3 text-muted-foreground">{new Date(inv.createdAt).toLocaleDateString("ar-EG")}</td>
                   <td className="p-3">{inv.supplierName || "—"}</td>

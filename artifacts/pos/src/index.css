@@ -98,6 +98,10 @@
   --accent: 43 100% 50%; /* Warm amber/gold */
   --accent-foreground: 222 47% 11%;
 
+  /* Selection-highlight tint (Settings → Appearance → لون التحديد). Overridden
+     per-device on <html> by lib/highlight-color.ts; default = amber. */
+  --nav-highlight: 43 100% 50%;
+
   --destructive: 0 84.2% 60.2%;
   --destructive-foreground: 210 40% 98%;
 
@@ -154,6 +158,8 @@
   --accent: 43 100% 60%;
   --accent-foreground: 0 0% 8%;
 
+  --nav-highlight: 43 100% 60%;    /* selection highlight, dark mode default */
+
   --destructive: 0 72% 51%;        /* brighter red so it's visible on black */
   --destructive-foreground: 0 0% 98%;
 
@@ -191,6 +197,15 @@
     color: hsl(var(--muted-foreground));
     pointer-events: none;
   }
+}
+
+/* Selection highlight for keyboard/hover navigation of search results and table
+   rows. Left unlayered so it beats Tailwind's layered utilities (bg-card,
+   hover:bg-muted…) without !important. Tint = `--nav-highlight` (see
+   lib/highlight-color.ts / Settings → Appearance). */
+.nav-active {
+  background-color: hsl(var(--nav-highlight));
+  border-color: hsl(var(--nav-highlight));
 }
 
 @media print {

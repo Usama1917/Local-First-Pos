@@ -25,6 +25,8 @@ import { Barcode } from "@/components/ui/barcode";
 import { useBarcodeScanner } from "@/hooks/use-barcode-scanner";
 import { printLabels } from "@/lib/print-labels";
 import { formatCurrency } from "@/lib/format";
+import { cn } from "@/lib/utils";
+import { useListKeyboardNav } from "@/hooks/use-list-keyboard-nav";
 import { Search, Plus, AlertTriangle, Package, Trash2, Pencil, Printer, Ban, RefreshCw, ScanLine } from "lucide-react";
 import { toast } from "sonner";
 
@@ -379,6 +381,13 @@ export default function ProductsPage() {
   const pendingCount = queue.length + (form.nameAr && form.sku && !queue.some((q) => q.sku === form.sku) ? 1 : 0);
   const products = (data as any)?.items || [];
 
+  // Keyboard navigation for the table (Arrow Up/Down + Enter opens the edit dialog).
+  const { activeIndex, onKeyDown: onSearchKeyDown, getItemProps } = useListKeyboardNav<any>({
+    items: products,
+    onSelect: (p: any) => openEdit(p),
+    resetKey: search,
+  });
+
   return (
     <div className="space-y-4">
       {/* ===== Add (batch) dialog ===== */}
@@ -481,7 +490,7 @@ export default function ProductsPage() {
           <div className="flex gap-3">
             <div className="relative flex-1">
               <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input className="pr-9" placeholder="بحث بالاسم أو الكود..." value={search} onChange={e => setSearch(e.target.value)} />
+              <Input className="pr-9" placeholder="بحث بالاسم أو الكود..." value={search} onChange={e => setSearch(e.target.value)} onKeyDown={onSearchKeyDown} />
             </div>
             <Select value={categoryFilter || "__none__"} onValueChange={(v) => setCategoryFilter(v === "__none__" ? "" : v)}>
               <SelectTrigger className="w-44">
@@ -517,10 +526,10 @@ export default function ProductsPage() {
                 </tr>
               </thead>
               <tbody>
-                {products.map((p: any) => {
+                {products.map((p: any, i: number) => {
                   const margin = p.sellingPrice && p.trueCost ? ((p.sellingPrice - p.trueCost) / p.sellingPrice * 100).toFixed(1) : "—";
                   return (
-                    <tr key={p.id} className="border-b hover:bg-muted/30 cursor-pointer" onClick={() => openEdit(p)}>
+                    <tr key={p.id} {...getItemProps(i)} className={cn("border-b cursor-pointer", activeIndex === i ? "nav-active" : "hover:bg-muted/30")} onClick={() => openEdit(p)}>
                       <td className="p-3">
                         <p className="font-medium">{p.nameAr}</p>
                         {p.brandName && <p className="text-xs text-muted-foreground">{p.brandName}</p>}

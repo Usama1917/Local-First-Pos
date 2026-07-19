@@ -16,9 +16,15 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <!-- Apply the saved light/dark theme before React renders to avoid a flash. -->
+    <!-- Apply the saved light/dark theme + selection-highlight color before React
+         renders to avoid a flash. Keep this HSL map in sync with lib/highlight-color.ts. -->
     <script>
       try { if (localStorage.getItem('pos_theme') === 'dark') document.documentElement.classList.add('dark'); } catch (e) {}
+      try {
+        var hc = localStorage.getItem('pos_highlight_color');
+        var m = { amber: '43 100% 50%', blue: '205 90% 68%', green: '142 55% 60%', rose: '345 90% 72%', purple: '265 75% 74%', cyan: '190 85% 60%' };
+        if (hc && m[hc]) document.documentElement.style.setProperty('--nav-highlight', m[hc]);
+      } catch (e) {}
     </script>
   </head>
   <body>

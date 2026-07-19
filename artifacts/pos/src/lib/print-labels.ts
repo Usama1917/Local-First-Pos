@@ -1,5 +1,5 @@
 import JsBarcode from "jsbarcode";
-import { APP_FONT, FONT_IMPORT } from "./print-document";
+import { FONT_IMPORT } from "./print-document";
 
 export interface LabelItem {
   /** The value encoded in the bars and shown as the number underneath. */
@@ -24,9 +24,15 @@ function barcodeSvg(value: string): string {
   try {
     JsBarcode(svg, value, {
       format: "CODE128",
-      width: 1.5,
-      height: 34,
+      // Wider bars so the barcode fills the label width (no empty side bands) while
+      // its aspect ratio stays scannable when scaled into the sticker.
+      width: 3,
+      height: 30,
       displayValue: true,
+      // Bold, heavy digits so the number under the bars prints crisp (not thin/broken)
+      // on the shop's low‑dpi label printer.
+      font: "'Cairo','Tajawal',sans-serif",
+      fontOptions: "bold",
       fontSize: 13,
       textMargin: 1,
       margin: 0,
@@ -55,9 +61,9 @@ function barcodeSvg(value: string): string {
  * Opens a dedicated print window so it never collides with the app's A4 invoice
  * print rules. Returns false if the browser blocked the popup.
  *
- * Each sticker shows, top to bottom: shop name, product name, the barcode (with its
- * number underneath), then the SKU. `shopName` (from settings) is the same on every
- * sticker; the product name comes from each item.
+ * Each sticker shows, top to bottom: shop name, product name, then the barcode (with
+ * its number underneath). `shopName` (from settings) is the same on every sticker; the
+ * product name comes from each item. (The internal SKU is intentionally not printed.)
  */
 export function printLabels(items: LabelItem[], shopName?: string): boolean {
   const printable = items.filter((i) => i.barcode && Math.round(i.copies) >= 1);
@@ -76,7 +82,7 @@ export function printLabels(items: LabelItem[], shopName?: string): boolean {
       : "";
     for (let i = 0; i < copies; i++) {
       labels.push(
-        `<div class="label">${shopLine}${nameLine}<div class="bc">${svg}</div><div class="sku">${escapeHtml(it.sku)}</div></div>`,
+        `<div class="label">${shopLine}${nameLine}<div class="bc">${svg}</div></div>`,
       );
     }
     // Blank separator sticker between products (not after the last one).
@@ -92,20 +98,26 @@ export function printLabels(items: LabelItem[], shopName?: string): boolean {
   ${FONT_IMPORT}
   @page { size: 40mm 15mm; margin: 0; }
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  body { width: 40mm; font-family: ${APP_FONT}; }
+  /* Label text uses Cairo/Tajawal directly (not SF Arabic, which is absent on the
+     shop's Windows PC and falls back to a thin face that prints broken). */
+  body { width: 40mm; font-family: 'Cairo','Tajawal','Segoe UI',sans-serif; }
   .label {
-    width: 40mm; height: 15mm;
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    gap: 0.15mm; overflow: hidden; page-break-after: always; break-after: page;
+    /* Equal ~1.5mm margins on all four sides; content spreads over the full height
+       (space-between) instead of clustering in the middle, so no wasted top/bottom band. */
+    width: 40mm; height: 15mm; padding: 1.5mm;
+    display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+    overflow: hidden; text-align: center; page-break-after: always; break-after: page;
   }
   .label:last-of-type { page-break-after: auto; break-after: auto; }
-  .shop { font-size: 5.5pt; font-weight: 700; line-height: 1; text-align: center;
-          max-width: 39mm; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .name { font-size: 6pt; font-weight: 700; line-height: 1; text-align: center;
-          max-width: 39mm; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .bc { width: 38mm; height: 8.5mm; display: flex; align-items: center; justify-content: center; }
-  .bc svg { width: 100%; height: 100%; }
-  .sku { font-family: monospace; font-size: 6pt; font-weight: 700; line-height: 1; }
+  /* Roomy line-height so Arabic descenders (ص/ط/ع tails) are never clipped by the
+     overflow:hidden that provides the horizontal ellipsis — Cairo's glyph box is
+     tall, so 1.1 cut the bottoms off. The taller line box also adds visual spacing. */
+  .shop { font-size: 4pt; font-weight: 800; line-height: 1.9; max-width: 100%;
+          white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .name { font-size: 4.5pt; font-weight: 800; line-height: 1.9; max-width: 100%;
+          white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bc { width: 100%; height: 5mm; display: flex; align-items: center; justify-content: center; }
+  .bc svg { max-width: 100%; max-height: 100%; }
   .blank { }
 </style>
 <script>window.onafterprint=function(){setTimeout(function(){window.close();},150);};</script>

@@ -19,7 +19,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { formatCurrency } from "@/lib/format";
+import { cn } from "@/lib/utils";
 import { useBarcodeScanner, findProductByCode } from "@/hooks/use-barcode-scanner";
+import { useListKeyboardNav } from "@/hooks/use-list-keyboard-nav";
 import { Search, Plus, Minus, Trash2, ShoppingCart, CheckCircle, X, Package, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 
@@ -151,6 +153,14 @@ export default function POSPage() {
     });
     setSearchQuery("");
   };
+
+  // Keyboard navigation for the search results (Arrow Up/Down + Enter).
+  const productResults: any[] = searchQuery && Array.isArray(searchResults) ? searchResults : [];
+  const { activeIndex, onKeyDown: onSearchKeyDown, getItemProps } = useListKeyboardNav<any>({
+    items: productResults,
+    onSelect: addToCart,
+    resetKey: searchQuery,
+  });
 
   // Hardware laser scanner: scan a product barcode anywhere on the page → adds it to the cart.
   useBarcodeScanner(
@@ -329,14 +339,23 @@ export default function POSPage() {
                 placeholder="ابحث بالاسم أو الكود أو الباركود..."
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
+                onKeyDown={onSearchKeyDown}
                 autoFocus
               />
             </div>
           </CardContent>
         </Card>
         <div className="flex-1 overflow-y-auto space-y-2">
-          {searchQuery && (searchResults as any[])?.map((p: any) => (
-            <Card key={p.id} className="cursor-pointer hover:border-primary transition-colors" onClick={() => addToCart(p)}>
+          {productResults.map((p: any, i: number) => (
+            <Card
+              key={p.id}
+              {...getItemProps(i)}
+              className={cn(
+                "cursor-pointer transition-colors",
+                activeIndex === i ? "nav-active" : "hover:border-primary",
+              )}
+              onClick={() => addToCart(p)}
+            >
               <CardContent className="p-3">
                 <div className="flex justify-between items-start">
                   <div className="flex-1 min-w-0">

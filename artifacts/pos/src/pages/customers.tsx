@@ -25,6 +25,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatCurrency } from "@/lib/format";
+import { cn } from "@/lib/utils";
+import { useListKeyboardNav } from "@/hooks/use-list-keyboard-nav";
 import { Search, Plus, Users, Eye, CreditCard, Receipt, FileText, HardHat } from "lucide-react";
 import { toast } from "sonner";
 
@@ -275,6 +277,13 @@ export default function CustomersPage() {
 
   const customers = (data as any)?.items || [];
 
+  // Keyboard navigation for the table (Arrow Up/Down + Enter opens the row).
+  const { activeIndex, onKeyDown: onSearchKeyDown, getItemProps } = useListKeyboardNav<any>({
+    items: customers,
+    onSelect: (c: any) => setSelectedId(c.id),
+    resetKey: search,
+  });
+
   return (
     <div className="space-y-4">
       {selectedId && (
@@ -313,7 +322,7 @@ export default function CustomersPage() {
         <CardContent className="p-4">
           <div className="relative">
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input className="pr-9" placeholder="بحث بالاسم أو الهاتف..." value={search} onChange={e => setSearch(e.target.value)} />
+            <Input className="pr-9" placeholder="بحث بالاسم أو الهاتف..." value={search} onChange={e => setSearch(e.target.value)} onKeyDown={onSearchKeyDown} />
           </div>
         </CardContent>
       </Card>
@@ -332,8 +341,8 @@ export default function CustomersPage() {
             </thead>
             <tbody>
               {isLoading ? <tr><td colSpan={5} className="p-8 text-center text-muted-foreground">جاري التحميل...</td></tr> :
-                customers.map((c: any) => (
-                  <tr key={c.id} className="border-b hover:bg-muted/30">
+                customers.map((c: any, i: number) => (
+                  <tr key={c.id} {...getItemProps(i)} className={cn("border-b", activeIndex === i ? "nav-active" : "hover:bg-muted/30")}>
                     <td className="p-3 font-medium">{c.name}</td>
                     <td className="p-3 text-muted-foreground">{c.phone || "—"}</td>
                     <td className="p-3 text-muted-foreground">{c.area || "—"}</td>

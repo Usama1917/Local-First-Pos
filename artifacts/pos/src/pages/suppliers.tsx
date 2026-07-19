@@ -34,6 +34,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { formatCurrency } from "@/lib/format";
+import { cn } from "@/lib/utils";
+import { useListKeyboardNav } from "@/hooks/use-list-keyboard-nav";
 import { Search, Plus, Truck, Eye, CreditCard, Tag, Pencil, Trash2, Layers, Ruler, type LucideIcon } from "lucide-react";
 import { toast } from "sonner";
 
@@ -189,6 +191,13 @@ function SuppliersTab() {
 
   const suppliers = (data as any)?.items || [];
 
+  // Keyboard navigation for the table (Arrow Up/Down + Enter opens the row).
+  const { activeIndex, onKeyDown: onSearchKeyDown, getItemProps } = useListKeyboardNav<any>({
+    items: suppliers,
+    onSelect: (s: any) => setSelectedId(s.id),
+    resetKey: search,
+  });
+
   return (
     <div className="space-y-4">
       {selectedId && (
@@ -220,7 +229,7 @@ function SuppliersTab() {
       <Card><CardContent className="p-4">
         <div className="relative">
           <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input className="pr-9" placeholder="بحث بالاسم..." value={search} onChange={e => setSearch(e.target.value)} />
+          <Input className="pr-9" placeholder="بحث بالاسم..." value={search} onChange={e => setSearch(e.target.value)} onKeyDown={onSearchKeyDown} />
         </div>
       </CardContent></Card>
 
@@ -237,8 +246,8 @@ function SuppliersTab() {
           </thead>
           <tbody>
             {isLoading ? <tr><td colSpan={5} className="p-8 text-center text-muted-foreground">جاري التحميل...</td></tr> :
-              suppliers.map((s: any) => (
-                <tr key={s.id} className="border-b hover:bg-muted/30">
+              suppliers.map((s: any, i: number) => (
+                <tr key={s.id} {...getItemProps(i)} className={cn("border-b", activeIndex === i ? "nav-active" : "hover:bg-muted/30")}>
                   <td className="p-3 font-medium">{s.name}</td>
                   <td className="p-3 text-muted-foreground">{s.phone || "—"}</td>
                   <td className="p-3 text-muted-foreground">{s.contactPerson || "—"}</td>

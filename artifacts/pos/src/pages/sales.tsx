@@ -22,6 +22,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { AuditInfo } from "@/components/ui/audit-info";
 import { formatCurrency } from "@/lib/format";
+import { cn } from "@/lib/utils";
+import { useListKeyboardNav } from "@/hooks/use-list-keyboard-nav";
 import { useBarcodeScanner } from "@/hooks/use-barcode-scanner";
 import { printInvoice } from "@/lib/print-invoice";
 import { PRINT_FORMATS, normalizeFormat } from "@/lib/print-document";
@@ -230,6 +232,13 @@ export default function SalesPage() {
   const qc = useQueryClient();
   const deleteInvoice = useDeleteSalesInvoice();
 
+  // Keyboard navigation for the invoices table (Arrow Up/Down + Enter opens the row).
+  const { activeIndex, onKeyDown: navKeyDown, getItemProps } = useListKeyboardNav<any>({
+    items: invoices,
+    onSelect: (inv: any) => setSelectedId(inv.id),
+    resetKey: search,
+  });
+
   const handleDelete = async (id: number) => {
     await deleteInvoice.mutateAsync({ id });
     // Deleting a finalized invoice touches stock, customer debt, craftsman
@@ -250,13 +259,19 @@ export default function SalesPage() {
     return false;
   };
 
-  // Manual: type a serial in the box + Enter.
+  // Enter in the search box: first try to open by exact serial/barcode (scanner
+  // workflow); if nothing matched, open the row highlighted by the arrow keys.
   const handleScanOpen = async (e: ReactKeyboardEvent<HTMLInputElement>) => {
     if (e.key !== "Enter") return;
     const code = search.trim();
-    if (!code) return;
-    if (await openInvoiceBySerial(code)) return;
-    if (invoices.length === 1) setSelectedId(invoices[0].id);
+    if (code && (await openInvoiceBySerial(code))) return;
+    if (invoices.length > 0) setSelectedId(invoices[Math.min(activeIndex, invoices.length - 1)]?.id);
+  };
+
+  // Compose: Enter → serial lookup / open highlighted row; Arrow keys → move the highlight.
+  const onSearchKeyDown = (e: ReactKeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") { void handleScanOpen(e); return; }
+    navKeyDown(e);
   };
 
   // Hardware laser scanner: scan an invoice barcode anywhere on the page → opens it.
@@ -285,7 +300,7 @@ export default function SalesPage() {
                 placeholder="رقم الفاتورة / باركود / اسم العميل... (امسح الباركود واضغط Enter)"
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                onKeyDown={handleScanOpen}
+                onKeyDown={onSearchKeyDown}
               />
             </div>
             <Select value={statusFilter || "__none__"} onValueChange={(v) => setStatusFilter(v === "__none__" ? "" : v)}>
@@ -333,8 +348,8 @@ export default function SalesPage() {
             </thead>
             <tbody>
               {isLoading ? <tr><td colSpan={9} className="p-8 text-center text-muted-foreground">جاري التحميل...</td></tr> :
-                invoices.map((inv: any) => (
-                  <tr key={inv.id} className="border-b hover:bg-muted/30">
+                invoices.map((inv: any, i: number) => (
+                  <tr key={inv.id} {...getItemProps(i)} className={cn("border-b", activeIndex === i ? "nav-active" : "hover:bg-muted/30")}>
                     <td className="p-3 font-mono font-medium text-primary">{inv.serial}</td>
                     <td className="p-3 text-muted-foreground">{new Date(inv.createdAt).toLocaleDateString("ar-EG")}</td>
                     <td className="p-3">{inv.customerName || <span className="text-muted-foreground">نقدي</span>}</td>

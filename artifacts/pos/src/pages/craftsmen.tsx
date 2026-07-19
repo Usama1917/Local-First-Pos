@@ -22,6 +22,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatCurrency } from "@/lib/format";
+import { cn } from "@/lib/utils";
+import { useListKeyboardNav } from "@/hooks/use-list-keyboard-nav";
 import { printCommissionReceipt } from "@/lib/print-commission";
 import { normalizeFormat } from "@/lib/print-document";
 import { Search, Plus, HardHat, Eye, Users, Receipt, FileText, Wallet, Printer, Banknote } from "lucide-react";
@@ -378,6 +380,13 @@ export default function CraftsmenPage() {
 
   const craftsmen = (data as any)?.items || [];
 
+  // Keyboard navigation for the table (Arrow Up/Down + Enter opens the row).
+  const { activeIndex, onKeyDown: onSearchKeyDown, getItemProps } = useListKeyboardNav<any>({
+    items: craftsmen,
+    onSelect: (c: any) => setSelectedId(c.id),
+    resetKey: search,
+  });
+
   return (
     <div className="space-y-4">
       {selectedId && (
@@ -409,7 +418,7 @@ export default function CraftsmenPage() {
       <Card><CardContent className="p-4">
         <div className="relative">
           <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input className="pr-9" placeholder="بحث..." value={search} onChange={e => setSearch(e.target.value)} />
+          <Input className="pr-9" placeholder="بحث..." value={search} onChange={e => setSearch(e.target.value)} onKeyDown={onSearchKeyDown} />
         </div>
       </CardContent></Card>
 
@@ -428,8 +437,8 @@ export default function CraftsmenPage() {
           </thead>
           <tbody>
             {isLoading ? <tr><td colSpan={7} className="p-8 text-center text-muted-foreground">جاري التحميل...</td></tr> :
-              craftsmen.map((c: any) => (
-                <tr key={c.id} className="border-b hover:bg-muted/30 cursor-pointer" onClick={() => setSelectedId(c.id)}>
+              craftsmen.map((c: any, i: number) => (
+                <tr key={c.id} {...getItemProps(i)} className={cn("border-b cursor-pointer", activeIndex === i ? "nav-active" : "hover:bg-muted/30")} onClick={() => setSelectedId(c.id)}>
                   <td className="p-3 font-medium">{c.name}</td>
                   <td className="p-3 text-muted-foreground">{c.jobType || "—"}</td>
                   <td className="p-3 text-muted-foreground">{c.phone || "—"}</td>

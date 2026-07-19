@@ -16,6 +16,7 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatCurrency } from "@/lib/format";
 import { getTheme, setTheme, type Theme } from "@/lib/theme";
+import { getHighlightColor, setHighlightColor, HIGHLIGHT_COLORS } from "@/lib/highlight-color";
 import { motion } from "framer-motion";
 import { Save, Download, HardDrive, Settings, FolderOpen, Sun, Moon, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -31,6 +32,8 @@ export default function SettingsPage() {
   const [newArchiveDir, setNewArchiveDir] = useState("");
   const [theme, setThemeState] = useState<Theme>(getTheme());
   const changeTheme = (t: Theme) => { setTheme(t); setThemeState(t); };
+  const [highlight, setHighlightState] = useState<string>(getHighlightColor());
+  const changeHighlight = (k: string) => { setHighlightColor(k); setHighlightState(k); };
   // Shop's custom sale terms, edited as a list; stored as one term per line.
   const [terms, setTerms] = useState<string[]>([]);
   const addTerm = () => setTerms((t) => [...t, ""]);
@@ -233,6 +236,28 @@ export default function SettingsPage() {
                     );
                   })}
                 </div>
+              </div>
+
+              <div className="mt-6 flex items-center justify-between gap-4 border-t pt-6">
+                <div>
+                  <Label>لون التحديد</Label>
+                  <p className="text-xs text-muted-foreground mt-1">لون تظليل العنصر المحدَّد أثناء التنقّل بالكيبورد أو بالماوس في نتائج البحث والجداول.</p>
+                </div>
+                <Select value={highlight} onValueChange={changeHighlight}>
+                  <SelectTrigger className="w-48">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {HIGHLIGHT_COLORS.map((c) => (
+                      <SelectItem key={c.key} value={c.key}>
+                        <span className="flex items-center gap-2">
+                          <span className="inline-block h-3.5 w-3.5 rounded-full border" style={{ backgroundColor: `hsl(${c.hsl})` }} />
+                          {c.label}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </CardContent>
           </Card>

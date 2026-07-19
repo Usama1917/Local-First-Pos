@@ -23,6 +23,8 @@ import { printReturnReceipt } from "@/lib/print-return";
 import { normalizeFormat } from "@/lib/print-document";
 import { AuditInfo } from "@/components/ui/audit-info";
 import { useBarcodeScanner } from "@/hooks/use-barcode-scanner";
+import { useListKeyboardNav } from "@/hooks/use-list-keyboard-nav";
+import { cn } from "@/lib/utils";
 import { Search, RotateCcw, Repeat, Printer, Plus, Trash2, Undo2, PackageX } from "lucide-react";
 import { toast } from "sonner";
 
@@ -93,6 +95,15 @@ export default function ReturnsPage() {
     });
     setProductSearch("");
   };
+
+  // Keyboard navigation for the replacement-product search results (Arrow Up/Down + Enter).
+  const productResults: any[] = productSearch && Array.isArray(searchResults) ? searchResults : [];
+  const { activeIndex, onKeyDown: onSearchKeyDown, getItemProps } = useListKeyboardNav<any>({
+    items: productResults,
+    onSelect: addNewItem,
+    resetKey: productSearch,
+  });
+
   const updateNewItem = (idx: number, key: string, val: number) =>
     setNewItems((prev) => prev.map((it, i) => (i === idx ? { ...it, [key]: val } : it)));
   const removeNewItem = (idx: number) => setNewItems((prev) => prev.filter((_, i) => i !== idx));
@@ -240,11 +251,11 @@ export default function ReturnsPage() {
             <div className="font-semibold flex items-center gap-2"><Repeat className="h-4 w-4" />استبدال — أضف الأصناف البديلة (اختياري)</div>
             <div className="relative">
               <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
-              <Input className="pr-9" placeholder="ابحث عن منتج بديل لإضافته..." value={productSearch} onChange={(e) => setProductSearch(e.target.value)} />
-              {productSearch && (searchResults as any[])?.length > 0 && (
+              <Input className="pr-9" placeholder="ابحث عن منتج بديل لإضافته..." value={productSearch} onChange={(e) => setProductSearch(e.target.value)} onKeyDown={onSearchKeyDown} />
+              {productSearch && productResults.length > 0 && (
                 <div className="absolute inset-x-0 top-full z-50 mt-1 max-h-72 overflow-y-auto rounded-md border bg-popover text-popover-foreground shadow-md">
-                  {(searchResults as any[]).map((p: any) => (
-                    <div key={p.id} className="flex justify-between gap-2 p-2 cursor-pointer hover:bg-muted border-b last:border-b-0" onClick={() => addNewItem(p)}>
+                  {productResults.map((p: any, i: number) => (
+                    <div key={p.id} {...getItemProps(i)} className={cn("flex justify-between gap-2 p-2 cursor-pointer border-b last:border-b-0", activeIndex === i ? "nav-active" : "hover:bg-muted")} onClick={() => addNewItem(p)}>
                       <span>{p.nameAr} <span className="text-xs text-muted-foreground">({p.sku})</span></span>
                       <span className="text-sm text-muted-foreground whitespace-nowrap">سعر: {formatCurrency(p.sellingPrice)}</span>
                     </div>
