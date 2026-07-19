@@ -43,8 +43,18 @@ Checks: `pnpm run typecheck` · `pnpm run build` · `pnpm --filter @workspace/ap
   `db.ts` (CREATE IF NOT EXISTS won't alter an existing DB). Restart the API after backend
   edits (`dev` = build && start, not watch).
 
-> **Latest work + the “what's next” list live in [`AGENTS.md`](./AGENTS.md) §7** (the
-> 2026‑06‑27 block is uncommitted). Top next task: sell‑by‑weight in the cashier.
+> **Latest work + the “what's next” list live in [`AGENTS.md`](./AGENTS.md) §7.** Newest:
+> 2026‑07‑19 — system‑wide accounting‑aware delete, cashier UX (negative discounts,
+> editable line total/qty), and **server‑side session auth** (all `/api` now needs a
+> bearer token; `requireAdmin` on users/backup/settings) + a 49‑finding adversarial fix pass.
+
+## Auth (since 2026‑07‑19)
+- Every `/api` request needs `Authorization: Bearer <token>` (issued at `/auth/login`,
+  stored in the `sessions` table). Only `/auth/login` + `/healthz` are public. The SPA
+  keeps the token in `localStorage.pos_user.token`; a 401 auto‑logs‑out.
+- `requireAuth`/`requireAdmin` live in `artifacts/api-server/src/middlewares/auth.ts`;
+  session helpers in `…/src/lib/session.ts`. Passwords are still plaintext (deliberate
+  manager‑view feature) but now admin‑gated.
 
 ## Map
 - Routes: `artifacts/api-server/src/routes/*.ts` · DB: `…/src/lib/db.ts` (`nextBarcode`, `ensureColumn`)
