@@ -2,6 +2,7 @@ import { useState } from "react";
 import {
   useListSuppliers,
   useCreateSupplier,
+  useDeleteSupplier,
   useGetSupplier,
   useGetSupplierPayments,
   useAddSupplierPayment,
@@ -25,6 +26,7 @@ import {
   getListUnitsQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
+import { DeleteButton } from "@/components/ui/delete-confirm";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -116,6 +118,7 @@ export default function SuppliersPage() {
             emptyLabel="لا توجد تصنيفات"
             headerLabel="التصنيف"
             Icon={Layers}
+            entity="categories"
             showCount
             useList={useListCategories}
             useCreate={useCreateCategory}
@@ -131,6 +134,7 @@ export default function SuppliersPage() {
             emptyLabel="لا توجد ماركات"
             headerLabel="الماركة"
             Icon={Tag}
+            entity="brands"
             useList={useListBrands}
             useCreate={useCreateBrand}
             useUpdate={useUpdateBrand}
@@ -145,6 +149,7 @@ export default function SuppliersPage() {
             emptyLabel="لا توجد وحدات قياس"
             headerLabel="الوحدة"
             Icon={Ruler}
+            entity="units"
             useList={useListUnits}
             useCreate={useCreateUnit}
             useUpdate={useUpdateUnit}
@@ -165,6 +170,14 @@ function SuppliersTab() {
   const qc = useQueryClient();
   const { data, isLoading } = useListSuppliers({ search: search || undefined }, { query: { queryKey: getListSuppliersQueryKey({ search }) } });
   const createSupplier = useCreateSupplier();
+  const deleteSupplier = useDeleteSupplier();
+
+  const handleDelete = async (id: number) => {
+    await deleteSupplier.mutateAsync({ id });
+    qc.invalidateQueries({ queryKey: getListSuppliersQueryKey({}) });
+    qc.invalidateQueries({ queryKey: getListSuppliersQueryKey({ search }) });
+    toast.success("تم حذف/أرشفة المورد");
+  };
 
   const handleAdd = async () => {
     if (!form.name) { toast.error("الاسم مطلوب"); return; }
@@ -230,7 +243,12 @@ function SuppliersTab() {
                   <td className="p-3 text-muted-foreground">{s.phone || "—"}</td>
                   <td className="p-3 text-muted-foreground">{s.contactPerson || "—"}</td>
                   <td className="p-3 text-left">{s.totalDebt > 0 ? <span className="text-destructive font-bold">{formatCurrency(s.totalDebt)}</span> : <span className="text-muted-foreground">—</span>}</td>
-                  <td className="p-3"><Button variant="ghost" size="sm" onClick={() => setSelectedId(s.id)}><Eye className="h-4 w-4 ml-1" />عرض</Button></td>
+                  <td className="p-3">
+                    <div className="flex items-center gap-1">
+                      <Button variant="ghost" size="sm" onClick={() => setSelectedId(s.id)}><Eye className="h-4 w-4 ml-1" />عرض</Button>
+                      <DeleteButton entity="suppliers" id={s.id} label={`المورد «${s.name}»`} onDelete={() => handleDelete(s.id)} />
+                    </div>
+                  </td>
                 </tr>
               ))}
             {!isLoading && suppliers.length === 0 && (
@@ -259,6 +277,7 @@ function AttributeTab({
   emptyLabel,
   headerLabel,
   Icon,
+  entity,
   showCount = false,
   useList,
   useCreate,
@@ -271,6 +290,7 @@ function AttributeTab({
   emptyLabel: string;
   headerLabel: string;
   Icon: LucideIcon;
+  entity: "categories" | "brands" | "units";
   showCount?: boolean;
   // The generated hooks/query-key helpers for the chosen entity.
   useList: any;
@@ -314,18 +334,9 @@ function AttributeTab({
   };
 
   const handleDelete = async (it: AttrItem) => {
-    const count = it.productCount ?? 0;
-    const msg = showCount && count > 0
-      ? `"${it.name}" مرتبط بـ ${count} منتج. الحذف هيشيل الارتباط من المنتجات دي. تكمّل؟`
-      : `حذف ${singular} "${it.name}"؟`;
-    if (!confirm(msg)) return;
-    try {
-      await del.mutateAsync({ id: it.id });
-      invalidate();
-      toast.success(`تم حذف ${singular}`);
-    } catch {
-      toast.error("تعذّر الحذف");
-    }
+    await del.mutateAsync({ id: it.id });
+    invalidate();
+    toast.success(`تم حذف ${singular}`);
   };
 
   return (
@@ -368,7 +379,7 @@ function AttributeTab({
                   <td className="p-3">
                     <div className="flex gap-1 justify-end">
                       <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEdit(it)} title="تعديل"><Pencil className="h-4 w-4" /></Button>
-                      <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => handleDelete(it)} title="حذف"><Trash2 className="h-4 w-4" /></Button>
+                      <DeleteButton entity={entity} id={it.id} label={`${singular} «${it.name}»`} onDelete={() => handleDelete(it)} />
                     </div>
                   </td>
                 </tr>

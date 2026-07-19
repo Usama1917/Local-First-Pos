@@ -3,6 +3,7 @@ import db from "../lib/db.js";
 import { actorName } from "../lib/actor.js";
 import { nextPayoutSerial } from "../lib/db.js";
 import { archivePayout } from "../lib/archive.js";
+import { performDelete } from "../lib/deletion.js";
 
 const router = Router();
 
@@ -129,8 +130,12 @@ router.patch("/craftsmen/:id", (req, res) => {
   res.json(db.prepare("SELECT *, 0 as totalSales, 0 as totalCommission FROM craftsmen WHERE id = ?").get(id));
 });
 
+// Blocks when unpaid commission is outstanding; hard-deletes when he has no
+// transactions at all, otherwise archives (keeps the commission history).
 router.delete("/craftsmen/:id", (req, res) => {
-  db.prepare("UPDATE craftsmen SET isActive = 0 WHERE id = ?").run(Number(req.params.id));
+  const err = performDelete("craftsmen", Number(req.params.id));
+  if (err === "غير موجود") return res.status(404).json({ error: err });
+  if (err) return res.status(400).json({ error: err });
   res.json({ success: true });
 });
 

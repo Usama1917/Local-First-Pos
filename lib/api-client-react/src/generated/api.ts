@@ -49,6 +49,7 @@ import type {
   CustomersPage,
   DashboardSummary,
   DebtSummary,
+  DeletePreview,
   Draft,
   DraftInput,
   FinalizeInvoiceInput,
@@ -5725,6 +5726,158 @@ export function useGetReturn<TData = Awaited<ReturnType<typeof getReturn>>, TErr
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetReturnQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getDeleteReturnUrl = (id: number,) => {
+
+
+
+
+  return `/api/returns/${id}`
+}
+
+/**
+ * @summary Delete a return/exchange, reversing its stock and account effects
+ */
+export const deleteReturn = async (id: number, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDeleteReturnUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteReturnMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteReturn>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteReturn>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['deleteReturn'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteReturn>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteReturn(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteReturnMutationResult = NonNullable<Awaited<ReturnType<typeof deleteReturn>>>
+
+    export type DeleteReturnMutationError = ErrorType<void>
+
+    /**
+ * @summary Delete a return/exchange, reversing its stock and account effects
+ */
+export const useDeleteReturn = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteReturn>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteReturn>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getDeleteReturnMutationOptions(options));
+    }
+
+export const getGetDeletePreviewUrl = (entity: 'sales' | 'purchases' | 'returns' | 'quotations' | 'products' | 'customers' | 'craftsmen' | 'suppliers' | 'categories' | 'brands' | 'units',
+    id: number,) => {
+
+
+
+
+  return `/api/delete-preview/${entity}/${id}`
+}
+
+/**
+ * @summary Effects / warnings / blockers of deleting a record (Arabic, rendered verbatim in the confirmation dialog)
+ */
+export const getDeletePreview = async (entity: 'sales' | 'purchases' | 'returns' | 'quotations' | 'products' | 'customers' | 'craftsmen' | 'suppliers' | 'categories' | 'brands' | 'units',
+    id: number, options?: RequestInit): Promise<DeletePreview> => {
+
+  return customFetch<DeletePreview>(getGetDeletePreviewUrl(entity,id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetDeletePreviewQueryKey = (entity: 'sales' | 'purchases' | 'returns' | 'quotations' | 'products' | 'customers' | 'craftsmen' | 'suppliers' | 'categories' | 'brands' | 'units',
+    id: number,) => {
+    return [
+    `/api/delete-preview/${entity}/${id}`
+    ] as const;
+    }
+
+
+export const getGetDeletePreviewQueryOptions = <TData = Awaited<ReturnType<typeof getDeletePreview>>, TError = ErrorType<void>>(entity: 'sales' | 'purchases' | 'returns' | 'quotations' | 'products' | 'customers' | 'craftsmen' | 'suppliers' | 'categories' | 'brands' | 'units',
+    id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDeletePreview>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetDeletePreviewQueryKey(entity,id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getDeletePreview>>> = ({ signal }) => getDeletePreview(entity,id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: !!(entity && id), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getDeletePreview>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetDeletePreviewQueryResult = NonNullable<Awaited<ReturnType<typeof getDeletePreview>>>
+export type GetDeletePreviewQueryError = ErrorType<void>
+
+
+/**
+ * @summary Effects / warnings / blockers of deleting a record (Arabic, rendered verbatim in the confirmation dialog)
+ */
+
+export function useGetDeletePreview<TData = Awaited<ReturnType<typeof getDeletePreview>>, TError = ErrorType<void>>(
+ entity: 'sales' | 'purchases' | 'returns' | 'quotations' | 'products' | 'customers' | 'craftsmen' | 'suppliers' | 'categories' | 'brands' | 'units',
+    id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDeletePreview>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetDeletePreviewQueryOptions(entity,id,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

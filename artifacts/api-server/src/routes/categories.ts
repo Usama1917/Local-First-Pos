@@ -1,5 +1,6 @@
 import { Router } from "express";
 import db from "../lib/db.js";
+import { performDelete } from "../lib/deletion.js";
 
 const router = Router();
 
@@ -35,8 +36,11 @@ router.patch("/categories/:id", (req, res) => {
   res.json(row);
 });
 
+// Refuses (with a friendly message) when the category is still used by products.
 router.delete("/categories/:id", (req, res) => {
-  db.prepare("DELETE FROM categories WHERE id = ?").run(Number(req.params.id));
+  const err = performDelete("categories", Number(req.params.id));
+  if (err === "غير موجود") return res.status(404).json({ error: err });
+  if (err) return res.status(400).json({ error: err });
   res.json({ success: true });
 });
 

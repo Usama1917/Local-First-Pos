@@ -1209,6 +1209,41 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ReturnReceipt"
+    delete:
+      operationId: deleteReturn
+      tags: [returns]
+      summary: Delete a return/exchange, reversing its stock and account effects
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: Deleted
+        "400":
+          description: Refused (accounting blocker)
+
+  # Delete preview — what exactly would happen if this record were deleted
+  /delete-preview/{entity}/{id}:
+    get:
+      operationId: getDeletePreview
+      tags: [deletion]
+      summary: Effects / warnings / blockers of deleting a record (Arabic, rendered verbatim in the confirmation dialog)
+      parameters:
+        - name: entity
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [sales, purchases, returns, quotations, products, customers, craftsmen, suppliers, categories, brands, units]
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: Delete preview
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeletePreview"
+        "404":
+          description: Not found
 
   # Purchase Invoices
   /purchases:
@@ -1669,6 +1704,25 @@ components:
       required: [status]
       properties:
         status: { type: string }
+
+    DeletePreview:
+      type: object
+      required: [canDelete, mode, effects, warnings, blockers]
+      properties:
+        canDelete: { type: boolean }
+        mode:
+          type: string
+          enum: [hard, archive]
+          description: hard = row removed; archive = kept but deactivated
+        effects:
+          type: array
+          items: { type: string }
+        warnings:
+          type: array
+          items: { type: string }
+        blockers:
+          type: array
+          items: { type: string }
 
     # Auth
     LoginInput:

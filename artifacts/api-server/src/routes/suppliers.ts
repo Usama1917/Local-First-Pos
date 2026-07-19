@@ -1,6 +1,7 @@
 import { Router } from "express";
 import db from "../lib/db.js";
 import { actorName } from "../lib/actor.js";
+import { performDelete } from "../lib/deletion.js";
 
 const router = Router();
 
@@ -58,8 +59,12 @@ router.patch("/suppliers/:id", (req, res) => {
   res.json(db.prepare(`${SUPPLIER_SELECT} WHERE s.id = ?`).get(id));
 });
 
+// Blocks when there is an unsettled balance with the supplier; hard-deletes when
+// no transactions exist, otherwise archives.
 router.delete("/suppliers/:id", (req, res) => {
-  db.prepare("UPDATE suppliers SET isActive = 0 WHERE id = ?").run(Number(req.params.id));
+  const err = performDelete("suppliers", Number(req.params.id));
+  if (err === "غير موجود") return res.status(404).json({ error: err });
+  if (err) return res.status(400).json({ error: err });
   res.json({ success: true });
 });
 

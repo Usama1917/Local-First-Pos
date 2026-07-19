@@ -9,6 +9,26 @@ export interface HealthStatus {
   status: string;
 }
 
+/**
+ * hard = row removed; archive = kept but deactivated
+ */
+export type DeletePreviewMode = typeof DeletePreviewMode[keyof typeof DeletePreviewMode];
+
+
+export const DeletePreviewMode = {
+  hard: 'hard',
+  archive: 'archive',
+} as const;
+
+export interface DeletePreview {
+  canDelete: boolean;
+  /** hard = row removed; archive = kept but deactivated */
+  mode: DeletePreviewMode;
+  effects: string[];
+  warnings: string[];
+  blockers: string[];
+}
+
 export interface LoginInput {
   username: string;
   password: string;

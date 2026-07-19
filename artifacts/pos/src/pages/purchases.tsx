@@ -27,6 +27,7 @@ import { useBarcodeScanner, findProductByCode } from "@/hooks/use-barcode-scanne
 import { useDraftAutosave } from "@/hooks/use-draft-autosave";
 import { printLabels } from "@/lib/print-labels";
 import { AuditInfo } from "@/components/ui/audit-info";
+import { DeleteButton } from "@/components/ui/delete-confirm";
 import { Search, Plus, ShoppingBag, CheckCircle, Trash2, Printer, Ban } from "lucide-react";
 import { toast } from "sonner";
 
@@ -228,14 +229,10 @@ function NewPurchaseDialog({ onClose, open, invoiceId }: { onClose: () => void; 
   };
 
   const handleDelete = async () => {
-    if (!isExisting) return;
-    if (!window.confirm("متأكد إنك عايز تحذف المسودة دي؟")) return;
-    try {
-      await deletePurchase.mutateAsync({ id: invoiceId as number });
-      qc.invalidateQueries({ queryKey: getListPurchaseInvoicesQueryKey({}) });
-      toast.success("تم حذف المسودة");
-      onClose();
-    } catch (e: any) { toast.error(e.message || "خطأ"); }
+    await deletePurchase.mutateAsync({ id: invoiceId as number });
+    qc.invalidateQueries();
+    toast.success("تم حذف الفاتورة");
+    onClose();
   };
 
   const handleReprint = () => {
@@ -368,9 +365,9 @@ function NewPurchaseDialog({ onClose, open, invoiceId }: { onClose: () => void; 
         ) : (
           <>
             {isExisting && (
-              <Button variant="ghost" className="text-destructive me-auto" onClick={handleDelete} disabled={deletePurchase.isPending}>
-                <Trash2 className="h-4 w-4 ml-2" />حذف المسودة
-              </Button>
+              <div className="me-auto">
+                <DeleteButton entity="purchases" id={invoiceId as number} label={`المسودة ${serial || ""}`} variant="button" onDelete={handleDelete} />
+              </div>
             )}
             <Button variant="outline" onClick={onClose}>إلغاء</Button>
             <Button variant="outline" onClick={() => handleSave(false)} disabled={createPurchase.isPending || updatePurchase.isPending}>
@@ -396,6 +393,15 @@ export default function PurchasesPage() {
   const { data, isLoading } = useListPurchaseInvoices(params, { query: { queryKey: getListPurchaseInvoicesQueryKey(params) } });
   const invoices = (data as any)?.items || [];
   const closeDialog = () => setOpenId(null);
+  const qc = useQueryClient();
+  const deletePurchase = useDeletePurchaseInvoice();
+
+  const handleRowDelete = async (id: number) => {
+    await deletePurchase.mutateAsync({ id });
+    // Deleting a finalized purchase touches stock and the supplier's balance.
+    qc.invalidateQueries();
+    toast.success("تم حذف فاتورة المشتريات وعكس آثارها (مخزون/حساب المورد)");
+  };
 
   return (
     <div className="space-y-4">
@@ -455,7 +461,10 @@ export default function PurchasesPage() {
                   <td className="p-3 text-left font-semibold">{formatCurrency(inv.total)}</td>
                   <td className="p-3 text-left">{inv.remainingAmount > 0 ? <span className="text-destructive font-semibold">{formatCurrency(inv.remainingAmount)}</span> : <span className="text-emerald-600 dark:text-emerald-400">مسدد</span>}</td>
                   <td className="p-3" onClick={(e) => e.stopPropagation()}>
-                    <AuditInfo createdBy={inv.createdBy} createdAt={inv.createdAt} updatedBy={inv.updatedBy} updatedAt={inv.updatedAt} />
+                    <div className="flex items-center gap-1">
+                      <DeleteButton entity="purchases" id={inv.id} label={`فاتورة المشتريات ${inv.serial}`} onDelete={() => handleRowDelete(inv.id)} />
+                      <AuditInfo createdBy={inv.createdBy} createdAt={inv.createdAt} updatedBy={inv.updatedBy} updatedAt={inv.updatedAt} />
+                    </div>
                   </td>
                 </tr>
               ))}

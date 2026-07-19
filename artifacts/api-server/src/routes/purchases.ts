@@ -3,6 +3,7 @@ import db from "../lib/db.js";
 import { actorName } from "../lib/actor.js";
 import { nextSerial, getSettings } from "../lib/db.js";
 import { archivePurchase } from "../lib/archive.js";
+import { performDelete } from "../lib/deletion.js";
 
 const router = Router();
 
@@ -100,13 +101,12 @@ router.patch("/purchases/:id", (req, res) => {
   res.json({ ...db.prepare(`${PURCHASE_SELECT} WHERE pi.id = ?`).get(id), items: getItems(id) });
 });
 
+// Full deletion with accounting reversal: the stock received by this invoice is
+// pulled back out (via its own stock movements) and the supplier's balance drops.
 router.delete("/purchases/:id", (req, res) => {
-  const id = Number(req.params.id);
-  const pur = db.prepare("SELECT status FROM purchase_invoices WHERE id = ?").get(id) as any;
-  if (!pur) return res.status(404).json({ error: "غير موجود" });
-  // Cancelling a finalized purchase would leave its received stock in inventory.
-  if (pur.status !== "draft") return res.status(400).json({ error: "لا يمكن حذف فاتورة مُنجزة" });
-  db.prepare("UPDATE purchase_invoices SET status = 'cancelled', updatedAt = datetime('now') WHERE id = ?").run(id);
+  const err = performDelete("purchases", Number(req.params.id), actorName(req));
+  if (err === "غير موجود") return res.status(404).json({ error: err });
+  if (err) return res.status(400).json({ error: err });
   res.json({ success: true });
 });
 

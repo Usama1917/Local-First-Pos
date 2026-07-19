@@ -2,6 +2,7 @@ import { useState } from "react";
 import {
   useCreateReturn,
   useListReturns,
+  useDeleteReturn,
   lookupInvoiceForReturn,
   getReturn,
   useSearchProducts,
@@ -10,6 +11,7 @@ import {
   getListReturnsQueryKey,
   getListCustomersQueryKey,
 } from "@workspace/api-client-react";
+import { DeleteButton } from "@/components/ui/delete-confirm";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -40,6 +42,15 @@ export default function ReturnsPage() {
   const [notes, setNotes] = useState("");
 
   const createReturn = useCreateReturn();
+  const deleteReturn = useDeleteReturn();
+
+  const handleDelete = async (id: number) => {
+    await deleteReturn.mutateAsync({ id });
+    // Deleting a return touches stock, the customer's account and the original
+    // invoice's returnable quantities — refresh everything.
+    qc.invalidateQueries();
+    toast.success("تم حذف المرتجع وعكس آثاره (مخزون/حساب العميل)");
+  };
   const { data: settings } = useGetSettings();
   const shop = (settings as any) || {};
   const { data: searchResults } = useSearchProducts(
@@ -337,6 +348,7 @@ export default function ReturnsPage() {
                 <td className="p-3 text-center">
                   <div className="flex items-center justify-center gap-1">
                     <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => reprint(r.id)} title="إعادة طباعة الإيصال"><Printer className="h-4 w-4" /></Button>
+                    <DeleteButton entity="returns" id={r.id} label={`${r.type === "exchange" ? "الاستبدال" : "المرتجع"} ${r.serial}`} onDelete={() => handleDelete(r.id)} />
                     <AuditInfo createdBy={r.createdBy} createdAt={r.createdAt} />
                   </div>
                 </td>

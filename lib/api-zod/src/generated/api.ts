@@ -1843,6 +1843,31 @@ export const GetReturnResponse = zod.object({
 
 
 /**
+ * @summary Delete a return/exchange, reversing its stock and account effects
+ */
+export const DeleteReturnParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+/**
+ * @summary Effects / warnings / blockers of deleting a record (Arabic, rendered verbatim in the confirmation dialog)
+ */
+export const GetDeletePreviewParams = zod.object({
+  "entity": zod.enum(['sales', 'purchases', 'returns', 'quotations', 'products', 'customers', 'craftsmen', 'suppliers', 'categories', 'brands', 'units']),
+  "id": zod.coerce.number()
+})
+
+export const GetDeletePreviewResponse = zod.object({
+  "canDelete": zod.boolean(),
+  "mode": zod.enum(['hard', 'archive']).describe('hard = row removed; archive = kept but deactivated'),
+  "effects": zod.array(zod.string()),
+  "warnings": zod.array(zod.string()),
+  "blockers": zod.array(zod.string())
+})
+
+
+/**
  * @summary List purchase invoices
  */
 export const ListPurchaseInvoicesQueryParams = zod.object({

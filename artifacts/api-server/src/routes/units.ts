@@ -1,5 +1,6 @@
 import { Router } from "express";
 import db from "../lib/db.js";
+import { performDelete } from "../lib/deletion.js";
 
 const router = Router();
 
@@ -21,8 +22,11 @@ router.patch("/units/:id", (req, res) => {
   res.json(db.prepare("SELECT * FROM units WHERE id = ?").get(id));
 });
 
+// Refuses (with a friendly message) when the unit is still used by products.
 router.delete("/units/:id", (req, res) => {
-  db.prepare("DELETE FROM units WHERE id = ?").run(Number(req.params.id));
+  const err = performDelete("units", Number(req.params.id));
+  if (err === "غير موجود") return res.status(404).json({ error: err });
+  if (err) return res.status(400).json({ error: err });
   res.json({ success: true });
 });
 

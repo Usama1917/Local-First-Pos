@@ -1,6 +1,7 @@
 import { Router } from "express";
 import db from "../lib/db.js";
 import { actorName } from "../lib/actor.js";
+import { performDelete } from "../lib/deletion.js";
 
 const router = Router();
 
@@ -61,8 +62,12 @@ router.patch("/customers/:id", (req, res) => {
   res.json(db.prepare(`${CUSTOMER_SELECT} WHERE c.id = ?`).get(id));
 });
 
+// Blocks when the customer has an outstanding balance; hard-deletes when he has
+// no transactions at all, otherwise archives (keeps the full statement).
 router.delete("/customers/:id", (req, res) => {
-  db.prepare("UPDATE customers SET isActive = 0 WHERE id = ?").run(Number(req.params.id));
+  const err = performDelete("customers", Number(req.params.id));
+  if (err === "غير موجود") return res.status(404).json({ error: err });
+  if (err) return res.status(400).json({ error: err });
   res.json({ success: true });
 });
 

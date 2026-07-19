@@ -2,6 +2,7 @@ import { useState } from "react";
 import {
   useListCraftsmen,
   useCreateCraftsman,
+  useDeleteCraftsman,
   useGetCraftsman,
   useGetCraftsmanCustomers,
   useCreateCraftsmanPayout,
@@ -12,6 +13,7 @@ import {
   getGetCraftsmanCustomersQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
+import { DeleteButton } from "@/components/ui/delete-confirm";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -353,6 +355,14 @@ export default function CraftsmenPage() {
   const params = { search: search || undefined };
   const { data, isLoading } = useListCraftsmen(params, { query: { queryKey: getListCraftsmenQueryKey(params) } });
   const createCraftsman = useCreateCraftsman();
+  const deleteCraftsman = useDeleteCraftsman();
+
+  const handleDelete = async (id: number) => {
+    await deleteCraftsman.mutateAsync({ id });
+    qc.invalidateQueries({ queryKey: getListCraftsmenQueryKey({}) });
+    qc.invalidateQueries({ queryKey: getListCraftsmenQueryKey(params) });
+    toast.success("تم حذف/أرشفة الصنايعي");
+  };
 
   const handleAdd = async () => {
     if (!form.name) { toast.error("الاسم مطلوب"); return; }
@@ -430,7 +440,12 @@ export default function CraftsmenPage() {
                       ? <span className="text-emerald-700 dark:text-emerald-400">{formatCurrency(c.outstandingCommission)}</span>
                       : <span className="text-muted-foreground text-xs">—</span>}
                   </td>
-                  <td className="p-3"><Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setSelectedId(c.id); }}><Eye className="h-4 w-4 ml-1" />عرض</Button></td>
+                  <td className="p-3" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center gap-1">
+                      <Button variant="ghost" size="sm" onClick={() => setSelectedId(c.id)}><Eye className="h-4 w-4 ml-1" />عرض</Button>
+                      <DeleteButton entity="craftsmen" id={c.id} label={`الصنايعي «${c.name}»`} onDelete={() => handleDelete(c.id)} />
+                    </div>
+                  </td>
                 </tr>
               ))}
             {!isLoading && craftsmen.length === 0 && (

@@ -3,6 +3,7 @@ import db from "../lib/db.js";
 import { nextSerial, getSettings } from "../lib/db.js";
 import { archiveSale } from "../lib/archive.js";
 import { actorName } from "../lib/actor.js";
+import { performDelete } from "../lib/deletion.js";
 
 const router = Router();
 
@@ -128,12 +129,13 @@ router.patch("/sales/:id", (req, res) => {
   res.json({ ...db.prepare(`${INVOICE_SELECT} WHERE si.id = ?`).get(id), items: getItems(id) });
 });
 
+// Full deletion with accounting reversal (stock restored from the invoice's own
+// movements, customer debt drops, quotation un-converted). Refuses when linked
+// returns exist or commission was already paid out — see lib/deletion.ts.
 router.delete("/sales/:id", (req, res) => {
-  const id = Number(req.params.id);
-  const inv = db.prepare("SELECT * FROM sales_invoices WHERE id = ?").get(id) as any;
-  if (!inv) return res.status(404).json({ error: "غير موجود" });
-  if (inv.status !== "draft") return res.status(400).json({ error: "لا يمكن حذف فاتورة مُنجزة" });
-  db.prepare("DELETE FROM sales_invoices WHERE id = ?").run(id);
+  const err = performDelete("sales", Number(req.params.id), actorName(req));
+  if (err === "غير موجود") return res.status(404).json({ error: err });
+  if (err) return res.status(400).json({ error: err });
   res.json({ success: true });
 });
 

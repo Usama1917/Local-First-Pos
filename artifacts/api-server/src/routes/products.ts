@@ -1,5 +1,6 @@
 import { Router } from "express";
 import db, { nextBarcode } from "../lib/db.js";
+import { performDelete } from "../lib/deletion.js";
 
 const router = Router();
 
@@ -163,8 +164,12 @@ router.patch("/products/:id", (req, res) => {
   res.json(db.prepare(`${PRODUCT_SELECT} WHERE p.id = ?`).get(id));
 });
 
+// Hard-deletes when the product was never used in any document; archives
+// (isActive=0) when history exists so past invoices stay intact.
 router.delete("/products/:id", (req, res) => {
-  db.prepare("UPDATE products SET isActive = 0 WHERE id = ?").run(Number(req.params.id));
+  const err = performDelete("products", Number(req.params.id));
+  if (err === "غير موجود") return res.status(404).json({ error: err });
+  if (err) return res.status(400).json({ error: err });
   res.json({ success: true });
 });
 

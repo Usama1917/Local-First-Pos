@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, type KeyboardEvent as ReactKeyboardEvent }
 import {
   useListSalesInvoices,
   useGetSalesInvoice,
+  useDeleteSalesInvoice,
   useListCraftsmen,
   useGetSettings,
   lookupSalesInvoiceBySerial,
@@ -9,6 +10,8 @@ import {
   getGetSalesInvoiceQueryKey,
   getListCraftsmenQueryKey,
 } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { DeleteButton } from "@/components/ui/delete-confirm";
 import JsBarcode from "jsbarcode";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -224,6 +227,16 @@ export default function SalesPage() {
   };
   const { data, isLoading } = useListSalesInvoices(params, { query: { queryKey: getListSalesInvoicesQueryKey(params) } });
   const invoices = (data as any)?.items || [];
+  const qc = useQueryClient();
+  const deleteInvoice = useDeleteSalesInvoice();
+
+  const handleDelete = async (id: number) => {
+    await deleteInvoice.mutateAsync({ id });
+    // Deleting a finalized invoice touches stock, customer debt, craftsman
+    // commission and possibly a linked quotation — refresh everything.
+    qc.invalidateQueries();
+    toast.success("تم حذف الفاتورة وعكس آثارها (مخزون/مديونية/عمولة)");
+  };
 
   // Open an invoice by its serial / scanned barcode.
   const openInvoiceBySerial = async (code: string, notify = false) => {
@@ -339,6 +352,7 @@ export default function SalesPage() {
                         <Button variant="ghost" size="sm" onClick={() => setSelectedId(inv.id)}>
                           <Eye className="h-4 w-4 ml-1" /> عرض
                         </Button>
+                        <DeleteButton entity="sales" id={inv.id} label={`الفاتورة ${inv.serial}`} onDelete={() => handleDelete(inv.id)} />
                         <AuditInfo createdBy={inv.createdBy} createdAt={inv.createdAt} updatedBy={inv.updatedBy} updatedAt={inv.updatedAt} />
                       </div>
                     </td>

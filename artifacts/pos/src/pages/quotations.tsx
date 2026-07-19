@@ -5,6 +5,7 @@ import {
   useGetQuotation,
   useConvertQuotationToInvoice,
   useDuplicateQuotation,
+  useDeleteQuotation,
   useListCustomers,
   useListCraftsmen,
   useSearchProducts,
@@ -13,6 +14,7 @@ import {
   getGetQuotationQueryKey,
   getListCraftsmenQueryKey,
 } from "@workspace/api-client-react";
+import { DeleteButton } from "@/components/ui/delete-confirm";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -248,6 +250,13 @@ export default function QuotationsPage() {
   const { data, isLoading } = useListQuotations(params, { query: { queryKey: getListQuotationsQueryKey(params) } });
   const convertToInvoice = useConvertQuotationToInvoice();
   const duplicate = useDuplicateQuotation();
+  const deleteQuotation = useDeleteQuotation();
+
+  const handleDelete = async (id: number) => {
+    await deleteQuotation.mutateAsync({ id });
+    qc.invalidateQueries({ queryKey: getListQuotationsQueryKey({}) });
+    toast.success("تم حذف التسعيرة");
+  };
 
   const handleConvert = async (id: number) => {
     await convertToInvoice.mutateAsync({ id, data: { paymentType: "cash" } });
@@ -340,6 +349,7 @@ export default function QuotationsPage() {
                         <Button variant="ghost" size="sm" onClick={() => handleDuplicate(q.id)}>
                           <Copy className="h-3 w-3" />
                         </Button>
+                        <DeleteButton entity="quotations" id={q.id} label={`التسعيرة ${q.serial}`} onDelete={() => handleDelete(q.id)} />
                         <AuditInfo createdBy={q.createdBy} createdAt={q.createdAt} updatedBy={q.updatedBy} updatedAt={q.updatedAt} />
                       </div>
                     </td>

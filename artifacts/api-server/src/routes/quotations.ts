@@ -2,6 +2,7 @@ import { Router } from "express";
 import db from "../lib/db.js";
 import { actorName } from "../lib/actor.js";
 import { nextSerial, getSettings } from "../lib/db.js";
+import { performDelete } from "../lib/deletion.js";
 
 const router = Router();
 
@@ -100,8 +101,12 @@ router.patch("/quotations/:id", (req, res) => {
   res.json({ ...db.prepare(`${QUOTATION_SELECT} WHERE q.id = ?`).get(id), items: getItems(id) });
 });
 
+// Real deletion (quotations have no stock/accounting effects). Refused when the
+// quotation was converted — the invoice references it.
 router.delete("/quotations/:id", (req, res) => {
-  db.prepare("UPDATE quotations SET status = 'cancelled', updatedAt = datetime('now') WHERE id = ?").run(Number(req.params.id));
+  const err = performDelete("quotations", Number(req.params.id));
+  if (err === "غير موجود") return res.status(404).json({ error: err });
+  if (err) return res.status(400).json({ error: err });
   res.json({ success: true });
 });
 

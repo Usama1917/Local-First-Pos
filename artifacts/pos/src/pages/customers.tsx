@@ -2,6 +2,7 @@ import { useState } from "react";
 import {
   useListCustomers,
   useCreateCustomer,
+  useDeleteCustomer,
   useGetCustomer,
   useGetCustomerStatement,
   useGetCustomerPayments,
@@ -15,6 +16,7 @@ import {
   getGetCustomerQuotationsQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
+import { DeleteButton } from "@/components/ui/delete-confirm";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -253,6 +255,14 @@ export default function CustomersPage() {
   const qc = useQueryClient();
   const { data, isLoading } = useListCustomers({ search: search || undefined }, { query: { queryKey: getListCustomersQueryKey({ search }) } });
   const createCustomer = useCreateCustomer();
+  const deleteCustomer = useDeleteCustomer();
+
+  const handleDelete = async (id: number) => {
+    await deleteCustomer.mutateAsync({ id });
+    qc.invalidateQueries({ queryKey: getListCustomersQueryKey({}) });
+    qc.invalidateQueries({ queryKey: getListCustomersQueryKey({ search }) });
+    toast.success("تم حذف/أرشفة العميل");
+  };
 
   const handleAdd = async () => {
     if (!form.name) { toast.error("الاسم مطلوب"); return; }
@@ -331,9 +341,12 @@ export default function CustomersPage() {
                       {c.totalDebt > 0 ? <span className="font-bold text-destructive">{formatCurrency(c.totalDebt)}</span> : <span className="text-muted-foreground">—</span>}
                     </td>
                     <td className="p-3">
-                      <Button variant="ghost" size="sm" onClick={() => setSelectedId(c.id)}>
-                        <Eye className="h-4 w-4 ml-1" /> عرض
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        <Button variant="ghost" size="sm" onClick={() => setSelectedId(c.id)}>
+                          <Eye className="h-4 w-4 ml-1" /> عرض
+                        </Button>
+                        <DeleteButton entity="customers" id={c.id} label={`العميل «${c.name}»`} onDelete={() => handleDelete(c.id)} />
+                      </div>
                     </td>
                   </tr>
                 ))

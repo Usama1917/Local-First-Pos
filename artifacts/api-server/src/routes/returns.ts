@@ -3,6 +3,7 @@ import db from "../lib/db.js";
 import { actorName } from "../lib/actor.js";
 import { nextReturnSerial } from "../lib/db.js";
 import { archiveReturn } from "../lib/archive.js";
+import { performDelete } from "../lib/deletion.js";
 
 const router = Router();
 
@@ -179,6 +180,15 @@ router.post("/returns", (req, res) => {
     db.exec("ROLLBACK");
     throw e;
   }
+});
+
+// Delete a return/exchange, reversing its stock and account effects (restocked
+// items come back out, exchange items go back in, the account settlement drops).
+router.delete("/returns/:id", (req, res) => {
+  const err = performDelete("returns", Number(req.params.id), actorName(req));
+  if (err === "غير موجود") return res.status(404).json({ error: err });
+  if (err) return res.status(400).json({ error: err });
+  res.json({ success: true });
 });
 
 export default router;

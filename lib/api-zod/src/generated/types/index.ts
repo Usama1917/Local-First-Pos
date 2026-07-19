@@ -39,6 +39,8 @@ export * from './customerUpdate';
 export * from './dailySalesItem';
 export * from './dashboardSummary';
 export * from './debtSummary';
+export * from './deletePreview';
+export * from './deletePreviewMode';
 export * from './draft';
 export * from './draftInput';
 export * from './finalizeInvoiceInput';
