@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import {
   useListProducts,
   useListCategories,
@@ -7,10 +7,12 @@ import {
   useListUnits,
   useCreateProduct,
   useUpdateProduct,
+  useDeleteProduct,
   useGetSettings,
   getNextBarcode,
   getListProductsQueryKey,
 } from "@workspace/api-client-react";
+import { DeleteButton } from "@/components/ui/delete-confirm";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -28,7 +30,7 @@ import { toast } from "sonner";
 
 const EMPTY_FORM = {
   nameAr: "", sku: "", barcode: "", barcodeMode: "ready", soldByWeight: false, categoryId: "", brandId: "", supplierId: "", unitId: "",
-  listPrice: "", supplierDiscount: "30", netPurchasePrice: "", extraCost: "0",
+  listPrice: "", supplierDiscount: "", netPurchasePrice: "", extraCost: "0",
   trueCost: "", sellingPrice: "", minSellingPrice: "", currentStock: "0", minStock: "5",
   colorCode: "", paintType: "", packageSize: "", isActive: true,
 };
@@ -82,6 +84,23 @@ function ProductFormFields({
 }) {
   const { cats, brands, suppliers, units } = lists;
   const [generating, setGenerating] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  // Enter acts like Tab inside the form: jumps to the next field (text inputs
+  // and dropdown triggers), so data entry flows keyboard-only.
+  const handleEnterNav = (e: React.KeyboardEvent) => {
+    if (e.key !== "Enter") return;
+    const t = e.target as HTMLElement;
+    if (!(t instanceof HTMLInputElement)) return; // dropdowns/buttons keep native Enter behavior
+    e.preventDefault();
+    const root = rootRef.current;
+    if (!root) return;
+    const focusables = Array.from(
+      root.querySelectorAll<HTMLElement>('input:not([disabled]):not([readonly]), button[role="combobox"]'),
+    ).filter((el) => el.offsetParent !== null); // skip hidden fields
+    const i = focusables.indexOf(t);
+    if (i >= 0 && i + 1 < focusables.length) focusables[i + 1].focus();
+  };
 
   const calcPrices = (f: any) => {
     const list = parseFloat(f.listPrice) || 0;
@@ -134,7 +153,7 @@ function ProductFormFields({
   const perUnitHint = <span className="text-muted-foreground font-normal"> (بال{unitWord})</span>;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5" ref={rootRef} onKeyDown={handleEnterNav}>
       {/* طريقة البيع: بالقطعة (عدد) أو بالوزن/الكمية */}
       <div className="flex flex-wrap items-center gap-3 rounded-md border bg-muted/30 p-3">
         <Label className="text-sm">طريقة البيع:</Label>
@@ -337,6 +356,13 @@ export default function ProductsPage() {
   };
 
   const openEdit = (p: any) => { setEditForm(productToForm(p)); setEditId(p.id); };
+  const deleteProduct = useDeleteProduct();
+
+  const handleDelete = async (id: number) => {
+    await deleteProduct.mutateAsync({ id });
+    qc.invalidateQueries({ queryKey: getListProductsQueryKey({}) });
+    toast.success("تم حذف/أرشفة المنتج");
+  };
 
   const handleUpdate = async () => {
     if (!editForm.nameAr || !editForm.sku) { toast.error("الاسم والكود مطلوبان"); return; }
@@ -512,8 +538,13 @@ export default function ProductsPage() {
                       <td className="p-3 text-left">
                         <Badge variant={parseFloat(margin) > 20 ? "default" : "secondary"}>{margin}%</Badge>
                       </td>
-                      <td className="p-3 text-left">
-                        <Pencil className="h-4 w-4 text-muted-foreground" />
+                      <td className="p-3 text-left" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center gap-1">
+                          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEdit(p)} title="تعديل">
+                            <Pencil className="h-4 w-4 text-muted-foreground" />
+                          </Button>
+                          <DeleteButton entity="products" id={p.id} label={`المنتج «${p.nameAr}»`} onDelete={() => handleDelete(p.id)} />
+                        </div>
                       </td>
                     </tr>
                   );

@@ -33,6 +33,37 @@ interface CartItem {
   total: number;
 }
 
+/**
+ * Numeric input that tolerates partial entry while typing ("-", "5.", "-3.")
+ * — a plain controlled input would re-render a lone "-" away because it parses
+ * to NaN→0. Local text state holds what's typed; the parsed number is pushed up
+ * on every valid change, and the text re-syncs from the prop when not focused.
+ */
+function NumericInput({ value, onValue, ...props }: { value: number; onValue: (n: number) => void } & Omit<React.ComponentProps<typeof Input>, "value" | "onChange">) {
+  const fmt = (n: number) => (n ? String(Math.round(n * 100) / 100) : "");
+  const [text, setText] = useState(() => fmt(value));
+  const focused = useRef(false);
+  useEffect(() => {
+    if (!focused.current) setText(fmt(value));
+  }, [value]);
+  return (
+    <Input
+      type="number"
+      {...props}
+      value={text}
+      onFocus={(e) => { focused.current = true; props.onFocus?.(e); }}
+      onBlur={(e) => { focused.current = false; setText(fmt(value)); props.onBlur?.(e); }}
+      onChange={(e) => {
+        const t = e.target.value;
+        if (!/^-?\d*\.?\d*$/.test(t)) return; // digits, one optional leading minus & decimal point
+        setText(t);
+        const n = parseFloat(t);
+        onValue(Number.isNaN(n) ? 0 : n);
+      }}
+    />
+  );
+}
+
 export default function POSPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -126,16 +157,29 @@ export default function POSPage() {
       const qty = Math.max(0.5, item.quantity + delta);
       const gross = qty * item.sellingPrice;
       const disc = Math.min(item.discount, gross); // a smaller qty must not leave discount > line value
-      return { ...item, quantity: qty, discount: disc, total: Math.max(0, gross - disc) };
+      return { ...item, quantity: qty, discount: disc, total: gross - disc };
     }));
   };
 
+  // A NEGATIVE discount is a surcharge (adds to the line). Only the upper bound
+  // is clamped so the line total can never go below zero.
   const updateDiscount = (idx: number, disc: number) => {
     setCart(prev => prev.map((item, i) => {
       if (i !== idx) return item;
       const gross = item.quantity * item.sellingPrice;
-      const d = Math.min(Math.max(0, disc), gross); // clamp 0 ≤ discount ≤ line value (no negative totals)
+      const d = Math.min(disc, gross); // discount ≤ line value (no negative totals); negatives allowed
       return { ...item, discount: d, total: gross - d };
+    }));
+  };
+
+  // Editing the line total directly back-computes the discount (negative = surcharge).
+  const updateLineTotal = (idx: number, t: number) => {
+    setCart(prev => prev.map((item, i) => {
+      if (i !== idx) return item;
+      const gross = item.quantity * item.sellingPrice;
+      const total = Math.max(0, t);
+      const d = Math.round((gross - total) * 100) / 100;
+      return { ...item, discount: d, total };
     }));
   };
 
@@ -377,15 +421,23 @@ export default function POSPage() {
                       </td>
                       <td className="p-3 text-center text-sm">{formatCurrency(item.sellingPrice)}</td>
                       <td className="p-3">
-                        <Input
-                          type="number"
+                        <NumericInput
                           className={`h-7 text-xs text-center ${belowMin ? "border-amber-500 focus-visible:ring-amber-500" : ""}`}
-                          value={item.discount || ""}
-                          onChange={e => updateDiscount(idx, parseFloat(e.target.value) || 0)}
+                          value={item.discount}
+                          onValue={n => updateDiscount(idx, n)}
                           placeholder="0"
+                          title="خصم بالجنيه — قيمة سالبة تعني إضافة على السعر"
                         />
                       </td>
-                      <td className="p-3 text-left font-bold text-sm text-primary">{formatCurrency(item.total)}</td>
+                      <td className="p-3">
+                        <NumericInput
+                          className="h-7 text-sm text-left font-bold text-primary"
+                          value={item.total}
+                          onValue={n => updateLineTotal(idx, n)}
+                          placeholder="0"
+                          title="عدّل الإجمالي مباشرة — الفرق يتسجل كخصم أو إضافة على الصنف"
+                        />
+                      </td>
                       <td className="p-3">
                         <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => removeItem(idx)}>
                           <Trash2 className="h-3 w-3" />
@@ -408,7 +460,7 @@ export default function POSPage() {
                 <div className="flex justify-between text-sm"><span className="text-muted-foreground">الإجمالي الفرعي:</span><span className="font-medium">{formatCurrency(subtotal)}</span></div>
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-muted-foreground">خصم الفاتورة:</span>
-                  <Input type="number" className="h-7 w-32 text-sm" value={invoiceDiscount || ""} onChange={e => setInvoiceDiscount(parseFloat(e.target.value) || 0)} placeholder="0" />
+                  <NumericInput className="h-7 w-32 text-sm" value={invoiceDiscount} onValue={setInvoiceDiscount} placeholder="0" title="خصم على الفاتورة كلها — قيمة سالبة تعني إضافة" />
                 </div>
                 <div className="flex justify-between text-lg font-bold border-t pt-2">
                   <span>الإجمالي:</span>
