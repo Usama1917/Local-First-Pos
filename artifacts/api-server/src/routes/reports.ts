@@ -3,40 +3,68 @@ import db from "../lib/db.js";
 
 const router = Router();
 
+// Format a Date as a LOCAL YYYY-MM-DD. Using toISOString() here shifts to UTC and
+// can land on the previous/next day for the shop's timezone near midnight, making
+// the default "this month" range start on the wrong day.
+const localISO = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+const monthStart = () => { const n = new Date(); return localISO(new Date(n.getFullYear(), n.getMonth(), 1)); };
+const todayLocal = () => localISO(new Date());
+
 router.get("/reports/sales", (req, res) => {
   const { dateFrom, dateTo } = req.query as any;
-  const from = dateFrom || new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split("T")[0];
-  const to = dateTo || new Date().toISOString().split("T")[0];
+  const from = dateFrom || monthStart();
+  const to = dateTo || todayLocal();
 
-  const summary = db.prepare(`
-    SELECT 
+  const invoiceSummary = db.prepare(`
+    SELECT
       COUNT(*) as totalInvoices,
       COALESCE(SUM(total), 0) as totalSales,
-      COALESCE(SUM(CASE WHEN paymentType = 'cash' THEN paidAmount ELSE 0 END), 0) as totalCash,
-      COALESCE(SUM(CASE WHEN paymentType != 'cash' THEN remainingAmount ELSE 0 END), 0) as totalCredit,
+      COALESCE(SUM(paidAmount), 0) as totalCash,
+      COALESCE(SUM(remainingAmount), 0) as totalCredit,
       COALESCE(SUM(discount), 0) as totalDiscount
     FROM sales_invoices
     WHERE status NOT IN ('draft','cancelled') AND date(createdAt) BETWEEN ? AND ?
   `).get(from, to) as any;
 
+  // Returns/exchanges adjust net sales and cash: netAmount is negative for a pure
+  // refund (revenue & cash out) and the settled difference for an exchange.
+  const returnsSummary = db.prepare(`
+    SELECT
+      COALESCE(SUM(netAmount), 0) as net,
+      COALESCE(SUM(CASE WHEN settlementType = 'cash' THEN netAmount ELSE 0 END), 0) as cashNet,
+      COALESCE(SUM(returnedTotal), 0) as returnedTotal
+    FROM returns WHERE date(createdAt) BETWEEN ? AND ?
+  `).get(from, to) as any;
+
+  const summary = {
+    totalInvoices: invoiceSummary.totalInvoices,
+    totalSales: (invoiceSummary.totalSales || 0) + (returnsSummary.net || 0),
+    totalCash: (invoiceSummary.totalCash || 0) + (returnsSummary.cashNet || 0),
+    totalCredit: invoiceSummary.totalCredit || 0,
+    totalDiscount: invoiceSummary.totalDiscount || 0,
+    totalReturns: returnsSummary.returnedTotal || 0,
+  };
+
   const daily = db.prepare(`
     SELECT date(createdAt) as date,
       COUNT(*) as invoices,
       COALESCE(SUM(total), 0) as sales,
-      COALESCE(SUM(CASE WHEN paymentType = 'cash' THEN paidAmount ELSE 0 END), 0) as cash
+      COALESCE(SUM(paidAmount), 0) as cash
     FROM sales_invoices
     WHERE status NOT IN ('draft','cancelled') AND date(createdAt) BETWEEN ? AND ?
     GROUP BY date(createdAt) ORDER BY date ASC
   `).all(from, to);
 
+  // LEFT JOIN + COALESCE so sales of uncategorized products still appear.
   const byCategory = db.prepare(`
-    SELECT c.name as category, COALESCE(SUM(sii.total), 0) as sales, COALESCE(SUM(sii.quantity), 0) as qty
+    SELECT COALESCE(c.name, 'بدون تصنيف') as category, COALESCE(SUM(sii.total), 0) as sales, COALESCE(SUM(sii.quantity), 0) as qty
     FROM sales_invoice_items sii
     JOIN products p ON sii.productId = p.id
-    JOIN categories c ON p.categoryId = c.id
+    LEFT JOIN categories c ON p.categoryId = c.id
     JOIN sales_invoices si ON sii.invoiceId = si.id
     WHERE si.status NOT IN ('draft','cancelled') AND date(si.createdAt) BETWEEN ? AND ?
-    GROUP BY c.id ORDER BY sales DESC
+    GROUP BY p.categoryId ORDER BY sales DESC
   `).all(from, to);
 
   res.json({ summary, daily, byCategory, dateFrom: from, dateTo: to });
@@ -57,7 +85,7 @@ router.get("/reports/inventory", (_req, res) => {
   `).all();
 
   const summary = db.prepare(`
-    SELECT 
+    SELECT
       COUNT(*) as totalProducts,
       COUNT(CASE WHEN currentStock <= minStock THEN 1 END) as lowStockCount,
       COUNT(CASE WHEN currentStock = 0 THEN 1 END) as outOfStockCount,
@@ -70,8 +98,8 @@ router.get("/reports/inventory", (_req, res) => {
 
 router.get("/reports/best-sellers", (req, res) => {
   const { dateFrom, dateTo, limit = 20 } = req.query as any;
-  const from = dateFrom || new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split("T")[0];
-  const to = dateTo || new Date().toISOString().split("T")[0];
+  const from = dateFrom || monthStart();
+  const to = dateTo || todayLocal();
 
   const items = db.prepare(`
     SELECT p.id, p.nameAr, p.sku, c.name as categoryName,
@@ -89,8 +117,8 @@ router.get("/reports/best-sellers", (req, res) => {
 
 router.get("/reports/purchases", (req, res) => {
   const { dateFrom, dateTo } = req.query as any;
-  const from = dateFrom || new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split("T")[0];
-  const to = dateTo || new Date().toISOString().split("T")[0];
+  const from = dateFrom || monthStart();
+  const to = dateTo || todayLocal();
 
   const summary = db.prepare(`
     SELECT COUNT(*) as totalInvoices, COALESCE(SUM(total), 0) as totalPurchases,
@@ -111,20 +139,23 @@ router.get("/reports/purchases", (req, res) => {
 
 router.get("/reports/craftsman-commission", (req, res) => {
   const { dateFrom, dateTo } = req.query as any;
-  const from = dateFrom || new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split("T")[0];
-  const to = dateTo || new Date().toISOString().split("T")[0];
+  const from = dateFrom || monthStart();
+  const to = dateTo || todayLocal();
 
+  // Keep all active craftsmen (even with zero activity), and also archived ones
+  // that DID have invoices in the range, so historical totals stay stable after a
+  // craftsman is archived.
   const rows = db.prepare(`
     SELECT cr.id, cr.name, cr.phone, cr.jobType, cr.commissionPercent,
       COUNT(si.id) as invoiceCount,
       COALESCE(SUM(si.total), 0) as totalSales,
       COALESCE(SUM(si.craftsmanCommission), 0) as totalCommission
     FROM craftsmen cr
-    LEFT JOIN sales_invoices si ON si.craftsmanId = cr.id 
-      AND si.status NOT IN ('draft','cancelled') 
+    LEFT JOIN sales_invoices si ON si.craftsmanId = cr.id
+      AND si.status NOT IN ('draft','cancelled')
       AND date(si.createdAt) BETWEEN ? AND ?
-    WHERE cr.isActive = 1
     GROUP BY cr.id
+    HAVING cr.isActive = 1 OR COUNT(si.id) > 0
     ORDER BY totalCommission DESC
   `).all(from, to);
   res.json(rows);

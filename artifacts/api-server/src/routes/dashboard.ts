@@ -6,13 +6,15 @@ const router = Router();
 router.get("/dashboard/summary", (_req, res) => {
   const today = new Date().toISOString().split("T")[0];
 
+  // cash = money actually collected today (incl. partial payments on credit sales);
+  // credit = amount still owed today. cash + credit = total, so the tiles reconcile.
   const todayInvoices = db.prepare(`
-    SELECT 
+    SELECT
       COUNT(*) as count,
       COALESCE(SUM(total), 0) as total,
-      COALESCE(SUM(CASE WHEN paymentType = 'cash' THEN paidAmount ELSE 0 END), 0) as cash,
-      COALESCE(SUM(CASE WHEN paymentType != 'cash' THEN total ELSE 0 END), 0) as credit
-    FROM sales_invoices 
+      COALESCE(SUM(paidAmount), 0) as cash,
+      COALESCE(SUM(remainingAmount), 0) as credit
+    FROM sales_invoices
     WHERE status != 'draft' AND status != 'cancelled' AND date(createdAt) = ?
   `).get(today) as any;
 
@@ -22,7 +24,7 @@ router.get("/dashboard/summary", (_req, res) => {
     SELECT COALESCE(SUM(bal), 0) as total FROM (
       SELECT (
         COALESCE(c.openingBalance, 0)
-        + COALESCE((SELECT SUM(si.remainingAmount) FROM sales_invoices si WHERE si.customerId = c.id AND si.status IN ('finalized','partially_paid','credit')), 0)
+        + COALESCE((SELECT SUM(si.remainingAmount) FROM sales_invoices si WHERE si.customerId = c.id AND si.status IN ('finalized','partially_paid','credit','paid')), 0)
         + COALESCE((SELECT SUM(r.netAmount) FROM returns r WHERE r.customerId = c.id AND r.settlementType = 'account'), 0)
         - COALESCE((SELECT SUM(cp.amount) FROM customer_payments cp WHERE cp.customerId = c.id), 0)
       ) as bal
@@ -34,7 +36,7 @@ router.get("/dashboard/summary", (_req, res) => {
     SELECT COALESCE(SUM(bal), 0) as total FROM (
       SELECT (
         COALESCE(s.openingBalance, 0)
-        + COALESCE((SELECT SUM(pi.remainingAmount) FROM purchase_invoices pi WHERE pi.supplierId = s.id AND pi.status IN ('finalized','partially_paid','credit')), 0)
+        + COALESCE((SELECT SUM(pi.remainingAmount) FROM purchase_invoices pi WHERE pi.supplierId = s.id AND pi.status IN ('finalized','partially_paid','credit','paid')), 0)
         - COALESCE((SELECT SUM(sp.amount) FROM supplier_payments sp WHERE sp.supplierId = s.id), 0)
       ) as bal
       FROM suppliers s WHERE s.isActive = 1

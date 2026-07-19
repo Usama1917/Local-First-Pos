@@ -37,7 +37,10 @@ router.get("/products", (req, res) => {
   if (brandId) { conditions.push("p.brandId = ?"); params.push(Number(brandId)); }
   if (supplierId) { conditions.push("p.supplierId = ?"); params.push(Number(supplierId)); }
   if (lowStock === "true") { conditions.push("p.currentStock <= p.minStock"); }
+  // Archived products hidden by default (matches the delete "إخفاء" promise);
+  // pass isActive explicitly to override.
   if (isActive !== undefined) { conditions.push("p.isActive = ?"); params.push(isActive === "true" ? 1 : 0); }
+  else { conditions.push("p.isActive = 1"); }
 
   const where = conditions.length ? "WHERE " + conditions.join(" AND ") : "";
   const items = db.prepare(`${PRODUCT_SELECT} ${where} ORDER BY p.nameAr LIMIT ? OFFSET ?`).all(...params, Number(limit), Number(offset));

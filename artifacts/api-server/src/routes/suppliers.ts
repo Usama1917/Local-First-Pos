@@ -8,7 +8,7 @@ const router = Router();
 const SUPPLIER_SELECT = `
   SELECT s.*,
     COALESCE(s.openingBalance, 0)
-      + COALESCE((SELECT SUM(pi.remainingAmount) FROM purchase_invoices pi WHERE pi.supplierId = s.id AND pi.status IN ('finalized','partially_paid','credit')), 0)
+      + COALESCE((SELECT SUM(pi.remainingAmount) FROM purchase_invoices pi WHERE pi.supplierId = s.id AND pi.status IN ('finalized','partially_paid','credit','paid')), 0)
       - COALESCE((SELECT SUM(sp.amount) FROM supplier_payments sp WHERE sp.supplierId = s.id), 0) as totalDebt
   FROM suppliers s
 `;
@@ -22,7 +22,9 @@ router.get("/suppliers", (req, res) => {
     const q = `%${search}%`;
     params.push(q, q, q);
   }
+  // Archived suppliers hidden by default (matches the delete "إخفاء" promise).
   if (isActive !== undefined) { conditions.push("s.isActive = ?"); params.push(isActive === "true" ? 1 : 0); }
+  else { conditions.push("s.isActive = 1"); }
   const where = conditions.length ? "WHERE " + conditions.join(" AND ") : "";
   const items = db.prepare(`${SUPPLIER_SELECT} ${where} ORDER BY s.name`).all(...params);
   res.json({ items, total: items.length });

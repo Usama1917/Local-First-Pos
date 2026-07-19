@@ -53,15 +53,24 @@ router.post("/purchases", (req, res) => {
   const finalPaid = paidAmount !== undefined ? paidAmount : (paymentType === "cash" ? total : 0);
   const remaining = total - finalPaid;
 
-  const r = db.prepare(`
-    INSERT INTO purchase_invoices (serial, status, paymentType, supplierId, subtotal, total, paidAmount, remainingAmount, notes, invoiceDate, createdBy)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?)
-  `).run(serial, status, paymentType, supplierId || null, subtotal, total, finalPaid, remaining, notes || null, invoiceDate || null, actorName(req));
-  const purId = r.lastInsertRowid as number;
+  // Header + items are one atomic unit — a failed item must not leave an orphan header.
+  let purId = 0;
+  db.exec("BEGIN");
+  try {
+    const r = db.prepare(`
+      INSERT INTO purchase_invoices (serial, status, paymentType, supplierId, subtotal, total, paidAmount, remainingAmount, notes, invoiceDate, createdBy)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?)
+    `).run(serial, status, paymentType, supplierId || null, subtotal, total, finalPaid, remaining, notes || null, invoiceDate || null, actorName(req));
+    purId = r.lastInsertRowid as number;
 
-  const insertItem = db.prepare("INSERT INTO purchase_invoice_items (purchaseId, productId, quantity, listPrice, supplierDiscount, netPrice, extraCost, trueCost, total) VALUES (?,?,?,?,?,?,?,?,?)");
-  for (const item of items) {
-    insertItem.run(purId, item.productId, item.quantity, item.listPrice || 0, item.supplierDiscount || 0, item.netPrice || 0, item.extraCost || 0, item.trueCost || 0, item.total || 0);
+    const insertItem = db.prepare("INSERT INTO purchase_invoice_items (purchaseId, productId, quantity, listPrice, supplierDiscount, netPrice, extraCost, trueCost, total) VALUES (?,?,?,?,?,?,?,?,?)");
+    for (const item of items) {
+      insertItem.run(purId, item.productId, item.quantity, item.listPrice || 0, item.supplierDiscount || 0, item.netPrice || 0, item.extraCost || 0, item.trueCost || 0, item.total || 0);
+    }
+    db.exec("COMMIT");
+  } catch (e) {
+    db.exec("ROLLBACK");
+    throw e;
   }
 
   res.status(201).json({ ...db.prepare(`${PURCHASE_SELECT} WHERE pi.id = ?`).get(purId), items: getItems(purId) });
@@ -80,23 +89,35 @@ router.patch("/purchases/:id", (req, res) => {
   if (existing.status !== "draft") return res.status(400).json({ error: "لا يمكن تعديل فاتورة مُنجزة" });
   const { supplierId, paymentType, paidAmount, notes, invoiceDate, items } = req.body;
 
-  if (items !== undefined) {
-    db.prepare("DELETE FROM purchase_invoice_items WHERE purchaseId = ?").run(id);
-    let subtotal = 0;
-    for (const item of items) subtotal += item.total || 0;
-    const fp = paidAmount !== undefined ? paidAmount : 0;
-    db.prepare("UPDATE purchase_invoices SET subtotal = ?, total = ?, paidAmount = ?, remainingAmount = ? WHERE id = ?").run(subtotal, subtotal, fp, subtotal - fp, id);
-    const insertItem = db.prepare("INSERT INTO purchase_invoice_items (purchaseId, productId, quantity, listPrice, supplierDiscount, netPrice, extraCost, trueCost, total) VALUES (?,?,?,?,?,?,?,?,?)");
-    for (const item of items) {
-      insertItem.run(id, item.productId, item.quantity, item.listPrice || 0, item.supplierDiscount || 0, item.netPrice || 0, item.extraCost || 0, item.trueCost || 0, item.total || 0);
+  // Items rewrite + header update must be atomic and keep money fields consistent.
+  db.exec("BEGIN");
+  try {
+    if (items !== undefined) {
+      db.prepare("DELETE FROM purchase_invoice_items WHERE purchaseId = ?").run(id);
+      let subtotal = 0;
+      for (const item of items) subtotal += item.total || 0;
+      // Keep the recorded payment (fall back to the stored value, not 0) so an
+      // items-only edit doesn't silently wipe an already-recorded payment.
+      const fp = paidAmount !== undefined ? paidAmount : existing.paidAmount;
+      db.prepare("UPDATE purchase_invoices SET subtotal = ?, total = ?, paidAmount = ?, remainingAmount = ? WHERE id = ?").run(subtotal, subtotal, fp, subtotal - fp, id);
+      const insertItem = db.prepare("INSERT INTO purchase_invoice_items (purchaseId, productId, quantity, listPrice, supplierDiscount, netPrice, extraCost, trueCost, total) VALUES (?,?,?,?,?,?,?,?,?)");
+      for (const item of items) {
+        insertItem.run(id, item.productId, item.quantity, item.listPrice || 0, item.supplierDiscount || 0, item.netPrice || 0, item.extraCost || 0, item.trueCost || 0, item.total || 0);
+      }
     }
-  }
 
-  db.prepare(`UPDATE purchase_invoices SET
-    supplierId = COALESCE(?, supplierId), paymentType = COALESCE(?, paymentType),
-    paidAmount = COALESCE(?, paidAmount), notes = COALESCE(?, notes),
-    invoiceDate = COALESCE(?, invoiceDate), updatedBy = ?, updatedAt = datetime('now') WHERE id = ?
-  `).run(supplierId || null, paymentType || null, paidAmount ?? null, notes || null, invoiceDate || null, actorName(req), id);
+    // Re-derive remainingAmount whenever paidAmount changes so it never goes stale.
+    db.prepare(`UPDATE purchase_invoices SET
+      supplierId = COALESCE(?, supplierId), paymentType = COALESCE(?, paymentType),
+      paidAmount = COALESCE(?, paidAmount), remainingAmount = total - COALESCE(?, paidAmount),
+      notes = COALESCE(?, notes),
+      invoiceDate = COALESCE(?, invoiceDate), updatedBy = ?, updatedAt = datetime('now') WHERE id = ?
+    `).run(supplierId || null, paymentType || null, paidAmount ?? null, paidAmount ?? null, notes || null, invoiceDate || null, actorName(req), id);
+    db.exec("COMMIT");
+  } catch (e) {
+    db.exec("ROLLBACK");
+    throw e;
+  }
 
   res.json({ ...db.prepare(`${PURCHASE_SELECT} WHERE pi.id = ?`).get(id), items: getItems(id) });
 });
@@ -119,7 +140,8 @@ router.post("/purchases/:id/finalize", (req, res) => {
   const items = getItems(id) as any[];
   const { paymentType, paidAmount } = req.body;
   const pt = paymentType || pur.paymentType;
-  const fp = paidAmount !== undefined ? paidAmount : (pt === "cash" ? pur.total : 0);
+  // For non-cash, keep any payment already recorded on the draft instead of zeroing it.
+  const fp = paidAmount !== undefined ? paidAmount : (pt === "cash" ? pur.total : pur.paidAmount);
   const remaining = pur.total - fp;
   const status = remaining <= 0 ? "finalized" : remaining === pur.total ? "credit" : "partially_paid";
 

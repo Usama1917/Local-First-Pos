@@ -44,7 +44,7 @@ function docStockDeltas(refType: string, refId: number) {
 }
 
 /** Insert reversal stock movements + apply the stock change for a deleted document. */
-function reverseDocStock(refType: string, refId: number, note: string, actor?: string | null) {
+export function reverseDocStock(refType: string, refId: number, note: string, actor?: string | null) {
   const deltas = docStockDeltas(refType, refId);
   const upd = db.prepare("UPDATE products SET currentStock = currentStock - ?, updatedAt = datetime('now') WHERE id = ?");
   const ins = db.prepare(
@@ -58,6 +58,30 @@ function reverseDocStock(refType: string, refId: number, note: string, actor?: s
 }
 
 const unitSuffix = (u?: string | null) => (u ? ` ${u}` : "");
+
+// Held cashier/quotation drafts store their cart as JSON in `drafts.data` (no real
+// FK). A product/customer sitting in a draft must not be HARD-deleted, or resuming
+// that draft and finalizing it would hit a products/customers FK violation. Archiving
+// keeps the row (FK-safe), so we treat a draft reference as "has history".
+function draftReferencesProduct(productId: number): boolean {
+  const rows = db.prepare("SELECT data FROM drafts").all() as any[];
+  for (const r of rows) {
+    try {
+      const cart = JSON.parse(r.data || "{}")?.cart;
+      if (Array.isArray(cart) && cart.some((it: any) => Number(it?.productId) === productId)) return true;
+    } catch { /* ignore malformed draft */ }
+  }
+  return false;
+}
+function draftReferencesCustomer(customerId: number): boolean {
+  const rows = db.prepare("SELECT data FROM drafts").all() as any[];
+  for (const r of rows) {
+    try {
+      if (Number(JSON.parse(r.data || "{}")?.customerId) === customerId) return true;
+    } catch { /* ignore malformed draft */ }
+  }
+  return false;
+}
 
 // ---------------------------------------------------------------- sales -----
 
@@ -86,8 +110,11 @@ function previewSales(id: number): DeletePreview | null {
   }
 
   // Blocker: commission already paid out against this invoice (payout receipts
-  // reference it; deleting would falsify the payout record).
-  if (inv.commissionPaid > 0.005) {
+  // reference it via craftsman_payout_items; deleting would falsify the payout
+  // record AND hit the FK constraint). Check row existence too — a rounded-tiny
+  // commissionPaid could slip under the threshold while a real payout row exists.
+  const payoutRefs = (db.prepare("SELECT COUNT(*) as c FROM craftsman_payout_items WHERE invoiceId = ?").get(id) as any).c as number;
+  if (payoutRefs > 0 || inv.commissionPaid > 0.005) {
     blockers.push(
       `تم صرف عمولة ${money(inv.commissionPaid)} للصنايعي «${inv.craftsmanName || ""}» عن هذه الفاتورة ضمن سند صرف — لا يمكن الحذف حفاظاً على سجل الصرف`,
     );
@@ -103,8 +130,14 @@ function previewSales(id: number): DeletePreview | null {
   }
   if (!deltas.length) effects.push("لا تأثير على المخزون — هذه الفاتورة لم تخصم مخزوناً (مسودة/ملغية بدون إنجاز)");
 
-  if (inv.customerId && inv.remainingAmount > 0.005 && ["finalized", "partially_paid", "credit"].includes(inv.status)) {
+  if (inv.customerId && inv.remainingAmount > 0.005 && ["finalized", "partially_paid", "credit", "paid"].includes(inv.status)) {
     effects.push(`إلغاء مديونية على العميل «${inv.customerName}» بقيمة ${money(inv.remainingAmount)} (سينخفض رصيده المدين)`);
+    // If account payments already covered this debt, removing it flips the
+    // customer to a credit balance — warn so the owner reviews the payments first.
+    const after = customerDebt(inv.customerId) - inv.remainingAmount;
+    if (after < -0.005) {
+      warnings.push(`حساب العميل «${inv.customerName}» هيبقى دائن بقيمة ${money(-after)} بعد الحذف — سبق تحصيل دفعات على الحساب تغطي هذه المديونية؛ راجع الدفعات قبل الحذف`);
+    }
   }
   if (inv.paidAmount > 0.005) {
     warnings.push(
@@ -324,6 +357,7 @@ function productRefs(id: number) {
     returns: c("SELECT COUNT(*) as c FROM return_items WHERE productId = ?"),
     movements: c("SELECT COUNT(*) as c FROM stock_movements WHERE productId = ?"),
     counts: c("SELECT COUNT(*) as c FROM stock_count_items WHERE productId = ?"),
+    drafts: draftReferencesProduct(id) ? 1 : 0,
   };
 }
 
@@ -379,7 +413,7 @@ function deleteProduct(id: number): string | null {
 function customerDebt(id: number): number {
   const r = db.prepare(`
     SELECT COALESCE(c.openingBalance, 0)
-      + COALESCE((SELECT SUM(si.remainingAmount) FROM sales_invoices si WHERE si.customerId = c.id AND si.status IN ('finalized','partially_paid','credit')), 0)
+      + COALESCE((SELECT SUM(si.remainingAmount) FROM sales_invoices si WHERE si.customerId = c.id AND si.status IN ('finalized','partially_paid','credit','paid')), 0)
       + COALESCE((SELECT SUM(r.netAmount) FROM returns r WHERE r.customerId = c.id AND r.settlementType = 'account'), 0)
       - COALESCE((SELECT SUM(cp.amount) FROM customer_payments cp WHERE cp.customerId = c.id), 0) as debt
     FROM customers c WHERE c.id = ?
@@ -404,7 +438,9 @@ function previewCustomer(id: number): DeletePreview | null {
   const quotes = cnt("SELECT COUNT(*) as c FROM quotations WHERE customerId = ?");
   const payments = cnt("SELECT COUNT(*) as c FROM customer_payments WHERE customerId = ?");
   const rets = cnt("SELECT COUNT(*) as c FROM returns WHERE customerId = ?");
-  const hasHistory = invoices + quotes + payments + rets > 0;
+  // A held draft naming this customer must archive (keep the row) so resuming it doesn't 500.
+  const inDraft = draftReferencesCustomer(id);
+  const hasHistory = invoices + quotes + payments + rets > 0 || inDraft;
 
   if (hasHistory) {
     const parts: string[] = [];
@@ -483,7 +519,7 @@ function previewSupplier(id: number): DeletePreview | null {
 
   const debt = (db.prepare(`
     SELECT COALESCE(s.openingBalance, 0)
-      + COALESCE((SELECT SUM(pi.remainingAmount) FROM purchase_invoices pi WHERE pi.supplierId = s.id AND pi.status IN ('finalized','partially_paid','credit')), 0)
+      + COALESCE((SELECT SUM(pi.remainingAmount) FROM purchase_invoices pi WHERE pi.supplierId = s.id AND pi.status IN ('finalized','partially_paid','credit','paid')), 0)
       - COALESCE((SELECT SUM(sp.amount) FROM supplier_payments sp WHERE sp.supplierId = s.id), 0) as debt
     FROM suppliers s WHERE s.id = ?
   `).get(id) as any).debt || 0;

@@ -3,7 +3,7 @@ import db from "../lib/db.js";
 import { nextSerial, getSettings } from "../lib/db.js";
 import { archiveSale } from "../lib/archive.js";
 import { actorName } from "../lib/actor.js";
-import { performDelete } from "../lib/deletion.js";
+import { performDelete, reverseDocStock } from "../lib/deletion.js";
 
 const router = Router();
 
@@ -64,16 +64,25 @@ router.post("/sales", (req, res) => {
     if (craftsman?.commissionPercent) commission = (total * craftsman.commissionPercent) / 100;
   }
 
-  const r = db.prepare(`
-    INSERT INTO sales_invoices (serial, status, paymentType, customerId, craftsmanId, subtotal, discount, total, paidAmount, remainingAmount, craftsmanCommission, notes, createdBy)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
-  `).run(serial, status, paymentType, customerId || null, craftsmanId || null, subtotal, discount, total, finalPaid, remaining, commission, notes || null, actorName(req));
-  const invId = r.lastInsertRowid as number;
+  // Header + items are one atomic unit — a failed item must not leave an orphan header.
+  let invId = 0;
+  db.exec("BEGIN");
+  try {
+    const r = db.prepare(`
+      INSERT INTO sales_invoices (serial, status, paymentType, customerId, craftsmanId, subtotal, discount, total, paidAmount, remainingAmount, craftsmanCommission, notes, createdBy)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+    `).run(serial, status, paymentType, customerId || null, craftsmanId || null, subtotal, discount, total, finalPaid, remaining, commission, notes || null, actorName(req));
+    invId = r.lastInsertRowid as number;
 
-  const insertItem = db.prepare("INSERT INTO sales_invoice_items (invoiceId, productId, quantity, unitPrice, discount, total) VALUES (?,?,?,?,?,?)");
-  for (const item of items) {
-    const t = Math.max(0, (item.unitPrice * item.quantity) - (item.discount || 0));
-    insertItem.run(invId, item.productId, item.quantity, item.unitPrice, item.discount || 0, t);
+    const insertItem = db.prepare("INSERT INTO sales_invoice_items (invoiceId, productId, quantity, unitPrice, discount, total) VALUES (?,?,?,?,?,?)");
+    for (const item of items) {
+      const t = Math.max(0, (item.unitPrice * item.quantity) - (item.discount || 0));
+      insertItem.run(invId, item.productId, item.quantity, item.unitPrice, item.discount || 0, t);
+    }
+    db.exec("COMMIT");
+  } catch (e) {
+    db.exec("ROLLBACK");
+    throw e;
   }
 
   res.status(201).json({ ...db.prepare(`${INVOICE_SELECT} WHERE si.id = ?`).get(invId), items: getItems(invId) });
@@ -99,32 +108,42 @@ router.patch("/sales/:id", (req, res) => {
 
   const { customerId, craftsmanId, discount, notes, paymentType, paidAmount, items } = req.body;
 
-  // Recompute the subtotal: from the new items if provided, otherwise keep the stored one.
-  let subtotal = inv.subtotal;
-  if (items !== undefined) {
-    db.prepare("DELETE FROM sales_invoice_items WHERE invoiceId = ?").run(id);
-    subtotal = 0;
-    const insertItem = db.prepare("INSERT INTO sales_invoice_items (invoiceId, productId, quantity, unitPrice, discount, total) VALUES (?,?,?,?,?,?)");
-    for (const item of items) {
-      const t = Math.max(0, (item.unitPrice * item.quantity) - (item.discount || 0));
-      subtotal += t;
-      insertItem.run(id, item.productId, item.quantity, item.unitPrice, item.discount || 0, t);
-    }
-  }
-
   // Money fields are ALWAYS re-derived (a discount/payment-only edit must update total/remaining too).
   const effDiscount = discount ?? inv.discount;
   const effPaymentType = paymentType ?? inv.paymentType;
-  const total = Math.max(0, subtotal - effDiscount);
-  const fp = paidAmount !== undefined ? paidAmount : (effPaymentType === "cash" ? total : inv.paidAmount);
-  const remaining = total - fp;
 
-  db.prepare(`UPDATE sales_invoices SET
-    customerId = COALESCE(?, customerId), craftsmanId = COALESCE(?, craftsmanId),
-    discount = ?, notes = COALESCE(?, notes),
-    paymentType = ?, paidAmount = ?, subtotal = ?, total = ?, remainingAmount = ?,
-    updatedBy = ?, updatedAt = datetime('now') WHERE id = ?
-  `).run(customerId || null, craftsmanId || null, effDiscount, notes || null, effPaymentType, fp, subtotal, total, remaining, actorName(req), id);
+  // The items rewrite + header update must be atomic — a mid-loop failure must
+  // not leave the invoice with its old items deleted and none re-inserted.
+  db.exec("BEGIN");
+  try {
+    // Recompute the subtotal: from the new items if provided, otherwise keep the stored one.
+    let subtotal = inv.subtotal;
+    if (items !== undefined) {
+      db.prepare("DELETE FROM sales_invoice_items WHERE invoiceId = ?").run(id);
+      subtotal = 0;
+      const insertItem = db.prepare("INSERT INTO sales_invoice_items (invoiceId, productId, quantity, unitPrice, discount, total) VALUES (?,?,?,?,?,?)");
+      for (const item of items) {
+        const t = Math.max(0, (item.unitPrice * item.quantity) - (item.discount || 0));
+        subtotal += t;
+        insertItem.run(id, item.productId, item.quantity, item.unitPrice, item.discount || 0, t);
+      }
+    }
+
+    const total = Math.max(0, subtotal - effDiscount);
+    const fp = paidAmount !== undefined ? paidAmount : (effPaymentType === "cash" ? total : inv.paidAmount);
+    const remaining = total - fp;
+
+    db.prepare(`UPDATE sales_invoices SET
+      customerId = COALESCE(?, customerId), craftsmanId = COALESCE(?, craftsmanId),
+      discount = ?, notes = COALESCE(?, notes),
+      paymentType = ?, paidAmount = ?, subtotal = ?, total = ?, remainingAmount = ?,
+      updatedBy = ?, updatedAt = datetime('now') WHERE id = ?
+    `).run(customerId || null, craftsmanId || null, effDiscount, notes || null, effPaymentType, fp, subtotal, total, remaining, actorName(req), id);
+    db.exec("COMMIT");
+  } catch (e) {
+    db.exec("ROLLBACK");
+    throw e;
+  }
 
   res.json({ ...db.prepare(`${INVOICE_SELECT} WHERE si.id = ?`).get(id), items: getItems(id) });
 });
@@ -187,10 +206,39 @@ router.post("/sales/:id/finalize", (req, res) => {
   archiveSale(id).catch((e) => console.error("archive sale failed:", e?.message || e));
 });
 
+// Void an invoice: keep the row for audit but mark it cancelled, reversing the
+// stock it deducted (via its own movements) so inventory stays correct. Same
+// accounting guards as delete — refuse when returns reference it or commission
+// was already paid out, otherwise the cancelled sale's debt/commission silently
+// vanishes from the ledgers while its effects linger.
 router.post("/sales/:id/cancel", (req, res) => {
   const id = Number(req.params.id);
-  db.prepare("UPDATE sales_invoices SET status = 'cancelled', updatedAt = datetime('now') WHERE id = ?").run(id);
-  res.json(db.prepare(`${INVOICE_SELECT} WHERE si.id = ?`).get(id));
+  const inv = db.prepare("SELECT * FROM sales_invoices WHERE id = ?").get(id) as any;
+  if (!inv) return res.status(404).json({ error: "غير موجود" });
+  if (inv.status === "cancelled") return res.json({ ...db.prepare(`${INVOICE_SELECT} WHERE si.id = ?`).get(id), items: getItems(id) });
+  if (inv.status === "draft") {
+    // A draft never moved stock or recorded debt — just mark it cancelled.
+    db.prepare("UPDATE sales_invoices SET status = 'cancelled', updatedBy = ?, updatedAt = datetime('now') WHERE id = ?").run(actorName(req), id);
+    return res.json({ ...db.prepare(`${INVOICE_SELECT} WHERE si.id = ?`).get(id), items: getItems(id) });
+  }
+
+  if (db.prepare("SELECT 1 FROM returns WHERE originalInvoiceId = ?").get(id)) {
+    return res.status(400).json({ error: "يوجد مرتجع/استبدال مرتبط بهذه الفاتورة — احذف المرتجعات أولاً" });
+  }
+  if (inv.commissionPaid > 0.005 || (db.prepare("SELECT COUNT(*) as c FROM craftsman_payout_items WHERE invoiceId = ?").get(id) as any).c > 0) {
+    return res.status(400).json({ error: "تم صرف عمولة عن هذه الفاتورة — لا يمكن إلغاؤها" });
+  }
+
+  db.exec("BEGIN");
+  try {
+    reverseDocStock("sales_invoice", id, `عكس إلغاء فاتورة ${inv.serial}`, actorName(req));
+    db.prepare("UPDATE sales_invoices SET status = 'cancelled', updatedBy = ?, updatedAt = datetime('now') WHERE id = ?").run(actorName(req), id);
+    db.exec("COMMIT");
+  } catch (e) {
+    db.exec("ROLLBACK");
+    throw e;
+  }
+  res.json({ ...db.prepare(`${INVOICE_SELECT} WHERE si.id = ?`).get(id), items: getItems(id) });
 });
 
 export default router;

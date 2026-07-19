@@ -28,7 +28,9 @@ router.get("/craftsmen", (req, res) => {
     const q = `%${search}%`;
     params.push(q, q, q);
   }
+  // Archived craftsmen hidden by default (matches the delete "إخفاء" promise).
   if (isActive !== undefined) { conditions.push("cr.isActive = ?"); params.push(isActive === "true" ? 1 : 0); }
+  else { conditions.push("cr.isActive = 1"); }
 
   const where = conditions.length ? "WHERE " + conditions.join(" AND ") : "";
   const items = db.prepare(`
@@ -104,7 +106,7 @@ router.get("/craftsmen/:id/customers", (req, res) => {
       c.id, c.name, c.phone, c.area,
       (SELECT COUNT(*) FROM sales_invoices si WHERE si.customerId = c.id AND si.craftsmanId = ? AND si.status != 'draft') as invoiceCount,
       (SELECT COALESCE(SUM(si.total), 0) FROM sales_invoices si WHERE si.customerId = c.id AND si.craftsmanId = ? AND si.status != 'draft') as totalSales,
-      (SELECT COALESCE(SUM(si.remainingAmount), 0) FROM sales_invoices si WHERE si.customerId = c.id AND si.craftsmanId = ? AND si.status IN ('finalized','partially_paid','credit')) as totalRemaining,
+      (SELECT COALESCE(SUM(si.remainingAmount), 0) FROM sales_invoices si WHERE si.customerId = c.id AND si.craftsmanId = ? AND si.status IN ('finalized','partially_paid','credit','paid')) as totalRemaining,
       (SELECT MAX(si.createdAt) FROM sales_invoices si WHERE si.customerId = c.id AND si.craftsmanId = ? AND si.status != 'draft') as lastInvoiceDate,
       (SELECT COUNT(*) FROM quotations q WHERE q.customerId = c.id AND q.craftsmanId = ?) as quotationCount
     FROM customers c
@@ -178,12 +180,16 @@ router.post("/craftsmen/:id/payouts", (req, res) => {
   if (!craftsman) return res.status(404).json({ error: "غير موجود" });
 
   const outstanding = outstandingFor(id);
-  let amount = req.body?.amount != null ? Number(req.body.amount) : outstanding;
+  // Compare against the 2-decimal-rounded outstanding so a full withdrawal of a
+  // fractional balance (e.g. 33.333) isn't rejected for being a hair over.
+  const cap = Math.round(outstanding * 100) / 100;
+  const isFull = req.body?.amount == null;
+  let amount = isFull ? cap : Number(req.body.amount);
   amount = Math.round(amount * 100) / 100;
   const { notes } = req.body || {};
 
   if (!(amount > 0)) return res.status(400).json({ error: "المبلغ لازم يكون أكبر من صفر" });
-  if (amount > outstanding + 0.001) return res.status(400).json({ error: "المبلغ أكبر من العمولة المستحقة" });
+  if (amount > cap + 0.001) return res.status(400).json({ error: "المبلغ أكبر من العمولة المستحقة" });
 
   db.exec("BEGIN");
   try {
@@ -206,7 +212,9 @@ router.post("/craftsmen/:id/payouts", (req, res) => {
     let remaining = amount;
     for (const inv of unsettled) {
       if (remaining <= 0.001) break;
-      const alloc = Math.min(remaining, inv.due);
+      // On a full payout, let the last touched invoice absorb sub-cent rounding
+      // residue so commissionPaid ends exactly equal to craftsmanCommission.
+      const alloc = isFull ? inv.due : Math.min(remaining, inv.due);
       addItem.run(payoutId, inv.id, alloc);
       bumpPaid.run(alloc, inv.id);
       remaining -= alloc;

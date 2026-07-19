@@ -49,10 +49,18 @@ function listStockCounts(req: any, res: any) {
 function createStockCount(req: any, res: any) {
   const { name, notes } = req.body;
   const products = db.prepare("SELECT id, currentStock FROM products WHERE isActive = 1").all() as any[];
-  const r = db.prepare("INSERT INTO stock_counts (name, notes, status, createdBy) VALUES (?,?,'draft',?)").run(name || `جرد ${new Date().toLocaleDateString("ar-EG")}`, notes || null, actorName(req));
-  const countId = r.lastInsertRowid as number;
-  const insertItem = db.prepare("INSERT INTO stock_count_items (stockCountId, productId, systemQty, countedQty) VALUES (?,?,?,?)");
-  for (const p of products) insertItem.run(countId, p.id, p.currentStock, p.currentStock);
+  let countId = 0;
+  db.exec("BEGIN");
+  try {
+    const r = db.prepare("INSERT INTO stock_counts (name, notes, status, createdBy) VALUES (?,?,'draft',?)").run(name || `جرد ${new Date().toLocaleDateString("ar-EG")}`, notes || null, actorName(req));
+    countId = r.lastInsertRowid as number;
+    const insertItem = db.prepare("INSERT INTO stock_count_items (stockCountId, productId, systemQty, countedQty) VALUES (?,?,?,?)");
+    for (const p of products) insertItem.run(countId, p.id, p.currentStock, p.currentStock);
+    db.exec("COMMIT");
+  } catch (e) {
+    db.exec("ROLLBACK");
+    throw e;
+  }
   res.status(201).json(db.prepare("SELECT * FROM stock_counts WHERE id = ?").get(countId));
 }
 

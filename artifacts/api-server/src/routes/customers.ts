@@ -8,7 +8,7 @@ const router = Router();
 const CUSTOMER_SELECT = `
   SELECT c.*,
     COALESCE(c.openingBalance, 0)
-      + COALESCE((SELECT SUM(si.remainingAmount) FROM sales_invoices si WHERE si.customerId = c.id AND si.status IN ('finalized','partially_paid','credit')), 0)
+      + COALESCE((SELECT SUM(si.remainingAmount) FROM sales_invoices si WHERE si.customerId = c.id AND si.status IN ('finalized','partially_paid','credit','paid')), 0)
       + COALESCE((SELECT SUM(r.netAmount) FROM returns r WHERE r.customerId = c.id AND r.settlementType = 'account'), 0)
       - COALESCE((SELECT SUM(cp.amount) FROM customer_payments cp WHERE cp.customerId = c.id), 0) as totalDebt
   FROM customers c
@@ -24,7 +24,10 @@ router.get("/customers", (req, res) => {
     const q = `%${search}%`;
     params.push(q, q, q);
   }
+  // Archived (isActive=0) customers are hidden by default — matching the "سيتم
+  // إخفاؤه" promise of the delete dialog — unless isActive is passed explicitly.
   if (isActive !== undefined) { conditions.push("c.isActive = ?"); params.push(isActive === "true" ? 1 : 0); }
+  else { conditions.push("c.isActive = 1"); }
 
   const where = conditions.length ? "WHERE " + conditions.join(" AND ") : "";
   const items = db.prepare(`${CUSTOMER_SELECT} ${where} ORDER BY c.name`).all(...params);
@@ -104,7 +107,9 @@ router.get("/customers/:id/statement", (req, res) => {
 
   const all = [
     ...invoices.map(i => ({ ...i, sortDate: i.date })),
-    ...payments.map(p => ({ ...p, sortDate: p.date })),
+    // Payments store a date-only value; pad to end-of-day so a same-day payment
+    // sorts AFTER that day's datetime-stamped invoices/returns, not before them.
+    ...payments.map(p => ({ ...p, sortDate: p.date && p.date.length === 10 ? `${p.date} 23:59:59` : p.date })),
     ...returns.map(r => ({ ...r, sortDate: r.date })),
   ].sort((a, b) => a.sortDate.localeCompare(b.sortDate));
 
