@@ -8,6 +8,7 @@
 
 export type ListCustomersParams = {
 search?: string;
-page?: number;
+isActive?: boolean;
+offset?: number;
 limit?: number;
 };

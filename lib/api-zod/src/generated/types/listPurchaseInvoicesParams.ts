@@ -10,8 +10,8 @@ export type ListPurchaseInvoicesParams = {
 search?: string;
 status?: string;
 supplierId?: number;
-from?: string;
-to?: string;
+dateFrom?: string;
+dateTo?: string;
 page?: number;
 limit?: number;
 };

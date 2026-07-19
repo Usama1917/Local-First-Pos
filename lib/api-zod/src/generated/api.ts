@@ -29,7 +29,8 @@ export const LoginResponse = zod.object({
   "username": zod.string(),
   "name": zod.string(),
   "role": zod.string(),
-  "permissions": zod.array(zod.string()).optional()
+  "permissions": zod.array(zod.string()).optional(),
+  "token": zod.string().optional().describe('Session bearer token — sent as Authorization on every subsequent request.')
 })
 
 
@@ -41,7 +42,8 @@ export const GetMeResponse = zod.object({
   "username": zod.string(),
   "name": zod.string(),
   "role": zod.string(),
-  "permissions": zod.array(zod.string()).optional()
+  "permissions": zod.array(zod.string()).optional(),
+  "token": zod.string().optional().describe('Session bearer token — sent as Authorization on every subsequent request.')
 })
 
 
@@ -372,8 +374,8 @@ export const ListProductsQueryParams = zod.object({
   "brandId": zod.coerce.number().optional(),
   "supplierId": zod.coerce.number().optional(),
   "lowStock": zod.coerce.boolean().optional(),
-  "active": zod.coerce.boolean().optional(),
-  "page": zod.coerce.number().optional(),
+  "isActive": zod.coerce.boolean().optional(),
+  "offset": zod.coerce.number().optional(),
   "limit": zod.coerce.number().optional()
 })
 
@@ -633,7 +635,8 @@ export const GetProductMovementsResponse = zod.array(GetProductMovementsResponse
  */
 export const ListCustomersQueryParams = zod.object({
   "search": zod.coerce.string().optional(),
-  "page": zod.coerce.number().optional(),
+  "isActive": zod.coerce.boolean().optional(),
+  "offset": zod.coerce.number().optional(),
   "limit": zod.coerce.number().optional()
 })
 
@@ -884,7 +887,8 @@ export const GetCustomerQuotationsResponse = zod.object({
  */
 export const ListCraftsmenQueryParams = zod.object({
   "search": zod.coerce.string().optional(),
-  "page": zod.coerce.number().optional(),
+  "isActive": zod.coerce.boolean().optional(),
+  "offset": zod.coerce.number().optional(),
   "limit": zod.coerce.number().optional()
 })
 
@@ -1092,7 +1096,8 @@ export const GetCraftsmanPayoutResponse = zod.object({
  */
 export const ListSuppliersQueryParams = zod.object({
   "search": zod.coerce.string().optional(),
-  "page": zod.coerce.number().optional(),
+  "isActive": zod.coerce.boolean().optional(),
+  "offset": zod.coerce.number().optional(),
   "limit": zod.coerce.number().optional()
 })
 
@@ -1235,8 +1240,8 @@ export const ListQuotationsQueryParams = zod.object({
   "search": zod.coerce.string().optional(),
   "status": zod.coerce.string().optional(),
   "customerId": zod.coerce.number().optional(),
-  "from": zod.coerce.string().optional(),
-  "to": zod.coerce.string().optional(),
+  "dateFrom": zod.coerce.string().optional(),
+  "dateTo": zod.coerce.string().optional(),
   "page": zod.coerce.number().optional(),
   "limit": zod.coerce.number().optional()
 })
@@ -1419,8 +1424,8 @@ export const ListSalesInvoicesQueryParams = zod.object({
   "status": zod.coerce.string().optional(),
   "customerId": zod.coerce.number().optional(),
   "craftsmanId": zod.coerce.number().optional(),
-  "from": zod.coerce.string().optional(),
-  "to": zod.coerce.string().optional(),
+  "dateFrom": zod.coerce.string().optional(),
+  "dateTo": zod.coerce.string().optional(),
   "page": zod.coerce.number().optional(),
   "limit": zod.coerce.number().optional()
 })
@@ -1874,8 +1879,8 @@ export const ListPurchaseInvoicesQueryParams = zod.object({
   "search": zod.coerce.string().optional(),
   "status": zod.coerce.string().optional(),
   "supplierId": zod.coerce.number().optional(),
-  "from": zod.coerce.string().optional(),
-  "to": zod.coerce.string().optional(),
+  "dateFrom": zod.coerce.string().optional(),
+  "dateTo": zod.coerce.string().optional(),
   "page": zod.coerce.number().optional(),
   "limit": zod.coerce.number().optional()
 })
@@ -2076,8 +2081,8 @@ export const FinalizePurchaseInvoiceResponse = zod.object({
 export const ListStockMovementsQueryParams = zod.object({
   "productId": zod.coerce.number().optional(),
   "type": zod.coerce.string().optional(),
-  "from": zod.coerce.string().optional(),
-  "to": zod.coerce.string().optional(),
+  "dateFrom": zod.coerce.string().optional(),
+  "dateTo": zod.coerce.string().optional(),
   "page": zod.coerce.number().optional(),
   "limit": zod.coerce.number().optional()
 })

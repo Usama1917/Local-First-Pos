@@ -8,6 +8,7 @@
 
 export type ListCraftsmenParams = {
 search?: string;
-page?: number;
+isActive?: boolean;
+offset?: number;
 limit?: number;
 };

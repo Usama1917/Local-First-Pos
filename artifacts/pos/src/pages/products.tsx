@@ -296,7 +296,7 @@ export default function ProductsPage() {
   const { data, isLoading } = useListProducts(params, { query: { queryKey: getListProductsQueryKey(params) } });
   const { data: cats } = useListCategories({});
   const { data: brands } = useListBrands({});
-  const { data: suppliers } = useListSuppliers({});
+  const { data: suppliers } = useListSuppliers({ isActive: true });
   const { data: units } = useListUnits({});
   const { data: settings } = useGetSettings();
   const shopName = (settings as any)?.shopName as string | undefined;

@@ -56,7 +56,7 @@ function NewPurchaseDialog({ onClose, open, invoiceId }: { onClose: () => void; 
   const [productSearch, setProductSearch] = useState("");
   const qc = useQueryClient();
   const isExisting = invoiceId != null;
-  const { data: suppliers } = useListSuppliers({});
+  const { data: suppliers } = useListSuppliers({ isActive: true });
   const { data: settings } = useGetSettings();
   const shopName = (settings as any)?.shopName as string | undefined;
   const { data: searchResults } = useSearchProducts({ q: productSearch }, { query: { enabled: productSearch.length >= 1, queryKey: getSearchProductsQueryKey({ q: productSearch }) } });

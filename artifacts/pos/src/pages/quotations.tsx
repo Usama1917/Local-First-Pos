@@ -53,8 +53,8 @@ function NewQuotationDialog({ onClose, open }: { onClose: () => void; open: bool
   const [validUntil, setValidUntil] = useState("");
   const qc = useQueryClient();
   const { data: searchResults } = useSearchProducts({ q: productSearch }, { query: { enabled: productSearch.length >= 1, queryKey: getSearchProductsQueryKey({ q: productSearch }) } });
-  const { data: customers } = useListCustomers({});
-  const { data: craftsmen } = useListCraftsmen({});
+  const { data: customers } = useListCustomers({ isActive: true });
+  const { data: craftsmen } = useListCraftsmen({ isActive: true });
   const createQuotation = useCreateQuotation();
 
   const addToCart = (p: any) => {
@@ -260,7 +260,9 @@ export default function QuotationsPage() {
 
   const handleConvert = async (id: number) => {
     await convertToInvoice.mutateAsync({ id, data: { paymentType: "cash" } });
-    qc.invalidateQueries({ queryKey: getListQuotationsQueryKey({}) });
+    // Converting creates a sales invoice and deducts stock — refresh everything
+    // (sales list, products/stock, dashboard), not just the quotations list.
+    qc.invalidateQueries();
     toast.success("تم تحويل التسعيرة إلى فاتورة");
   };
 

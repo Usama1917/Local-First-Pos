@@ -9,8 +9,8 @@
 export type ListStockMovementsParams = {
 productId?: number;
 type?: string;
-from?: string;
-to?: string;
+dateFrom?: string;
+dateTo?: string;
 page?: number;
 limit?: number;
 };

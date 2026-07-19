@@ -10,8 +10,8 @@ export type ListQuotationsParams = {
 search?: string;
 status?: string;
 customerId?: number;
-from?: string;
-to?: string;
+dateFrom?: string;
+dateTo?: string;
 page?: number;
 limit?: number;
 };

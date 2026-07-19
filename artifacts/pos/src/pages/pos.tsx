@@ -10,6 +10,7 @@ import {
   useGetDraft,
   useDeleteDraft,
 } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -28,6 +29,7 @@ interface CartItem {
   sku: string;
   sellingPrice: number;
   minSellingPrice: number;
+  soldByWeight: number;
   quantity: number;
   discount: number;
   total: number;
@@ -44,7 +46,11 @@ function NumericInput({ value, onValue, ...props }: { value: number; onValue: (n
   const [text, setText] = useState(() => fmt(value));
   const focused = useRef(false);
   useEffect(() => {
-    if (!focused.current) setText(fmt(value));
+    // Re-sync when not focused; while focused, only re-sync if the parent clamped
+    // a COMPLETE number we'd typed (leave partial entries like "5." or "-" alone).
+    if (!focused.current) { setText(fmt(value)); return; }
+    if (/^-?\d+(\.\d+)?$/.test(text) && parseFloat(text) !== value) setText(fmt(value));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value]);
   return (
     <Input
@@ -78,9 +84,11 @@ export default function POSPage() {
   const [draftData, setDraftData] = useState<any>(null);
   const draftSaved = useRef(false);
 
+  const qc = useQueryClient();
   const { data: searchResults } = useSearchProducts({ q: searchQuery }, { query: { enabled: searchQuery.length >= 1, queryKey: getSearchProductsQueryKey({ q: searchQuery }) } });
-  const { data: customersData } = useListCustomers({});
-  const { data: craftsmenData } = useListCraftsmen({});
+  // Only active customers/craftsmen are selectable (archived ones are hidden).
+  const { data: customersData } = useListCustomers({ isActive: true });
+  const { data: craftsmenData } = useListCraftsmen({ isActive: true });
   const createInvoice = useCreateSalesInvoice();
   const finalizeInvoice = useFinalizeSalesInvoice();
   const saveDraft = useSaveDraft();
@@ -116,7 +124,9 @@ export default function POSPage() {
   }, [autoSave]);
 
   const subtotal = cart.reduce((s, i) => s + i.total, 0);
-  const total = subtotal - invoiceDiscount;
+  // Clamp so an over-discount (or a stale discount after items were removed) can
+  // never make the total negative and fabricate customer credit/debt.
+  const total = Math.max(0, subtotal - invoiceDiscount);
 
   const addToCart = (product: any) => {
     setCart(prev => {
@@ -133,6 +143,7 @@ export default function POSPage() {
         sku: product.sku,
         sellingPrice: product.sellingPrice,
         minSellingPrice: product.minSellingPrice || 0,
+        soldByWeight: product.soldByWeight ? 1 : 0,
         quantity: 1,
         discount: 0,
         total: product.sellingPrice,
@@ -154,9 +165,25 @@ export default function POSPage() {
   const updateQty = (idx: number, delta: number) => {
     setCart(prev => prev.map((item, i) => {
       if (i !== idx) return item;
-      const qty = Math.max(0.5, item.quantity + delta);
+      // By-piece products stay integer (floor 1); by-weight can go fractional.
+      const floor = item.soldByWeight ? 0.5 : 1;
+      const qty = Math.max(floor, item.quantity + delta);
       const gross = qty * item.sellingPrice;
       const disc = Math.min(item.discount, gross); // a smaller qty must not leave discount > line value
+      return { ...item, quantity: qty, discount: disc, total: gross - disc };
+    }));
+  };
+
+  // Set an exact quantity (typed) — by-weight products allow fractional; by-piece
+  // rounds to whole units. Used by the editable quantity field.
+  const setQty = (idx: number, raw: number) => {
+    setCart(prev => prev.map((item, i) => {
+      if (i !== idx) return item;
+      const floor = item.soldByWeight ? 0.001 : 1;
+      let qty = item.soldByWeight ? raw : Math.round(raw);
+      if (!(qty >= floor)) qty = floor;
+      const gross = qty * item.sellingPrice;
+      const disc = Math.min(item.discount, gross);
       return { ...item, quantity: qty, discount: disc, total: gross - disc };
     }));
   };
@@ -173,13 +200,14 @@ export default function POSPage() {
   };
 
   // Editing the line total directly back-computes the discount (negative = surcharge).
+  // Re-derive total from the rounded discount (the server's exact formula) so the
+  // cart total is bit-identical to the backend and a cash sale settles to remaining 0.
   const updateLineTotal = (idx: number, t: number) => {
     setCart(prev => prev.map((item, i) => {
       if (i !== idx) return item;
       const gross = item.quantity * item.sellingPrice;
-      const total = Math.max(0, t);
-      const d = Math.round((gross - total) * 100) / 100;
-      return { ...item, discount: d, total };
+      const d = Math.round((gross - Math.max(0, t)) * 100) / 100;
+      return { ...item, discount: d, total: Math.max(0, gross - d) };
     }));
   };
 
@@ -212,6 +240,9 @@ export default function POSPage() {
         },
       });
       await finalizeInvoice.mutateAsync({ id: inv.id, data: { paymentType, paidAmount: fp } });
+      // Stock, customer debt and dashboard all just changed — refresh caches so the
+      // next search/customer view isn't stale for up to 30s.
+      qc.invalidateQueries();
       toast.success(`تم إنشاء الفاتورة ${inv.serial} بنجاح`);
       setShowFinalizeDialog(false);
       clearCart();
@@ -413,7 +444,13 @@ export default function POSPage() {
                           <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => updateQty(idx, -1)}>
                             <Minus className="h-3 w-3" />
                           </Button>
-                          <span className="w-10 text-center font-semibold">{item.quantity}</span>
+                          {/* Editable so weight products (or large counts) can be typed directly. */}
+                          <NumericInput
+                            className="h-7 w-14 text-center font-semibold px-1"
+                            value={item.quantity}
+                            onValue={n => setQty(idx, n)}
+                            title={item.soldByWeight ? "الكمية (تقبل الكسور)" : "العدد"}
+                          />
                           <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => updateQty(idx, 1)}>
                             <Plus className="h-3 w-3" />
                           </Button>
@@ -460,7 +497,7 @@ export default function POSPage() {
                 <div className="flex justify-between text-sm"><span className="text-muted-foreground">الإجمالي الفرعي:</span><span className="font-medium">{formatCurrency(subtotal)}</span></div>
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-muted-foreground">خصم الفاتورة:</span>
-                  <NumericInput className="h-7 w-32 text-sm" value={invoiceDiscount} onValue={setInvoiceDiscount} placeholder="0" title="خصم على الفاتورة كلها — قيمة سالبة تعني إضافة" />
+                  <NumericInput className="h-7 w-32 text-sm" value={invoiceDiscount} onValue={(n) => setInvoiceDiscount(Math.min(n, subtotal))} placeholder="0" title="خصم على الفاتورة كلها — قيمة سالبة تعني إضافة" />
                 </div>
                 <div className="flex justify-between text-lg font-bold border-t pt-2">
                   <span>الإجمالي:</span>
