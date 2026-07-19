@@ -7,16 +7,31 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Layout } from "@/components/layout";
 import LoginPage from "@/pages/login";
 import { allowedPages, type SessionUser } from "@/lib/pages";
-import { setActorHeaderGetter } from "@workspace/api-client-react";
+import { setActorHeaderGetter, setAuthTokenGetter, setUnauthorizedHandler } from "@workspace/api-client-react";
 
-// Attach the logged-in user's name to every API request (X-Actor-Name header) so
-// the backend records who created / modified each record. Reads localStorage each
-// time so it always reflects the current session (and survives login/logout).
-setActorHeaderGetter(() => {
+function readStoredUser(): any {
   try {
     return JSON.parse(localStorage.getItem("pos_user") || "null");
   } catch {
     return null;
+  }
+}
+
+// Attach the logged-in user's name to every API request (X-Actor-Name header) so
+// the backend records who created / modified each record. Reads localStorage each
+// time so it always reflects the current session (and survives login/logout).
+setActorHeaderGetter(readStoredUser);
+
+// Attach the server-issued session token (Authorization: Bearer) to every request.
+setAuthTokenGetter(() => readStoredUser()?.token ?? null);
+
+// Any 401 (expired/missing session — e.g. an upgraded install whose stored user
+// predates tokens) drops the stale local session and returns to login. Guarded by
+// pos_user so a failed login attempt (no session yet) doesn't trigger a reload loop.
+setUnauthorizedHandler(() => {
+  if (localStorage.getItem("pos_user")) {
+    localStorage.removeItem("pos_user");
+    window.location.reload();
   }
 });
 

@@ -1,13 +1,15 @@
 import { Router } from "express";
 import db from "../lib/db.js";
+import { requireAdmin } from "../middlewares/auth.js";
 
 const router = Router();
 
+// GET is open to any authenticated user (cashier needs shop name / print template).
 router.get("/settings", (_req, res) => {
   res.json(db.prepare("SELECT * FROM settings WHERE id = 1").get());
 });
 
-router.patch("/settings", (req, res) => {
+router.patch("/settings", requireAdmin, (req, res) => {
   const {
     shopName, shopPhone, shopAddress, currency, defaultPrintTemplate,
     lowStockThreshold, enableCraftsmanCommission, enableDarkMode,

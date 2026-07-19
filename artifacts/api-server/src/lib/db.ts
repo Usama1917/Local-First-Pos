@@ -312,6 +312,17 @@ export function initializeSchema() {
       value INTEGER NOT NULL DEFAULT 0
     );
 
+    -- Server-side login sessions. A random opaque token is issued at login and
+    -- verified by the auth middleware on every /api request. Persisted (not just
+    -- in-memory) so tokens survive an API restart — the shop's dev script is
+    -- build && start, so the process restarts on every deploy.
+    CREATE TABLE IF NOT EXISTS sessions (
+      token TEXT PRIMARY KEY,
+      userId INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      createdAt TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(userId);
+
     CREATE TABLE IF NOT EXISTS craftsman_payouts (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       serial TEXT NOT NULL UNIQUE,

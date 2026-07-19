@@ -5,6 +5,7 @@ import path from "node:path";
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 import router from "./routes";
+import { requireAuth } from "./middlewares/auth";
 import { logger } from "./lib/logger";
 
 const app: Express = express();
@@ -32,6 +33,8 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Authenticate every /api request (login + health are whitelisted inside).
+app.use("/api", requireAuth);
 app.use("/api", router);
 
 // Unknown /api/* routes must return JSON (and a 404), never fall through to the

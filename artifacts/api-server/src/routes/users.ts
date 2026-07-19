@@ -1,7 +1,12 @@
 import { Router } from "express";
 import db from "../lib/db.js";
+import { requireAdmin } from "../middlewares/auth.js";
 
 const router = Router();
+
+// User management (incl. viewing stored passwords — a deliberate manager feature)
+// is admin-only, enforced server-side.
+router.use("/users", requireAdmin);
 
 // Shape a DB row for the client. Passwords ARE returned: the manager is allowed
 // to view them (explicit product decision for this local single-shop system).

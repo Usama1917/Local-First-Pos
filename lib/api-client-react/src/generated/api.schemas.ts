@@ -40,6 +40,8 @@ export interface AuthUser {
   name: string;
   role: string;
   permissions?: string[];
+  /** Session bearer token — sent as Authorization on every subsequent request. */
+  token?: string;
 }
 
 export interface User {
@@ -1289,8 +1291,8 @@ categoryId?: number;
 brandId?: number;
 supplierId?: number;
 lowStock?: boolean;
-active?: boolean;
-page?: number;
+isActive?: boolean;
+offset?: number;
 limit?: number;
 };
 
@@ -1305,19 +1307,22 @@ export type GetNextBarcode200 = {
 
 export type ListCustomersParams = {
 search?: string;
-page?: number;
+isActive?: boolean;
+offset?: number;
 limit?: number;
 };
 
 export type ListCraftsmenParams = {
 search?: string;
-page?: number;
+isActive?: boolean;
+offset?: number;
 limit?: number;
 };
 
 export type ListSuppliersParams = {
 search?: string;
-page?: number;
+isActive?: boolean;
+offset?: number;
 limit?: number;
 };
 
@@ -1325,8 +1330,8 @@ export type ListQuotationsParams = {
 search?: string;
 status?: string;
 customerId?: number;
-from?: string;
-to?: string;
+dateFrom?: string;
+dateTo?: string;
 page?: number;
 limit?: number;
 };
@@ -1336,8 +1341,8 @@ search?: string;
 status?: string;
 customerId?: number;
 craftsmanId?: number;
-from?: string;
-to?: string;
+dateFrom?: string;
+dateTo?: string;
 page?: number;
 limit?: number;
 };
@@ -1352,8 +1357,8 @@ export type ListPurchaseInvoicesParams = {
 search?: string;
 status?: string;
 supplierId?: number;
-from?: string;
-to?: string;
+dateFrom?: string;
+dateTo?: string;
 page?: number;
 limit?: number;
 };
@@ -1361,8 +1366,8 @@ limit?: number;
 export type ListStockMovementsParams = {
 productId?: number;
 type?: string;
-from?: string;
-to?: string;
+dateFrom?: string;
+dateTo?: string;
 page?: number;
 limit?: number;
 };

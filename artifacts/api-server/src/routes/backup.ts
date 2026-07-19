@@ -6,8 +6,13 @@ import db from "../lib/db.js";
 import { dataDir, dbPath, backupDir, getDataLocationSource, setConfiguredDataDir, getArchiveDir, setConfiguredArchiveDir } from "../lib/paths.js";
 import { pickFolder } from "../lib/dialog.js";
 import { browserAvailable } from "../lib/pdf.js";
+import { requireAdmin } from "../middlewares/auth.js";
 
 const router = Router();
+
+// Backups contain the entire database (including user passwords) and data-dir
+// changes affect the whole install — admin-only.
+router.use("/backup", requireAdmin);
 
 // Create a compressed (.zip) backup of a consistent DB snapshot, saved under
 // <dataDir>/backups. The client then downloads it (browser asks where to save).

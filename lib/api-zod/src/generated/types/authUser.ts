@@ -12,4 +12,6 @@ export interface AuthUser {
   name: string;
   role: string;
   permissions?: string[];
+  /** Session bearer token — sent as Authorization on every subsequent request. */
+  token?: string;
 }

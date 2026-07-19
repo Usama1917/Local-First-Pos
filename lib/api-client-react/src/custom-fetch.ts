@@ -21,6 +21,18 @@ let _authTokenGetter: AuthTokenGetter | null = null;
 export type ActorGetter = () => { name?: string | null } | null | undefined;
 let _actorGetter: ActorGetter | null = null;
 
+export type UnauthorizedHandler = (info: { url: string }) => void;
+let _unauthorizedHandler: UnauthorizedHandler | null = null;
+
+/**
+ * Register a handler invoked whenever the API answers 401 Unauthorized (expired /
+ * missing session). The app uses it to drop the stale local session and return to
+ * the login screen. Pass `null` to clear.
+ */
+export function setUnauthorizedHandler(handler: UnauthorizedHandler | null): void {
+  _unauthorizedHandler = handler;
+}
+
 /**
  * Register a getter that supplies the current app user. Its `name` is attached to
  * every request as an `X-Actor-Name` header so the backend can record who created /
@@ -386,6 +398,12 @@ export async function customFetch<T = unknown>(
 
   if (!response.ok) {
     const errorData = await parseErrorBody(response, method);
+    // Notify the app of an expired/absent session so it can force re-login. The
+    // handler self-guards (e.g. ignores the login request itself), so it is safe
+    // to call for every 401 including a failed login attempt.
+    if (response.status === 401 && _unauthorizedHandler) {
+      _unauthorizedHandler({ url: requestInfo.url });
+    }
     throw new ApiError(response, errorData, requestInfo);
   }
 

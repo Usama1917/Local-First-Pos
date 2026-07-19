@@ -406,8 +406,8 @@ paths:
         - { name: brandId, in: query, schema: { type: integer } }
         - { name: supplierId, in: query, schema: { type: integer } }
         - { name: lowStock, in: query, schema: { type: boolean } }
-        - { name: active, in: query, schema: { type: boolean } }
-        - { name: page, in: query, schema: { type: integer } }
+        - { name: isActive, in: query, schema: { type: boolean } }
+        - { name: offset, in: query, schema: { type: integer } }
         - { name: limit, in: query, schema: { type: integer } }
       responses:
         "200":
@@ -528,7 +528,8 @@ paths:
       summary: List customers
       parameters:
         - { name: search, in: query, schema: { type: string } }
-        - { name: page, in: query, schema: { type: integer } }
+        - { name: isActive, in: query, schema: { type: boolean } }
+        - { name: offset, in: query, schema: { type: integer } }
         - { name: limit, in: query, schema: { type: integer } }
       responses:
         "200":
@@ -674,7 +675,8 @@ paths:
       summary: List craftsmen
       parameters:
         - { name: search, in: query, schema: { type: string } }
-        - { name: page, in: query, schema: { type: integer } }
+        - { name: isActive, in: query, schema: { type: boolean } }
+        - { name: offset, in: query, schema: { type: integer } }
         - { name: limit, in: query, schema: { type: integer } }
       responses:
         "200":
@@ -808,7 +810,8 @@ paths:
       summary: List suppliers
       parameters:
         - { name: search, in: query, schema: { type: string } }
-        - { name: page, in: query, schema: { type: integer } }
+        - { name: isActive, in: query, schema: { type: boolean } }
+        - { name: offset, in: query, schema: { type: integer } }
         - { name: limit, in: query, schema: { type: integer } }
       responses:
         "200":
@@ -917,8 +920,8 @@ paths:
         - { name: search, in: query, schema: { type: string } }
         - { name: status, in: query, schema: { type: string } }
         - { name: customerId, in: query, schema: { type: integer } }
-        - { name: from, in: query, schema: { type: string } }
-        - { name: to, in: query, schema: { type: string } }
+        - { name: dateFrom, in: query, schema: { type: string } }
+        - { name: dateTo, in: query, schema: { type: string } }
         - { name: page, in: query, schema: { type: integer } }
         - { name: limit, in: query, schema: { type: integer } }
       responses:
@@ -1029,8 +1032,8 @@ paths:
         - { name: status, in: query, schema: { type: string } }
         - { name: customerId, in: query, schema: { type: integer } }
         - { name: craftsmanId, in: query, schema: { type: integer } }
-        - { name: from, in: query, schema: { type: string } }
-        - { name: to, in: query, schema: { type: string } }
+        - { name: dateFrom, in: query, schema: { type: string } }
+        - { name: dateTo, in: query, schema: { type: string } }
         - { name: page, in: query, schema: { type: integer } }
         - { name: limit, in: query, schema: { type: integer } }
       responses:
@@ -1255,8 +1258,8 @@ paths:
         - { name: search, in: query, schema: { type: string } }
         - { name: status, in: query, schema: { type: string } }
         - { name: supplierId, in: query, schema: { type: integer } }
-        - { name: from, in: query, schema: { type: string } }
-        - { name: to, in: query, schema: { type: string } }
+        - { name: dateFrom, in: query, schema: { type: string } }
+        - { name: dateTo, in: query, schema: { type: string } }
         - { name: page, in: query, schema: { type: integer } }
         - { name: limit, in: query, schema: { type: integer } }
       responses:
@@ -1352,8 +1355,8 @@ paths:
       parameters:
         - { name: productId, in: query, schema: { type: integer } }
         - { name: type, in: query, schema: { type: string } }
-        - { name: from, in: query, schema: { type: string } }
-        - { name: to, in: query, schema: { type: string } }
+        - { name: dateFrom, in: query, schema: { type: string } }
+        - { name: dateTo, in: query, schema: { type: string } }
         - { name: page, in: query, schema: { type: integer } }
         - { name: limit, in: query, schema: { type: integer } }
       responses:
@@ -1742,6 +1745,9 @@ components:
         permissions:
           type: array
           items: { type: string }
+        token:
+          type: string
+          description: Session bearer token — sent as Authorization on every subsequent request.
     User:
       type: object
       required: [id, username, name, role]
