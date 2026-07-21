@@ -111,14 +111,16 @@ export function printLabels(items: LabelItem[], shopName?: string): boolean {
     overflow: hidden; text-align: center; page-break-after: always; break-after: page;
   }
   .label:last-of-type { page-break-after: auto; break-after: auto; }
-  /* Roomy line-height so Arabic descenders (ص/ط/ع tails) are never clipped by the
+  /* Roomy line-height so Arabic descenders (ص/ط/ع/ى tails) are never clipped by the
      overflow:hidden that provides the horizontal ellipsis — Cairo's glyph box is
-     tall, so 1.1 cut the bottoms off. The taller line box also adds visual spacing. */
-  .shop { font-size: 5pt; font-weight: 800; line-height: 1.5; max-width: 100%;
+     tall, so a short line box cuts the bottoms off. The taller line box also adds
+     visual spacing. Sizes + barcode height are tuned so the three rows total under
+     the 13.4mm content area (15mm − 2×0.8mm padding) and never overflow/clip. */
+  .shop { font-size: 4.5pt; font-weight: 800; line-height: 1.9; max-width: 100%;
           white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .name { font-size: 5.5pt; font-weight: 800; line-height: 1.5; max-width: 100%;
+  .name { font-size: 5pt; font-weight: 800; line-height: 1.9; max-width: 100%;
           white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .bc { width: 100%; height: 8mm; display: flex; align-items: center; justify-content: center; }
+  .bc { width: 100%; height: 6.5mm; display: flex; align-items: center; justify-content: center; }
   .bc svg { max-width: 100%; max-height: 100%; }
   .blank { }
 </style>
