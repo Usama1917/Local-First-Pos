@@ -35,13 +35,18 @@ function barcodeSvg(value: string): string {
       // on the shop's low‑dpi label printer.
       font: "'Cairo','Tajawal',sans-serif",
       fontOptions: "bold",
-      fontSize: 17,
-      textMargin: 1,
+      // Number one step smaller than the bars-fill size, and tucked up tight under
+      // the bars (negative textMargin) so it rides high, not floating low.
+      fontSize: 15,
+      textMargin: -2,
       margin: 0,
     });
   } catch {
     return "";
   }
+  // Space the digits of the printed number apart so each is easy to read/type by hand.
+  const textEl = svg.querySelector("text");
+  if (textEl) textEl.setAttribute("letter-spacing", "3");
   // Replace the fixed width/height JsBarcode sets with a viewBox so the sticker
   // CSS can scale it to the label while preserving the bars' aspect ratio.
   const w = svg.getAttribute("width");
@@ -84,7 +89,7 @@ export function printLabels(items: LabelItem[], shopName?: string): boolean {
       : "";
     for (let i = 0; i < copies; i++) {
       labels.push(
-        `<div class="label">${shopLine}${nameLine}<div class="bc">${svg}</div></div>`,
+        `<div class="label"><div class="txt">${shopLine}${nameLine}</div><div class="bc">${svg}</div></div>`,
       );
     }
     // Blank separator sticker between products (not after the last one).
@@ -105,12 +110,15 @@ export function printLabels(items: LabelItem[], shopName?: string): boolean {
   body { width: 40mm; font-family: 'Cairo','Tajawal','Segoe UI',sans-serif; }
   .label {
     /* Tight ~0.8mm margins so the design fills the whole sticker instead of floating
-       inside wide empty bands; content spreads over the full height (space-between). */
+       inside wide empty bands. Shop+name sit together at the top (.txt group) and the
+       barcode at the bottom, so the product name rides up near the shop line instead
+       of floating in the vertical middle. */
     width: 40mm; height: 15mm; padding: 0.8mm;
     display: flex; flex-direction: column; align-items: center; justify-content: space-between;
     overflow: hidden; text-align: center; page-break-after: always; break-after: page;
   }
   .label:last-of-type { page-break-after: auto; break-after: auto; }
+  .txt { width: 100%; display: flex; flex-direction: column; align-items: center; }
   /* Roomy line-height so Arabic descenders (ص/ط/ع/ى tails) are never clipped by the
      overflow:hidden that provides the horizontal ellipsis — Cairo's glyph box is
      tall, so a short line box cuts the bottoms off. The taller line box also adds
@@ -118,9 +126,13 @@ export function printLabels(items: LabelItem[], shopName?: string): boolean {
      the 13.4mm content area (15mm − 2×0.8mm padding) and never overflow/clip. */
   .shop { font-size: 4.5pt; font-weight: 800; line-height: 1.9; max-width: 100%;
           white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .name { font-size: 5pt; font-weight: 800; line-height: 1.9; max-width: 100%;
+  /* Negative top margin slides the name up into the shop line's empty leading so it
+     rides close under the shop, without shrinking its own line box (keeps line-height
+     1.9 → descenders safe). */
+  .name { font-size: 5pt; font-weight: 800; line-height: 1.9; margin-top: -1mm; max-width: 100%;
           white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .bc { width: 100%; height: 6.5mm; display: flex; align-items: center; justify-content: center; }
+  /* margin-bottom lifts the whole barcode block up a notch off the sticker's bottom edge. */
+  .bc { width: 100%; height: 6.5mm; margin-bottom: 0.8mm; display: flex; align-items: center; justify-content: center; }
   .bc svg { max-width: 100%; max-height: 100%; }
   .blank { }
 </style>
