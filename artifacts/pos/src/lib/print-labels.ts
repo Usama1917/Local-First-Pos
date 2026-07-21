@@ -27,13 +27,15 @@ function barcodeSvg(value: string): string {
       // Wider bars so the barcode fills the label width (no empty side bands) while
       // its aspect ratio stays scannable when scaled into the sticker.
       width: 3,
-      height: 30,
+      // Taller bars + bigger number so the barcode block fills the label instead of
+      // floating as a small design inside wide empty margins.
+      height: 44,
       displayValue: true,
       // Bold, heavy digits so the number under the bars prints crisp (not thin/broken)
       // on the shop's low‑dpi label printer.
       font: "'Cairo','Tajawal',sans-serif",
       fontOptions: "bold",
-      fontSize: 13,
+      fontSize: 17,
       textMargin: 1,
       margin: 0,
     });
@@ -102,9 +104,9 @@ export function printLabels(items: LabelItem[], shopName?: string): boolean {
      shop's Windows PC and falls back to a thin face that prints broken). */
   body { width: 40mm; font-family: 'Cairo','Tajawal','Segoe UI',sans-serif; }
   .label {
-    /* Equal ~1.5mm margins on all four sides; content spreads over the full height
-       (space-between) instead of clustering in the middle, so no wasted top/bottom band. */
-    width: 40mm; height: 15mm; padding: 1.5mm;
+    /* Tight ~0.8mm margins so the design fills the whole sticker instead of floating
+       inside wide empty bands; content spreads over the full height (space-between). */
+    width: 40mm; height: 15mm; padding: 0.8mm;
     display: flex; flex-direction: column; align-items: center; justify-content: space-between;
     overflow: hidden; text-align: center; page-break-after: always; break-after: page;
   }
@@ -112,11 +114,11 @@ export function printLabels(items: LabelItem[], shopName?: string): boolean {
   /* Roomy line-height so Arabic descenders (ص/ط/ع tails) are never clipped by the
      overflow:hidden that provides the horizontal ellipsis — Cairo's glyph box is
      tall, so 1.1 cut the bottoms off. The taller line box also adds visual spacing. */
-  .shop { font-size: 4pt; font-weight: 800; line-height: 1.9; max-width: 100%;
+  .shop { font-size: 5pt; font-weight: 800; line-height: 1.5; max-width: 100%;
           white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .name { font-size: 4.5pt; font-weight: 800; line-height: 1.9; max-width: 100%;
+  .name { font-size: 5.5pt; font-weight: 800; line-height: 1.5; max-width: 100%;
           white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .bc { width: 100%; height: 5mm; display: flex; align-items: center; justify-content: center; }
+  .bc { width: 100%; height: 8mm; display: flex; align-items: center; justify-content: center; }
   .bc svg { max-width: 100%; max-height: 100%; }
   .blank { }
 </style>

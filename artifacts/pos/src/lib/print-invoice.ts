@@ -80,7 +80,6 @@ export function printInvoice(inv: any, shop: ShopInfo = {}, format: PrintFormat 
 
   <div class="info">
     <div><b>العميل:</b> ${escapeHtml(inv?.customerName || "عميل نقدي")}</div>
-    ${inv?.craftsmanName ? `<div><b>الصنايعي / الفني:</b> ${escapeHtml(inv.craftsmanName)}</div>` : ""}
     <div><b>طريقة الدفع:</b> ${escapeHtml(PAYMENT_LABELS[inv?.paymentType] || inv?.paymentType || "—")}</div>
   </div>
 
@@ -112,7 +111,7 @@ export function printInvoice(inv: any, shop: ShopInfo = {}, format: PrintFormat 
 
   <div class="sign">
     <div>توقيع صاحب المحل</div>
-    <div>توقيع ${inv?.craftsmanName ? "العميل / الصنايعي" : "العميل"}</div>
+    <div>توقيع العميل</div>
   </div>
 
   <div class="footer">شكراً لتعاملكم معنا${shop?.shopPhone ? ` — للاستفسار: ${escapeHtml(shop.shopPhone)}` : ""}</div>
