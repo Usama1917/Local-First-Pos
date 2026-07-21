@@ -196,6 +196,7 @@ function SuppliersTab() {
     items: suppliers,
     onSelect: (s: any) => setSelectedId(s.id),
     resetKey: search,
+    highlightFirst: false, // full-page table: no row pre-selected until keyboard nav
   });
 
   return (
@@ -247,7 +248,7 @@ function SuppliersTab() {
           <tbody>
             {isLoading ? <tr><td colSpan={5} className="p-8 text-center text-muted-foreground">جاري التحميل...</td></tr> :
               suppliers.map((s: any, i: number) => (
-                <tr key={s.id} {...getItemProps(i)} className={cn("border-b", activeIndex === i ? "nav-active" : "hover:bg-muted/30")}>
+                <tr key={s.id} {...getItemProps(i)} className={cn("border-b", activeIndex === i ? "nav-active" : "nav-hover")}>
                   <td className="p-3 font-medium">{s.name}</td>
                   <td className="p-3 text-muted-foreground">{s.phone || "—"}</td>
                   <td className="p-3 text-muted-foreground">{s.contactPerson || "—"}</td>
@@ -381,7 +382,7 @@ function AttributeTab({
           <tbody>
             {isLoading ? <tr><td colSpan={colSpan} className="p-8 text-center text-muted-foreground">جاري التحميل...</td></tr> :
               items.map((it) => (
-                <tr key={it.id} className="border-b hover:bg-muted/30">
+                <tr key={it.id} className="border-b nav-hover">
                   <td className="p-3 font-medium">{it.name}</td>
                   <td className="p-3 text-muted-foreground">{it.nameEn || "—"}</td>
                   {showCount && <td className="p-3 text-left text-muted-foreground">{it.productCount ?? 0}</td>}

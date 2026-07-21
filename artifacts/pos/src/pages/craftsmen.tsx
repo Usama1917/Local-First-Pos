@@ -204,7 +204,7 @@ function CraftsmanProfile({ id }: { id: number; onClose: () => void }) {
               </thead>
               <tbody>
                 {invoices.map((inv: any) => (
-                  <tr key={inv.id} className="border-b hover:bg-muted/30">
+                  <tr key={inv.id} className="border-b nav-hover">
                     <td className="p-2 font-mono font-medium text-primary">{inv.serial}</td>
                     <td className="p-2">{inv.customerName || <span className="text-muted-foreground">نقدي</span>}</td>
                     <td className="p-2">
@@ -245,7 +245,7 @@ function CraftsmanProfile({ id }: { id: number; onClose: () => void }) {
               </thead>
               <tbody>
                 {quotations.map((q: any) => (
-                  <tr key={q.id} className="border-b hover:bg-muted/30">
+                  <tr key={q.id} className="border-b nav-hover">
                     <td className="p-2 font-mono font-medium text-primary">{q.serial}</td>
                     <td className="p-2">{q.customerName || <span className="text-muted-foreground">غير محدد</span>}</td>
                     <td className="p-2">
@@ -280,7 +280,7 @@ function CraftsmanProfile({ id }: { id: number; onClose: () => void }) {
               </thead>
               <tbody>
                 {payouts.map((p: any) => (
-                  <tr key={p.id} className="border-b hover:bg-muted/30">
+                  <tr key={p.id} className="border-b nav-hover">
                     <td className="p-2 font-mono font-medium text-primary">{p.serial}</td>
                     <td className="p-2 text-left font-semibold text-emerald-700 dark:text-emerald-400">{formatCurrency(p.amount)}</td>
                     <td className="p-2 text-muted-foreground">{p.notes || "—"}</td>
@@ -321,7 +321,7 @@ function CraftsmanProfile({ id }: { id: number; onClose: () => void }) {
               </thead>
               <tbody>
                 {customers.map((c: any) => (
-                  <tr key={c.id} className="border-b hover:bg-muted/30">
+                  <tr key={c.id} className="border-b nav-hover">
                     <td className="p-2 font-medium">{c.name}</td>
                     <td className="p-2 text-muted-foreground">{c.phone || "—"}</td>
                     <td className="p-2 text-muted-foreground">{c.area || "—"}</td>
@@ -385,6 +385,7 @@ export default function CraftsmenPage() {
     items: craftsmen,
     onSelect: (c: any) => setSelectedId(c.id),
     resetKey: search,
+    highlightFirst: false, // full-page table: no row pre-selected until keyboard nav
   });
 
   return (
@@ -438,7 +439,7 @@ export default function CraftsmenPage() {
           <tbody>
             {isLoading ? <tr><td colSpan={7} className="p-8 text-center text-muted-foreground">جاري التحميل...</td></tr> :
               craftsmen.map((c: any, i: number) => (
-                <tr key={c.id} {...getItemProps(i)} className={cn("border-b cursor-pointer", activeIndex === i ? "nav-active" : "hover:bg-muted/30")} onClick={() => setSelectedId(c.id)}>
+                <tr key={c.id} {...getItemProps(i)} className={cn("border-b cursor-pointer", activeIndex === i ? "nav-active" : "nav-hover")} onClick={() => setSelectedId(c.id)}>
                   <td className="p-3 font-medium">{c.name}</td>
                   <td className="p-3 text-muted-foreground">{c.jobType || "—"}</td>
                   <td className="p-3 text-muted-foreground">{c.phone || "—"}</td>

@@ -17,8 +17,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatCurrency } from "@/lib/format";
 import { getTheme, setTheme, type Theme } from "@/lib/theme";
 import { getHighlightColor, setHighlightColor, HIGHLIGHT_COLORS } from "@/lib/highlight-color";
+import {
+  getFontScale, setFontScale, FONT_SCALE_LABELS, type FontScale,
+  getContrast, setContrast, toggleFullscreen, isFullscreen,
+} from "@/lib/accessibility";
+import { getSoundEnabled, setSoundEnabled } from "@/lib/feedback";
+import { cn } from "@/lib/utils";
+import { isAdmin, type SessionUser } from "@/lib/pages";
+import UsersPage from "@/pages/users";
 import { motion } from "framer-motion";
-import { Save, Download, HardDrive, Settings, FolderOpen, Sun, Moon, Plus, Trash2 } from "lucide-react";
+import { Save, Download, HardDrive, Settings, FolderOpen, Sun, Moon, Plus, Trash2, Type, Contrast, Maximize2, Volume2 } from "lucide-react";
 import { toast } from "sonner";
 
 export default function SettingsPage() {
@@ -34,6 +42,27 @@ export default function SettingsPage() {
   const changeTheme = (t: Theme) => { setTheme(t); setThemeState(t); };
   const [highlight, setHighlightState] = useState<string>(getHighlightColor());
   const changeHighlight = (k: string) => { setHighlightColor(k); setHighlightState(k); };
+  // Accessibility / eye-comfort (per-device, localStorage).
+  const [fontScale, setFontScaleState] = useState<FontScale>(getFontScale());
+  const changeFontScale = (s: FontScale) => { setFontScale(s); setFontScaleState(s); };
+  const [contrast, setContrastState] = useState<boolean>(getContrast());
+  const changeContrast = (on: boolean) => { setContrast(on); setContrastState(on); };
+  const [sound, setSoundState] = useState<boolean>(getSoundEnabled());
+  const changeSound = (on: boolean) => { setSoundEnabled(on); setSoundState(on); };
+  const [fullscreen, setFullscreenState] = useState<boolean>(isFullscreen());
+  useEffect(() => {
+    const onFs = () => setFullscreenState(isFullscreen());
+    document.addEventListener("fullscreenchange", onFs);
+    return () => document.removeEventListener("fullscreenchange", onFs);
+  }, []);
+
+  // User management is an admin-only tab here (moved out of the sidebar). The tab
+  // is hidden for non-admins, and the API already enforces requireAdmin on /users.
+  const currentUser: SessionUser | null = (() => {
+    try { return JSON.parse(localStorage.getItem("pos_user") || "null"); } catch { return null; }
+  })();
+  const showUsersTab = isAdmin(currentUser);
+  const [tab, setTab] = useState("general");
   // Shop's custom sale terms, edited as a list; stored as one term per line.
   const [terms, setTerms] = useState<string[]>([]);
   const addTerm = () => setTerms((t) => [...t, ""]);
@@ -127,16 +156,17 @@ export default function SettingsPage() {
   if (isLoading) return <div className="p-8 text-center text-muted-foreground">جاري التحميل...</div>;
 
   return (
-    <div className="space-y-4 max-w-2xl">
+    <div className={cn("space-y-4", tab === "users" ? "max-w-none" : "max-w-2xl")}>
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">الإعدادات</h1>
       </div>
 
-      <Tabs defaultValue="general">
+      <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
           <TabsTrigger value="general">عام</TabsTrigger>
           <TabsTrigger value="numbering">الترقيم</TabsTrigger>
           <TabsTrigger value="backup">النسخ الاحتياطي</TabsTrigger>
+          {showUsersTab && <TabsTrigger value="users">المستخدمون</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="general" className="space-y-4">
@@ -198,7 +228,7 @@ export default function SettingsPage() {
           </Card>
 
           <Card>
-            <CardHeader><CardTitle>المظهر</CardTitle></CardHeader>
+            <CardHeader><CardTitle>تفضيلات العرض</CardTitle></CardHeader>
             <CardContent>
               <div className="flex items-center justify-between gap-4">
                 <div>
@@ -258,6 +288,62 @@ export default function SettingsPage() {
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+
+              <div className="mt-6 flex items-center justify-between gap-4 border-t pt-6">
+                <div>
+                  <Label className="flex items-center gap-2"><Type className="h-4 w-4" /> حجم الخط</Label>
+                  <p className="text-xs text-muted-foreground mt-1">كبّر خط النظام كله لقراءة أوضح — بيتطبّق على طول.</p>
+                </div>
+                <div className="flex gap-1 rounded-lg border bg-muted/40 p-1">
+                  {(["normal", "large", "xlarge"] as FontScale[]).map((sz) => {
+                    const active = fontScale === sz;
+                    return (
+                      <button
+                        key={sz}
+                        type="button"
+                        onClick={() => changeFontScale(sz)}
+                        className={`relative rounded-md px-4 py-1.5 text-sm font-medium outline-none transition-colors ${active ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                      >
+                        {active && (
+                          <motion.span
+                            layoutId="fontscale-pill"
+                            className="absolute inset-0 rounded-md bg-primary shadow-sm"
+                            transition={{ type: "spring", stiffness: 420, damping: 34 }}
+                          />
+                        )}
+                        <span className="relative z-10">{FONT_SCALE_LABELS[sz]}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="mt-6 flex items-center justify-between gap-4 border-t pt-6">
+                <div>
+                  <Label className="flex items-center gap-2"><Contrast className="h-4 w-4" /> تباين عالٍ</Label>
+                  <p className="text-xs text-muted-foreground mt-1">ألوان أوضح وحدود أقوى للنصوص والخانات — أنسب لضعف النظر.</p>
+                </div>
+                <Switch checked={contrast} onCheckedChange={changeContrast} />
+              </div>
+
+              <div className="mt-6 flex items-center justify-between gap-4 border-t pt-6">
+                <div>
+                  <Label className="flex items-center gap-2"><Volume2 className="h-4 w-4" /> أصوات التنبيه</Label>
+                  <p className="text-xs text-muted-foreground mt-1">صوت تأكيد عند مسح/إضافة صنف وإتمام البيع، وصوت مختلف عند الخطأ.</p>
+                </div>
+                <Switch checked={sound} onCheckedChange={changeSound} />
+              </div>
+
+              <div className="mt-6 flex items-center justify-between gap-4 border-t pt-6">
+                <div>
+                  <Label className="flex items-center gap-2"><Maximize2 className="h-4 w-4" /> ملء الشاشة</Label>
+                  <p className="text-xs text-muted-foreground mt-1">وضع الكشك — يخفي إطار المتصفح ويستغل الشاشة كلها.</p>
+                </div>
+                <Button variant="outline" onClick={toggleFullscreen}>
+                  <Maximize2 className="h-4 w-4 ml-2" />
+                  {fullscreen ? "إنهاء ملء الشاشة" : "ملء الشاشة"}
+                </Button>
               </div>
             </CardContent>
           </Card>
@@ -387,12 +473,21 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {showUsersTab && (
+          <TabsContent value="users">
+            <UsersPage />
+          </TabsContent>
+        )}
       </Tabs>
 
-      <Button size="lg" onClick={handleSave} disabled={updateSettings.isPending}>
-        <Save className="h-4 w-4 ml-2" />
-        حفظ الإعدادات
-      </Button>
+      {/* The save button applies to the settings form only — hide it on the users tab. */}
+      {tab !== "users" && (
+        <Button size="lg" onClick={handleSave} disabled={updateSettings.isPending}>
+          <Save className="h-4 w-4 ml-2" />
+          حفظ الإعدادات
+        </Button>
+      )}
     </div>
   );
 }

@@ -71,7 +71,7 @@ function PermissionsDialog({ user, onClose }: { user: any; onClose: () => void }
               return (
                 <label
                   key={p.key}
-                  className={`flex items-center justify-between gap-3 rounded-lg border p-3 cursor-pointer transition-colors ${on ? "border-primary/40 bg-primary/5" : "hover:bg-muted/40"}`}
+                  className={`flex items-center justify-between gap-3 rounded-lg border p-3 cursor-pointer transition-colors ${on ? "border-primary/40 bg-primary/5" : "nav-hover"}`}
                 >
                   <span className="flex items-center gap-2.5 text-sm font-medium">
                     <p.icon className="h-4 w-4 text-muted-foreground shrink-0" />
@@ -234,7 +234,7 @@ export default function UsersPage() {
             {isLoading ? (
               <tr><td colSpan={6} className="p-8 text-center text-muted-foreground">جاري التحميل...</td></tr>
             ) : users.map((u: any) => (
-              <tr key={u.id} className="border-b hover:bg-muted/30">
+              <tr key={u.id} className="border-b nav-hover">
                 <td className="p-3 font-medium">{u.name}</td>
                 <td className="p-3 font-mono text-muted-foreground">{u.username}</td>
                 <td className="p-3">

@@ -1,7 +1,61 @@
-@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&family=Tajawal:wght@400;500;700;800&display=swap');
 @import "tailwindcss";
 @import "tw-animate-css";
 @plugin "@tailwindcss/typography";
+
+/* ── App font: "Teshrin AR+LT" (تشرين) ─────────────────────────────────────
+   Bundled locally so the shop PC (offline / local-first, Windows) renders the
+   same font macOS shows in dev — no dependency on SF Arabic or a Google Fonts
+   CDN. Weight map: 400 body = Medium (وسط), 700 = Bold (عريض), 800 = Heavy.
+   Vite fingerprints these OTFs into dist/ on build. */
+@font-face {
+  font-family: 'Teshrin AR+LT';
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+  src: url('./fonts/Teshrin-Light.otf') format('opentype');
+}
+@font-face {
+  font-family: 'Teshrin AR+LT';
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  src: url('./fonts/Teshrin-Medium.otf') format('opentype');
+}
+@font-face {
+  font-family: 'Teshrin AR+LT';
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+  src: url('./fonts/Teshrin-Medium.otf') format('opentype');
+}
+@font-face {
+  font-family: 'Teshrin AR+LT';
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+  src: url('./fonts/Teshrin-Bold.otf') format('opentype');
+}
+@font-face {
+  font-family: 'Teshrin AR+LT';
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+  src: url('./fonts/Teshrin-Bold.otf') format('opentype');
+}
+@font-face {
+  font-family: 'Teshrin AR+LT';
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+  src: url('./fonts/Teshrin-Heavy.otf') format('opentype');
+}
+@font-face {
+  font-family: 'Teshrin AR+LT';
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+  src: url('./fonts/Teshrin-Heavy.otf') format('opentype');
+}
 
 @custom-variant dark (&:is(.dark *));
 
@@ -114,7 +168,7 @@
   --sidebar-accent-foreground: 222 47% 11%;
   --sidebar-ring: 221 83% 53%;
 
-  --app-font-sans: 'SF Arabic', 'SF Pro Text', 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Cairo', 'Tajawal', 'Segoe UI', sans-serif;
+  --app-font-sans: 'Teshrin AR+LT', 'SF Arabic', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Tahoma', sans-serif;
   --app-font-serif: Georgia, serif;
   --app-font-mono: Menlo, monospace;
   --radius: 0.5rem;
@@ -173,6 +227,37 @@
   --sidebar-ring: 210 100% 56%;
 }
 
+/* ── High-contrast mode (Settings → إمكانية الوصول) ────────────────────────
+   Toggled by the `.hc` class on <html> (lib/accessibility.ts). Darkens text and
+   strengthens borders/inputs for readability by users with weaker eyesight —
+   works in both light and dark themes. */
+.hc {
+  --foreground: 0 0% 0%;
+  --muted-foreground: 0 0% 22%;
+  --border: 0 0% 55%;
+  --input: 0 0% 40%;
+  --card-border: 0 0% 55%;
+  --button-outline: rgba(0, 0, 0, .35);
+}
+.dark.hc {
+  --foreground: 0 0% 100%;
+  --muted-foreground: 0 0% 82%;
+  --border: 0 0% 62%;
+  --input: 0 0% 70%;
+  --card-border: 0 0% 62%;
+  --button-outline: rgba(255, 255, 255, .4);
+}
+/* Make every border a hair thicker so the stronger colour actually reads. */
+.hc * {
+  border-color: hsl(var(--border));
+}
+.hc input,
+.hc textarea,
+.hc select,
+.hc [role="combobox"] {
+  border-width: 2px;
+}
+
 @layer base {
   * {
     @apply border-border;
@@ -206,6 +291,22 @@
 .nav-active {
   background-color: hsl(var(--nav-highlight));
   border-color: hsl(var(--nav-highlight));
+}
+
+/* Hover tint for un-selected rows/cards: the SAME chosen highlight color as
+   `.nav-active` but very translucent, so hovering reads as a soft echo of the
+   selection color (Settings → تفضيلات العرض → لون التحديد) instead of a flat
+   grey. Unlayered so it beats Tailwind's layered bg-* utilities without
+   !important; a lighter alpha in light mode, a touch stronger over the dark
+   theme's black so it stays visible. */
+.nav-hover {
+  transition: background-color 0.15s ease;
+}
+.nav-hover:hover {
+  background-color: hsl(var(--nav-highlight) / 0.14);
+}
+.dark .nav-hover:hover {
+  background-color: hsl(var(--nav-highlight) / 0.22);
 }
 
 @media print {

@@ -301,7 +301,7 @@ function NewPurchaseDialog({ onClose, open, invoiceId }: { onClose: () => void; 
           {productSearch && productResults.length > 0 && (
             <div className="absolute inset-x-0 top-full z-50 mt-1 max-h-72 overflow-y-auto rounded-md border bg-popover text-popover-foreground shadow-md">
               {productResults.map((p: any, i: number) => (
-                <div key={p.id} {...getItemProps(i)} className={cn("flex justify-between gap-2 p-2 cursor-pointer border-b last:border-b-0", activeIndex === i ? "nav-active" : "hover:bg-muted")} onClick={() => addProduct(p)}>
+                <div key={p.id} {...getItemProps(i)} className={cn("flex justify-between gap-2 p-2 cursor-pointer border-b last:border-b-0", activeIndex === i ? "nav-active" : "nav-hover")} onClick={() => addProduct(p)}>
                   <span>{p.nameAr} <span className="text-xs text-muted-foreground">({p.sku})</span></span>
                   <span className="text-sm text-muted-foreground whitespace-nowrap">قائمة: {formatCurrency(p.listPrice)}</span>
                 </div>
@@ -407,6 +407,7 @@ export default function PurchasesPage() {
     items: invoices,
     onSelect: (inv: any) => setOpenId(inv.id),
     resetKey: search,
+    highlightFirst: false, // full-page table: no row pre-selected until keyboard nav
   });
   const closeDialog = () => setOpenId(null);
   const qc = useQueryClient();
@@ -469,7 +470,7 @@ export default function PurchasesPage() {
           <tbody>
             {isLoading ? <tr><td colSpan={7} className="p-8 text-center text-muted-foreground">جاري التحميل...</td></tr> :
               invoices.map((inv: any, i: number) => (
-                <tr key={inv.id} {...getItemProps(i)} className={cn("border-b cursor-pointer", activeIndex === i ? "nav-active" : "hover:bg-muted/30")} onClick={() => setOpenId(inv.id)} title={inv.status === "draft" ? "فتح المسودة لإكمالها" : "عرض الفاتورة"}>
+                <tr key={inv.id} {...getItemProps(i)} className={cn("border-b cursor-pointer", activeIndex === i ? "nav-active" : "nav-hover")} onClick={() => setOpenId(inv.id)} title={inv.status === "draft" ? "فتح المسودة لإكمالها" : "عرض الفاتورة"}>
                   <td className="p-3 font-mono font-medium text-primary">{inv.serial}</td>
                   <td className="p-3 text-muted-foreground">{new Date(inv.createdAt).toLocaleDateString("ar-EG")}</td>
                   <td className="p-3">{inv.supplierName || "—"}</td>

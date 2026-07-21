@@ -205,7 +205,7 @@ export default function InventoryPage() {
               <tbody>
                 {isLoading ? <tr><td colSpan={5} className="p-8 text-center text-muted-foreground">جاري التحميل...</td></tr> :
                   counts.map((c: any) => (
-                    <tr key={c.id} className="border-b hover:bg-muted/30">
+                    <tr key={c.id} className="border-b nav-hover">
                       <td className="p-3 font-medium">{c.name}</td>
                       <td className="p-3"><Badge variant={c.status === "finalized" ? "default" : "secondary"}>{c.status === "finalized" ? "منتهي" : "قيد الجرد"}</Badge></td>
                       <td className="p-3">{c.itemCount} صنف</td>
@@ -239,7 +239,7 @@ export default function InventoryPage() {
               </thead>
               <tbody>
                 {mvts.map((m: any) => (
-                  <tr key={m.id} className="border-b hover:bg-muted/30">
+                  <tr key={m.id} className="border-b nav-hover">
                     <td className="p-3 font-medium">{m.productName}</td>
                     <td className="p-3"><Badge variant="outline">{MOVE_LABELS[m.type] || m.type}</Badge></td>
                     <td className={`p-3 text-center font-bold ${m.quantity > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-destructive"}`}>{m.quantity > 0 ? "+" : ""}{m.quantity}</td>

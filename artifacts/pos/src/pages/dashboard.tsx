@@ -118,7 +118,7 @@ export default function Dashboard() {
                 <div className="text-center py-4 text-muted-foreground">لا توجد فواتير مبيعات اليوم</div>
               ) : (
                 recentInvoices?.map(invoice => (
-                  <div key={invoice.id} className="flex items-center justify-between p-3 border rounded-lg bg-card hover:bg-accent/50 transition-colors">
+                  <div key={invoice.id} className="flex items-center justify-between p-3 border rounded-lg bg-card nav-hover">
                     <div className="flex items-center gap-4">
                       <div className="bg-primary/10 p-2 rounded-full">
                         <Receipt className="h-4 w-4 text-primary" />

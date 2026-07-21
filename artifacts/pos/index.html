@@ -13,9 +13,6 @@
     <meta name="twitter:title" content="نظام المحل - POS System" />
     <meta name="twitter:description" content="نظام المحل - POS System — built on Replit. Update this description to reflect the app." />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <!-- Apply the saved light/dark theme + selection-highlight color before React
          renders to avoid a flash. Keep this HSL map in sync with lib/highlight-color.ts. -->
     <script>
@@ -24,6 +21,14 @@
         var hc = localStorage.getItem('pos_highlight_color');
         var m = { amber: '43 100% 50%', blue: '205 90% 68%', green: '142 55% 60%', rose: '345 90% 72%', purple: '265 75% 74%', cyan: '190 85% 60%' };
         if (hc && m[hc]) document.documentElement.style.setProperty('--nav-highlight', m[hc]);
+      } catch (e) {}
+      /* Accessibility: text size + high contrast. Keep this map in sync with
+         lib/accessibility.ts (FONT_SCALES). */
+      try {
+        var fs = localStorage.getItem('pos_font_scale');
+        var fm = { large: '112.5%', xlarge: '125%' };
+        if (fs && fm[fs]) document.documentElement.style.fontSize = fm[fs];
+        if (localStorage.getItem('pos_contrast') === '1') document.documentElement.classList.add('hc');
       } catch (e) {}
     </script>
   </head>

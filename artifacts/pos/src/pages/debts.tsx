@@ -129,7 +129,7 @@ export default function DebtsPage() {
               <tbody>
                 {loadingCust ? <tr><td colSpan={6} className="p-8 text-center text-muted-foreground">جاري التحميل...</td></tr> :
                   custDebts.map((d: any) => (
-                    <tr key={d.id} className="border-b hover:bg-muted/30">
+                    <tr key={d.id} className="border-b nav-hover">
                       <td className="p-3 font-medium">{d.name}</td>
                       <td className="p-3 text-muted-foreground">{d.phone || "—"}</td>
                       <td className="p-3 text-muted-foreground">{d.area || "—"}</td>
@@ -164,7 +164,7 @@ export default function DebtsPage() {
               <tbody>
                 {loadingSupp ? <tr><td colSpan={5} className="p-8 text-center text-muted-foreground">جاري التحميل...</td></tr> :
                   suppDebts.map((d: any) => (
-                    <tr key={d.id} className="border-b hover:bg-muted/30">
+                    <tr key={d.id} className="border-b nav-hover">
                       <td className="p-3 font-medium">{d.name}</td>
                       <td className="p-3 text-muted-foreground">{d.phone || "—"}</td>
                       <td className="p-3 text-center">{d.openInvoices}</td>

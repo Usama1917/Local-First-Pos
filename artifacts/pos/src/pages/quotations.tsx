@@ -167,7 +167,7 @@ function NewQuotationDialog({ onClose, open }: { onClose: () => void; open: bool
       {productSearch && (
         <div className="border rounded-lg overflow-hidden">
           {productResults.map((p: any, i: number) => (
-            <div key={p.id} {...getItemProps(i)} className={cn("flex justify-between p-2 cursor-pointer border-b", activeIndex === i ? "nav-active" : "hover:bg-muted")} onClick={() => addToCart(p)}>
+            <div key={p.id} {...getItemProps(i)} className={cn("flex justify-between p-2 cursor-pointer border-b", activeIndex === i ? "nav-active" : "nav-hover")} onClick={() => addToCart(p)}>
               <span>{p.nameAr} <span className="text-xs text-muted-foreground">({p.sku})</span></span>
               <span className="font-semibold">{formatCurrency(p.sellingPrice)}</span>
             </div>
@@ -340,7 +340,7 @@ export default function QuotationsPage() {
             <tbody>
               {isLoading ? <tr><td colSpan={7} className="p-8 text-center text-muted-foreground">جاري التحميل...</td></tr> :
                 quotations.map((q: any) => (
-                  <tr key={q.id} className="border-b hover:bg-muted/30">
+                  <tr key={q.id} className="border-b nav-hover">
                     <td className="p-3 font-mono font-medium text-primary">{q.serial}</td>
                     <td className="p-3 text-muted-foreground">{new Date(q.createdAt).toLocaleDateString("ar-EG")}</td>
                     <td className="p-3">{q.customerName || <span className="text-muted-foreground">غير محدد</span>}</td>

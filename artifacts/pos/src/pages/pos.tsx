@@ -22,6 +22,9 @@ import { formatCurrency } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { useBarcodeScanner, findProductByCode } from "@/hooks/use-barcode-scanner";
 import { useListKeyboardNav } from "@/hooks/use-list-keyboard-nav";
+import { useHotkeys, type Hotkey } from "@/hooks/use-hotkeys";
+import { ShortcutHintBar } from "@/components/shortcut-hint-bar";
+import { beep } from "@/lib/feedback";
 import { Search, Plus, Minus, Trash2, ShoppingCart, CheckCircle, X, Package, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 
@@ -85,6 +88,7 @@ export default function POSPage() {
   const [showDraftDialog, setShowDraftDialog] = useState(false);
   const [draftData, setDraftData] = useState<any>(null);
   const draftSaved = useRef(false);
+  const searchRef = useRef<HTMLInputElement>(null);
 
   const qc = useQueryClient();
   const { data: searchResults } = useSearchProducts({ q: searchQuery }, { query: { enabled: searchQuery.length >= 1, queryKey: getSearchProductsQueryKey({ q: searchQuery }) } });
@@ -152,6 +156,7 @@ export default function POSPage() {
       }];
     });
     setSearchQuery("");
+    beep("add"); // one confirming blip for every add path (click, Enter, scan)
   };
 
   // Keyboard navigation for the search results (Arrow Up/Down + Enter).
@@ -167,7 +172,7 @@ export default function POSPage() {
     async (code) => {
       const p = await findProductByCode(code);
       if (p) addToCart(p);
-      else toast.error(`منتج غير موجود بالباركود: ${code}`);
+      else { beep("error"); toast.error(`منتج غير موجود بالباركود: ${code}`); }
     },
     { enabled: !showFinalizeDialog && !showDraftDialog },
   );
@@ -253,10 +258,12 @@ export default function POSPage() {
       // Stock, customer debt and dashboard all just changed — refresh caches so the
       // next search/customer view isn't stale for up to 30s.
       qc.invalidateQueries();
+      beep("success");
       toast.success(`تم إنشاء الفاتورة ${inv.serial} بنجاح`);
       setShowFinalizeDialog(false);
       clearCart();
     } catch (e: any) {
+      beep("error");
       toast.error(e.message || "خطأ أثناء إنشاء الفاتورة");
     }
   };
@@ -276,6 +283,30 @@ export default function POSPage() {
 
   const customers = customersData?.items || [];
   const craftsmen = craftsmenData?.items || [];
+
+  // Cross-platform cashier shortcuts. "mod" = ⌘ on macOS / Ctrl on Windows, so
+  // every binding works on both the dev Mac and the shop PC. Modifier + F-key
+  // combos fire even while a field is focused; plain "/" only when not typing.
+  const openFinalize = () => {
+    if (showFinalizeDialog || showDraftDialog) return;
+    if (cart.length === 0) { beep("warn"); toast.info("السلة فارغة"); return; }
+    setShowFinalizeDialog(true);
+  };
+  const hotkeys: Hotkey[] = [
+    { combo: "mod+k", label: "بحث", allowInInput: true, run: () => searchRef.current?.focus() },
+    { combo: "/", label: "بحث", run: () => searchRef.current?.focus() },
+    { combo: "f2", label: "إنهاء الفاتورة", allowInInput: true, run: openFinalize },
+    { combo: "mod+enter", label: "تأكيد", allowInInput: true, run: () => { if (showFinalizeDialog) handleFinalize(); else openFinalize(); } },
+    { combo: "mod+backspace", label: "مسح السلة", allowInInput: true, run: () => { if (cart.length) { clearCart(); beep("warn"); } } },
+  ];
+  useHotkeys(hotkeys);
+
+  const shortcutHints = [
+    { combo: "mod+k", label: "بحث" },
+    { combo: "f2", label: "إنهاء" },
+    { combo: "mod+enter", label: "تأكيد الدفع" },
+    { combo: "mod+backspace", label: "مسح السلة" },
+  ];
 
   return (
     <div className="flex gap-4 h-[calc(100vh-7rem)]">
@@ -335,6 +366,7 @@ export default function POSPage() {
             <div className="relative">
               <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
+                ref={searchRef}
                 className="pr-9"
                 placeholder="ابحث بالاسم أو الكود أو الباركود..."
                 value={searchQuery}
@@ -447,7 +479,7 @@ export default function POSPage() {
                     const unitNet = item.quantity > 0 ? item.total / item.quantity : item.sellingPrice;
                     const belowMin = item.minSellingPrice > 0 && unitNet < item.minSellingPrice;
                     return (
-                    <tr key={idx} className="border-b hover:bg-muted/30">
+                    <tr key={idx} className="border-b nav-hover">
                       <td className="p-3">
                         <p className="font-medium text-sm">{item.productName}</p>
                         <p className="text-xs text-muted-foreground">{item.sku}</p>
@@ -530,6 +562,7 @@ export default function POSPage() {
                 </Button>
               </div>
             </div>
+            <ShortcutHintBar items={shortcutHints} className="mt-3 border-t pt-3 no-print" />
           </CardContent>
         </Card>
       </div>

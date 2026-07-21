@@ -137,7 +137,7 @@ function CustomerProfile({ customerId, onClose }: { customerId: number; onClose:
               </thead>
               <tbody>
                 {invoices.map((inv: any) => (
-                  <tr key={inv.id} className="border-b hover:bg-muted/30">
+                  <tr key={inv.id} className="border-b nav-hover">
                     <td className="p-2 font-mono font-medium text-primary">{inv.serial}</td>
                     <td className="p-2 text-muted-foreground text-xs">{new Date(inv.createdAt).toLocaleDateString("ar-EG")}</td>
                     <td className="p-2">
@@ -181,7 +181,7 @@ function CustomerProfile({ customerId, onClose }: { customerId: number; onClose:
               </thead>
               <tbody>
                 {quotations.map((q: any) => (
-                  <tr key={q.id} className="border-b hover:bg-muted/30">
+                  <tr key={q.id} className="border-b nav-hover">
                     <td className="p-2 font-mono font-medium text-primary">{q.serial}</td>
                     <td className="p-2 text-muted-foreground text-xs">{new Date(q.createdAt).toLocaleDateString("ar-EG")}</td>
                     <td className="p-2">
@@ -282,6 +282,7 @@ export default function CustomersPage() {
     items: customers,
     onSelect: (c: any) => setSelectedId(c.id),
     resetKey: search,
+    highlightFirst: false, // full-page table: no row pre-selected until keyboard nav
   });
 
   return (
@@ -342,7 +343,7 @@ export default function CustomersPage() {
             <tbody>
               {isLoading ? <tr><td colSpan={5} className="p-8 text-center text-muted-foreground">جاري التحميل...</td></tr> :
                 customers.map((c: any, i: number) => (
-                  <tr key={c.id} {...getItemProps(i)} className={cn("border-b", activeIndex === i ? "nav-active" : "hover:bg-muted/30")}>
+                  <tr key={c.id} {...getItemProps(i)} className={cn("border-b", activeIndex === i ? "nav-active" : "nav-hover")}>
                     <td className="p-3 font-medium">{c.name}</td>
                     <td className="p-3 text-muted-foreground">{c.phone || "—"}</td>
                     <td className="p-3 text-muted-foreground">{c.area || "—"}</td>

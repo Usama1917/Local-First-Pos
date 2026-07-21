@@ -203,7 +203,7 @@ export default function ReportsPage() {
               </tr></thead>
               <tbody>
                 {best.map((p: any, i: number) => (
-                  <tr key={p.id} className="border-b hover:bg-muted/30">
+                  <tr key={p.id} className="border-b nav-hover">
                     <td className="p-3 text-muted-foreground font-bold">{i + 1}</td>
                     <td className="p-3 font-medium">{p.nameAr}</td>
                     <td className="p-3 text-muted-foreground">{p.categoryName || "—"}</td>
@@ -230,7 +230,7 @@ export default function ReportsPage() {
               </tr></thead>
               <tbody>
                 {commissions.map((c: any) => (
-                  <tr key={c.id} className="border-b hover:bg-muted/30">
+                  <tr key={c.id} className="border-b nav-hover">
                     <td className="p-3 font-medium">{c.name}</td>
                     <td className="p-3 text-muted-foreground">{c.jobType || "—"}</td>
                     <td className="p-3 text-center">{c.invoiceCount}</td>

@@ -255,7 +255,7 @@ export default function ReturnsPage() {
               {productSearch && productResults.length > 0 && (
                 <div className="absolute inset-x-0 top-full z-50 mt-1 max-h-72 overflow-y-auto rounded-md border bg-popover text-popover-foreground shadow-md">
                   {productResults.map((p: any, i: number) => (
-                    <div key={p.id} {...getItemProps(i)} className={cn("flex justify-between gap-2 p-2 cursor-pointer border-b last:border-b-0", activeIndex === i ? "nav-active" : "hover:bg-muted")} onClick={() => addNewItem(p)}>
+                    <div key={p.id} {...getItemProps(i)} className={cn("flex justify-between gap-2 p-2 cursor-pointer border-b last:border-b-0", activeIndex === i ? "nav-active" : "nav-hover")} onClick={() => addNewItem(p)}>
                       <span>{p.nameAr} <span className="text-xs text-muted-foreground">({p.sku})</span></span>
                       <span className="text-sm text-muted-foreground whitespace-nowrap">سعر: {formatCurrency(p.sellingPrice)}</span>
                     </div>
@@ -342,7 +342,7 @@ export default function ReturnsPage() {
           </thead>
           <tbody>
             {returns.map((r: any) => (
-              <tr key={r.id} className="border-b hover:bg-muted/30">
+              <tr key={r.id} className="border-b nav-hover">
                 <td className="p-3 font-mono font-medium text-primary">{r.serial}</td>
                 <td className="p-3"><Badge variant={r.type === "exchange" ? "default" : "secondary"}>{r.type === "exchange" ? "استبدال" : "مرتجع"}</Badge></td>
                 <td className="p-3 font-mono text-xs text-muted-foreground">{r.originalSerial || "—"}</td>

@@ -237,6 +237,7 @@ export default function SalesPage() {
     items: invoices,
     onSelect: (inv: any) => setSelectedId(inv.id),
     resetKey: search,
+    highlightFirst: false, // full-page table: no row pre-selected until keyboard nav
   });
 
   const handleDelete = async (id: number) => {
@@ -265,7 +266,8 @@ export default function SalesPage() {
     if (e.key !== "Enter") return;
     const code = search.trim();
     if (code && (await openInvoiceBySerial(code))) return;
-    if (invoices.length > 0) setSelectedId(invoices[Math.min(activeIndex, invoices.length - 1)]?.id);
+    // Only open a row via Enter if the arrow keys highlighted one (activeIndex ≥ 0).
+    if (invoices.length > 0 && activeIndex >= 0) setSelectedId(invoices[Math.min(activeIndex, invoices.length - 1)]?.id);
   };
 
   // Compose: Enter → serial lookup / open highlighted row; Arrow keys → move the highlight.
@@ -349,7 +351,7 @@ export default function SalesPage() {
             <tbody>
               {isLoading ? <tr><td colSpan={9} className="p-8 text-center text-muted-foreground">جاري التحميل...</td></tr> :
                 invoices.map((inv: any, i: number) => (
-                  <tr key={inv.id} {...getItemProps(i)} className={cn("border-b", activeIndex === i ? "nav-active" : "hover:bg-muted/30")}>
+                  <tr key={inv.id} {...getItemProps(i)} className={cn("border-b", activeIndex === i ? "nav-active" : "nav-hover")}>
                     <td className="p-3 font-mono font-medium text-primary">{inv.serial}</td>
                     <td className="p-3 text-muted-foreground">{new Date(inv.createdAt).toLocaleDateString("ar-EG")}</td>
                     <td className="p-3">{inv.customerName || <span className="text-muted-foreground">نقدي</span>}</td>

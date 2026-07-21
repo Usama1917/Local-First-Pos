@@ -386,6 +386,7 @@ export default function ProductsPage() {
     items: products,
     onSelect: (p: any) => openEdit(p),
     resetKey: search,
+    highlightFirst: false, // full-page table: no row pre-selected until keyboard nav
   });
 
   return (
@@ -423,7 +424,7 @@ export default function ProductsPage() {
                     const copies = Math.round(parseFloat(q.currentStock) || 0);
                     const willPrint = q.print !== false && q.barcode && copies >= 1;
                     return (
-                      <tr key={i} className={`border-b hover:bg-muted/30 ${q.print === false ? "opacity-50" : ""}`}>
+                      <tr key={i} className={`border-b nav-hover ${q.print === false ? "opacity-50" : ""}`}>
                         <td className="p-2 font-medium">{q.nameAr}</td>
                         <td className="p-2 font-mono text-xs">{q.barcode || <span className="text-muted-foreground">—</span>}</td>
                         <td className="p-2 text-left">{formatCurrency(parseFloat(q.sellingPrice) || 0)}</td>
@@ -529,7 +530,7 @@ export default function ProductsPage() {
                 {products.map((p: any, i: number) => {
                   const margin = p.sellingPrice && p.trueCost ? ((p.sellingPrice - p.trueCost) / p.sellingPrice * 100).toFixed(1) : "—";
                   return (
-                    <tr key={p.id} {...getItemProps(i)} className={cn("border-b cursor-pointer", activeIndex === i ? "nav-active" : "hover:bg-muted/30")} onClick={() => openEdit(p)}>
+                    <tr key={p.id} {...getItemProps(i)} className={cn("border-b cursor-pointer", activeIndex === i ? "nav-active" : "nav-hover")} onClick={() => openEdit(p)}>
                       <td className="p-3">
                         <p className="font-medium">{p.nameAr}</p>
                         {p.brandName && <p className="text-xs text-muted-foreground">{p.brandName}</p>}
