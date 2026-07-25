@@ -102,7 +102,7 @@ router.get("/dashboard/low-stock", (_req, res) => {
     LEFT JOIN suppliers s ON p.supplierId = s.id
     LEFT JOIN units u ON p.unitId = u.id
     WHERE p.isActive = 1 AND p.currentStock <= p.minStock
-    ORDER BY p.currentStock ASC LIMIT 20
+    ORDER BY p.currentStock ASC
   `).all();
   res.json(products);
 });

@@ -145,17 +145,17 @@ export default function Dashboard() {
           <CardHeader>
             <CardTitle className="text-destructive flex items-center gap-2">
               <AlertCircle className="h-5 w-5" />
-              نواقص المخزن
+              تنبيهات النفاذ
             </CardTitle>
           </CardHeader>
           <CardContent>
-             <div className="space-y-4">
+             <div className="space-y-4 max-h-[420px] overflow-y-auto pl-2">
               {isLowStockLoading ? (
                 <div className="text-center py-4 text-muted-foreground">جاري التحميل...</div>
               ) : lowStockProducts?.length === 0 ? (
                 <div className="text-center py-4 text-muted-foreground">جميع المنتجات متوفرة بالمخزن</div>
               ) : (
-                lowStockProducts?.slice(0, 5).map(product => (
+                lowStockProducts?.map(product => (
                   <div key={product.id} className="flex items-center justify-between p-2 border-b last:border-0">
                     <div>
                       <div className="font-medium text-sm truncate max-w-[200px]">{product.nameAr}</div>
