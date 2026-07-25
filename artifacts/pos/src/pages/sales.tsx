@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import { useSearch, useLocation } from "wouter";
 import {
   useListSalesInvoices,
   useGetSalesInvoice,
@@ -215,6 +216,19 @@ export default function SalesPage() {
   const [paymentFilter, setPaymentFilter] = useState("");
   const [craftsmanFilter, setCraftsmanFilter] = useState("");
   const [selectedId, setSelectedId] = useState<number | null>(null);
+
+  // Deep-link: /sales?open=<invoiceId> (e.g. clicking an invoice on the dashboard)
+  // opens that invoice's detail dialog, then strips the param so re-clicking the
+  // same invoice works again.
+  const searchString = useSearch();
+  const [, setLocation] = useLocation();
+  useEffect(() => {
+    const openId = new URLSearchParams(searchString).get("open");
+    if (openId) {
+      setSelectedId(Number(openId));
+      setLocation("/sales", { replace: true });
+    }
+  }, [searchString, setLocation]);
 
   const craftsmenParams = {};
   const { data: craftsmenData } = useListCraftsmen(craftsmenParams, { query: { queryKey: getListCraftsmenQueryKey(craftsmenParams) } });

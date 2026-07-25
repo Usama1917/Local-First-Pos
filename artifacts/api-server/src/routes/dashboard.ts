@@ -76,7 +76,7 @@ router.get("/dashboard/recent-invoices", (_req, res) => {
     LEFT JOIN customers c ON si.customerId = c.id
     LEFT JOIN craftsmen cr ON si.craftsmanId = cr.id
     WHERE si.status != 'draft'
-    ORDER BY si.createdAt DESC LIMIT 10
+    ORDER BY si.createdAt DESC
   `).all();
   res.json(invoices);
 });

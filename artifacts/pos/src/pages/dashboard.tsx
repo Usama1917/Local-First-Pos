@@ -111,14 +111,18 @@ export default function Dashboard() {
             <CardTitle>أحدث فواتير المبيعات</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
+            <div className="space-y-4 max-h-[420px] overflow-y-auto pl-2">
               {isInvoicesLoading ? (
                 <div className="text-center py-4 text-muted-foreground">جاري التحميل...</div>
               ) : recentInvoices?.length === 0 ? (
                 <div className="text-center py-4 text-muted-foreground">لا توجد فواتير مبيعات اليوم</div>
               ) : (
                 recentInvoices?.map(invoice => (
-                  <div key={invoice.id} className="flex items-center justify-between p-3 border rounded-lg bg-card nav-hover">
+                  <Link
+                    key={invoice.id}
+                    href={`/sales?open=${invoice.id}`}
+                    className="flex items-center justify-between p-3 border rounded-lg bg-card nav-hover cursor-pointer"
+                  >
                     <div className="flex items-center gap-4">
                       <div className="bg-primary/10 p-2 rounded-full">
                         <Receipt className="h-4 w-4 text-primary" />
@@ -134,7 +138,7 @@ export default function Dashboard() {
                         {invoice.paymentType === 'cash' ? 'نقدي' : invoice.paymentType === 'credit' ? 'آجل' : 'جزئي'}
                       </div>
                     </div>
-                  </div>
+                  </Link>
                 ))
               )}
             </div>

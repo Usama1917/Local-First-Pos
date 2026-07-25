@@ -16,7 +16,7 @@ import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { assignablePages } from "@/lib/pages";
-import { UserCog, Plus, Pencil, Trash2, Eye, EyeOff, ShieldCheck, KeyRound } from "lucide-react";
+import { Plus, Pencil, Trash2, Eye, EyeOff, ShieldCheck, KeyRound } from "lucide-react";
 import { toast } from "sonner";
 
 const ROLE_LABEL: Record<string, string> = { admin: "مدير", staff: "موظف", cashier: "موظف" };
@@ -213,8 +213,7 @@ export default function UsersPage() {
         {permsUser && <PermissionsDialog key={permsUser.id} user={permsUser} onClose={() => setPermsUser(null)} />}
       </Dialog>
 
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold flex items-center gap-2"><UserCog className="h-6 w-6" />المستخدمين</h1>
+      <div className="flex items-center justify-end">
         <Button onClick={openAdd}><Plus className="h-4 w-4 ml-2" />إضافة مستخدم</Button>
       </div>
 
