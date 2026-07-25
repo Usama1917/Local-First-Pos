@@ -309,6 +309,19 @@
   background-color: hsl(var(--nav-highlight) / 0.22);
 }
 
+/* Repeating shop-icon pattern painted behind the page content (over the
+   --background colour), fixed to the viewport so it stays calm/still while the
+   cards scroll. The pattern SVG is already low-contrast (neutral grey @ 0.19
+   opacity); cards sit on the opaque `bg-card` surface so their content stays
+   crisp on top of it. Applied to <main> in components/layout.tsx. */
+.page-pattern-bg {
+  background-image: url('/assets/pos-system-background-pattern.svg');
+  background-repeat: repeat;
+  background-size: 600px 350px;
+  background-position: top center;
+  background-attachment: fixed;
+}
+
 @media print {
   .no-print {
     display: none !important;
