@@ -24,4 +24,10 @@ export interface StockMovement {
   createdAt: string;
   /** @nullable */
   createdBy?: string | null;
+  /** @nullable */
+  sku?: string | null;
+  /** @nullable */
+  unitName?: string | null;
+  /** @nullable */
+  stockCountId?: number | null;
 }

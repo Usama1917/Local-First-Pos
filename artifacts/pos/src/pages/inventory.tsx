@@ -1,14 +1,18 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearch, useLocation } from "wouter";
 import {
   useListStockCounts,
   useCreateStockCount,
   useGetStockCount,
+  useUpdateStockCount,
   useFinalizeStockCount,
   useCreateStockAdjustment,
   useListStockMovements,
+  useGetUncountedStockSummary,
   getListStockCountsQueryKey,
   getGetStockCountQueryKey,
   getListStockMovementsQueryKey,
+  getGetUncountedStockSummaryQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,13 +23,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { formatCurrency } from "@/lib/format";
-import { Plus, ClipboardList, CheckCircle, Package, ArrowUp, ArrowDown } from "lucide-react";
+import { Plus, ClipboardList, CheckCircle, Package, ArrowUp, ArrowDown, Zap } from "lucide-react";
 import { toast } from "sonner";
 
 function StockCountDetail({ countId, onClose }: { countId: number; onClose: () => void }) {
   const qc = useQueryClient();
   const { data, isLoading } = useGetStockCount(countId, { query: { queryKey: getGetStockCountQueryKey(countId) } });
   const finalize = useFinalizeStockCount();
+  const saveCount = useUpdateStockCount();
   const count = data as any;
   const [localItems, setLocalItems] = useState<Record<number, number>>({});
 
@@ -33,13 +38,19 @@ function StockCountDetail({ countId, onClose }: { countId: number; onClose: () =
 
   const handleSaveAndFinalize = async () => {
     const updates = Object.entries(localItems).map(([pid, qty]) => ({ productId: Number(pid), countedQty: qty }));
-    if (updates.length > 0) {
-      // The GET already has count data, we just finalize
+    try {
+      // Persist the typed quantities BEFORE finalizing — finalize reads countedQty
+      // from the DB, so skipping this would silently count every line as "matches
+      // the system" and record no discrepancy at all.
+      if (updates.length > 0) await saveCount.mutateAsync({ id: countId, data: { items: updates } });
+      await finalize.mutateAsync({ id: countId });
+      // Stock, movements and the "not yet counted" backlog all just changed.
+      qc.invalidateQueries();
+      toast.success("تم إنهاء الجرد وتحديث المخزون");
+      onClose();
+    } catch (e: any) {
+      toast.error(e.message || "تعذّر إنهاء الجرد");
     }
-    await finalize.mutateAsync({ id: countId });
-    qc.invalidateQueries({ queryKey: getListStockCountsQueryKey() });
-    toast.success("تم إنهاء الجرد وتحديث المخزون");
-    onClose();
   };
 
   if (isLoading || !count) return <DialogContent><div className="p-8 text-center">جاري التحميل...</div></DialogContent>;
@@ -123,14 +134,32 @@ export default function InventoryPage() {
   const qc = useQueryClient();
   const { data, isLoading } = useListStockCounts({ query: { queryKey: getListStockCountsQueryKey() } });
   const { data: movements } = useListStockMovements({ limit: 50 }, { query: { queryKey: getListStockMovementsQueryKey({ limit: 50 }) } });
+  const { data: uncounted } = useGetUncountedStockSummary({ query: { queryKey: getGetUncountedStockSummaryQueryKey() } });
+  const pendingProducts = (uncounted as any)?.products || 0;
+
+  // Deep-link: /inventory?count=<id> opens that session (the dashboard's quick
+  // count button lands here), then strips the param so closing it stays closed.
+  const searchString = useSearch();
+  const [, setLocation] = useLocation();
+  useEffect(() => {
+    const id = new URLSearchParams(searchString).get("count");
+    if (id) {
+      setSelectedCountId(Number(id));
+      setLocation("/inventory", { replace: true });
+    }
+  }, [searchString, setLocation]);
   const createCount = useCreateStockCount();
   const createAdjustment = useCreateStockAdjustment();
 
-  const handleNewCount = async () => {
-    const r = await createCount.mutateAsync({ data: {} });
-    qc.invalidateQueries({ queryKey: getListStockCountsQueryKey() });
-    toast.success("تم إنشاء جلسة جرد جديدة");
-    setSelectedCountId((r as any).id);
+  const handleNewCount = async (scope?: "uncounted") => {
+    try {
+      const r = await createCount.mutateAsync({ data: scope ? { scope } : {} });
+      qc.invalidateQueries({ queryKey: getListStockCountsQueryKey() });
+      toast.success(scope ? "تم فتح جلسة جرد سريعة" : "تم إنشاء جلسة جرد جديدة");
+      setSelectedCountId((r as any).id);
+    } catch (e: any) {
+      toast.error(e.message || "تعذّر إنشاء الجلسة");
+    }
   };
 
   const handleAdjust = async () => {
@@ -162,7 +191,20 @@ export default function InventoryPage() {
         <h1 className="text-2xl font-bold">المخزن</h1>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => setShowAdjust(true)}>تعديل يدوي</Button>
-          <Button onClick={handleNewCount} disabled={createCount.isPending}>
+          <Button
+            onClick={() => handleNewCount("uncounted")}
+            disabled={createCount.isPending || pendingProducts === 0}
+            title={pendingProducts === 0
+              ? "لا توجد حركات مخزن تحتاج جرد"
+              : `جرد ${pendingProducts} منتج تحركوا ولسه ما اتجردوش`}
+          >
+            <Zap className="h-4 w-4 ml-2" />
+            جلسة جرد سريعة
+            {pendingProducts > 0 && (
+              <span className="mr-2 rounded-full bg-primary-foreground/20 px-1.5 text-xs">{pendingProducts}</span>
+            )}
+          </Button>
+          <Button variant="outline" onClick={() => handleNewCount()} disabled={createCount.isPending}>
             <Plus className="h-4 w-4 ml-2" />
             جلسة جرد جديدة
           </Button>

@@ -5,10 +5,13 @@
  * POS System API for Egyptian retail shop
  * OpenAPI spec version: 0.1.0
  */
+import type { StockCountInputScope } from './stockCountInputScope';
 import type { StockCountItemInput } from './stockCountItemInput';
 
 export interface StockCountInput {
   name?: string;
   notes?: string;
+  /** all (default) seeds every active product; uncounted seeds only the products that moved and haven't been verified since — the quick session. */
+  scope?: StockCountInputScope;
   items?: StockCountItemInput[];
 }

@@ -255,6 +255,10 @@ export function initializeSchema() {
       balanceAfter REAL NOT NULL DEFAULT 0,
       referenceType TEXT,
       referenceId INTEGER,
+      -- The stock count that reconciled this movement. NULL = the shop hasn't
+      -- verified this in/out against physical stock yet, which is what the quick
+      -- count session collects.
+      stockCountId INTEGER REFERENCES stock_counts(id),
       notes TEXT,
       createdBy TEXT,
       createdAt TEXT NOT NULL DEFAULT (datetime('now'))
@@ -262,6 +266,10 @@ export function initializeSchema() {
 
     CREATE INDEX IF NOT EXISTS idx_movements_product ON stock_movements(productId);
     CREATE INDEX IF NOT EXISTS idx_movements_type ON stock_movements(type);
+    -- NOTE: the index on stockCountId is created down in the migrations, not here.
+    -- On an existing DB this block is a no-op (CREATE TABLE IF NOT EXISTS), so the
+    -- column only appears after ensureColumn runs — indexing it here would throw
+    -- "no such column" and take the API down on boot.
 
     CREATE TABLE IF NOT EXISTS stock_counts (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -396,6 +404,31 @@ export function initializeSchema() {
   // Invoice amendment chain (see the CREATE TABLE comment above).
   ensureColumn("sales_invoices", "amendedFromId", "INTEGER");
   ensureColumn("sales_invoices", "amendedToId", "INTEGER");
+  // Which stock count reconciled a movement (NULL = not yet counted).
+  ensureColumn("stock_movements", "stockCountId", "INTEGER");
+  db.exec("CREATE INDEX IF NOT EXISTS idx_movements_uncounted ON stock_movements(stockCountId)");
+  backfillCountedMovements();
+}
+
+/**
+ * Attribute historical movements to the count that already reconciled them.
+ *
+ * Without this every movement ever recorded looks "not yet counted", so the first
+ * quick count session would drag in the shop's whole history. A finalized count
+ * verified physical stock at its finalizedAt, so everything it covered up to that
+ * moment is settled. Bounded by createdAt so it is idempotent — a movement made
+ * AFTER the last count can never be swept up by re-running this on boot.
+ */
+function backfillCountedMovements(): void {
+  const counts = db.prepare(
+    "SELECT id, finalizedAt FROM stock_counts WHERE status = 'finalized' AND finalizedAt IS NOT NULL ORDER BY finalizedAt ASC",
+  ).all() as any[];
+  const stamp = db.prepare(`
+    UPDATE stock_movements SET stockCountId = ?
+    WHERE stockCountId IS NULL AND createdAt <= ?
+      AND productId IN (SELECT productId FROM stock_count_items WHERE stockCountId = ?)
+  `);
+  for (const c of counts) stamp.run(c.id, c.finalizedAt, c.id);
 
   // Audit trail: who created / last modified each transactional record. `createdBy`
   // exists in the CREATE TABLE definitions but pre-existing installs need the ALTER;

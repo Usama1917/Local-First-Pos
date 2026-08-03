@@ -1377,6 +1377,10 @@ paths:
         - { name: type, in: query, schema: { type: string } }
         - { name: dateFrom, in: query, schema: { type: string } }
         - { name: dateTo, in: query, schema: { type: string } }
+        - name: uncounted
+          in: query
+          schema: { type: boolean }
+          description: Only movements no stock count has reconciled yet.
         - { name: page, in: query, schema: { type: integer } }
         - { name: limit, in: query, schema: { type: integer } }
       responses:
@@ -1386,6 +1390,18 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/StockMovementsPage"
+  /stock/uncounted-summary:
+    get:
+      operationId: getUncountedStockSummary
+      tags: [stock]
+      summary: How much stock movement is still waiting to be counted
+      responses:
+        "200":
+          description: Uncounted totals
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UncountedStockSummary"
   /stock/adjustment:
     post:
       operationId: createStockAdjustment
@@ -2010,6 +2026,15 @@ components:
         notes: { type: ["string", "null"] }
         createdAt: { type: string }
         createdBy: { type: ["string", "null"] }
+        sku: { type: ["string", "null"] }
+        unitName: { type: ["string", "null"] }
+        stockCountId: { type: ["integer", "null"] }
+    UncountedStockSummary:
+      type: object
+      required: [movements, products]
+      properties:
+        movements: { type: integer }
+        products: { type: integer }
     StockMovementsPage:
       type: object
       required: [items, total]
@@ -2871,6 +2896,12 @@ components:
       properties:
         name: { type: string }
         notes: { type: string }
+        scope:
+          type: string
+          enum: [all, uncounted]
+          description: >-
+            all (default) seeds every active product; uncounted seeds only the
+            products that moved and haven't been verified since — the quick session.
         items:
           type: array
           items:

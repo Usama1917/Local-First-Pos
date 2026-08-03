@@ -11,6 +11,10 @@ productId?: number;
 type?: string;
 dateFrom?: string;
 dateTo?: string;
+/**
+ * Only movements no stock count has reconciled yet.
+ */
+uncounted?: boolean;
 page?: number;
 limit?: number;
 };

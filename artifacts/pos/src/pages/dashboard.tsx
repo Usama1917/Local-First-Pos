@@ -6,14 +6,37 @@ import {
   useGetRecentQuotations,
   getGetRecentQuotationsQueryKey,
   useGetLowStockProducts,
-  getGetLowStockProductsQueryKey
+  getGetLowStockProductsQueryKey,
+  useGetUncountedStockSummary,
+  getGetUncountedStockSummaryQueryKey,
+  useListStockMovements,
+  getListStockMovementsQueryKey,
+  useCreateStockCount,
+  getListStockCountsQueryKey,
 } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { formatCurrency, formatNumber } from "@/lib/format";
-import { Link } from "wouter";
-import { Receipt, FileText, Package, ShoppingCart, TrendingUp, AlertCircle, Clock, PlusCircle } from "lucide-react";
+import { Link, useLocation } from "wouter";
+import { Receipt, FileText, Package, ShoppingCart, TrendingUp, AlertCircle, Clock, PlusCircle, Zap, ArrowUp, ArrowDown } from "lucide-react";
+import { toast } from "sonner";
+
+const MOVE_LABELS: Record<string, string> = {
+  sale: "بيع", purchase: "شراء", opening: "افتتاحي", adjustment: "تعديل",
+  return: "مرتجع", count_positive: "جرد زيادة", count_negative: "جرد نقص",
+};
+
+/** SQLite stores datetime('now') as UTC "YYYY-MM-DD HH:MM:SS" — read it as UTC, show local. */
+const fmtWhen = (v?: string | null) => {
+  if (!v) return "—";
+  const d = new Date(v.includes("T") ? v : v.replace(" ", "T") + "Z");
+  return isNaN(d.getTime()) ? v : d.toLocaleString("ar-EG", { dateStyle: "short", timeStyle: "short" });
+};
 
 export default function Dashboard() {
+  const qc = useQueryClient();
+  const [, setLocation] = useLocation();
   const { data: summary, isLoading: isSummaryLoading } = useGetDashboardSummary({
     query: { queryKey: getGetDashboardSummaryQueryKey() }
   });
@@ -30,11 +53,49 @@ export default function Dashboard() {
     query: { queryKey: getGetLowStockProductsQueryKey() }
   });
 
+  // Stock that moved in or out and hasn't been verified against the shelf yet.
+  const { data: uncounted } = useGetUncountedStockSummary({
+    query: { queryKey: getGetUncountedStockSummaryQueryKey() }
+  });
+  const uncountedParams = { uncounted: true, limit: 100 };
+  const { data: pendingMoves, isLoading: isMovesLoading } = useListStockMovements(uncountedParams, {
+    query: { queryKey: getListStockMovementsQueryKey(uncountedParams) }
+  });
+  const createCount = useCreateStockCount();
+
+  const pendingProducts = (uncounted as any)?.products || 0;
+  const moves: any[] = (pendingMoves as any)?.items || [];
+
+  const startQuickCount = async () => {
+    try {
+      const r = await createCount.mutateAsync({ data: { scope: "uncounted" } });
+      qc.invalidateQueries({ queryKey: getListStockCountsQueryKey() });
+      toast.success("تم فتح جلسة جرد سريعة");
+      setLocation(`/inventory?count=${(r as any).id}`);
+    } catch (e: any) {
+      toast.error(e.message || "تعذّر فتح الجلسة");
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold tracking-tight">لوحة التحكم</h1>
         <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={startQuickCount}
+            disabled={createCount.isPending || pendingProducts === 0}
+            title={pendingProducts === 0
+              ? "لا توجد حركات مخزن تحتاج جرد"
+              : `جرد ${pendingProducts} منتج تحركوا ولسه ما اتجردوش`}
+          >
+            <Zap className="h-4 w-4 ml-2" />
+            جلسة جرد سريعة
+            {pendingProducts > 0 && (
+              <span className="mr-2 rounded-full bg-muted px-1.5 text-xs">{pendingProducts}</span>
+            )}
+          </Button>
           <Link href="/pos" className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 gap-2">
             <ShoppingCart className="h-4 w-4" />
             فاتورة مبيعات جديدة
@@ -176,6 +237,84 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Stock that moved but hasn't been verified against the shelf yet — the
+          backlog the quick count session clears. */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <Package className="h-5 w-5" />
+              حركات المخزن
+            </CardTitle>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {moves.length === 0
+                ? "كل الحركات متجردة"
+                : `${formatNumber(moves.length)} حركة على ${formatNumber(pendingProducts)} منتج لسه ما اتجردتش`}
+            </p>
+          </div>
+          {pendingProducts > 0 && (
+            <Button size="sm" onClick={startQuickCount} disabled={createCount.isPending}>
+              <Zap className="h-4 w-4 ml-2" />
+              جرد سريع
+            </Button>
+          )}
+        </CardHeader>
+        <CardContent className="p-0">
+          <div className="max-h-[360px] overflow-y-auto">
+            {isMovesLoading ? (
+              <div className="py-8 text-center text-muted-foreground">جاري التحميل...</div>
+            ) : moves.length === 0 ? (
+              <div className="py-8 text-center text-muted-foreground">
+                <Package className="mx-auto mb-2 h-10 w-10 opacity-30" />
+                مفيش حركات مخزن مستنية جرد
+              </div>
+            ) : (
+              <table className="w-full text-sm">
+                <thead className="sticky top-0 bg-muted/50">
+                  <tr className="text-right">
+                    <th className="p-3">المنتج</th>
+                    <th className="p-3">الحركة</th>
+                    <th className="p-3 text-center">الكمية</th>
+                    <th className="p-3 text-center">الرصيد قبل ← بعد</th>
+                    <th className="p-3">المستند</th>
+                    <th className="p-3">التاريخ</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {moves.map((m) => {
+                    // balanceAfter − balanceBefore is the signed truth; `quantity` is stored absolute.
+                    const delta = (m.balanceAfter ?? 0) - (m.balanceBefore ?? 0);
+                    const isIn = delta >= 0;
+                    return (
+                      <tr key={m.id} className="border-b nav-hover">
+                        <td className="p-3">
+                          <div className="font-medium">{m.productName || `#${m.productId}`}</div>
+                          <div className="text-xs text-muted-foreground">{m.sku}</div>
+                        </td>
+                        <td className="p-3">
+                          <span className={`inline-flex items-center gap-1 text-xs ${isIn ? "text-emerald-600 dark:text-emerald-400" : "text-destructive"}`}>
+                            {isIn ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
+                            {MOVE_LABELS[m.type] || m.type}
+                          </span>
+                        </td>
+                        <td className={`p-3 text-center font-semibold ${isIn ? "text-emerald-600 dark:text-emerald-400" : "text-destructive"}`}>
+                          {isIn ? "+" : "−"}{formatNumber(Math.abs(delta))}{m.unitName ? ` ${m.unitName}` : ""}
+                        </td>
+                        <td className="p-3 text-center text-muted-foreground">
+                          {formatNumber(m.balanceBefore)} ← {formatNumber(m.balanceAfter)}
+                        </td>
+                        <td className="p-3 text-xs text-muted-foreground">{m.notes || "—"}</td>
+                        <td className="p-3 text-xs text-muted-foreground">{fmtWhen(m.createdAt)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

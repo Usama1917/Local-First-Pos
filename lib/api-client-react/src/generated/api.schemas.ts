@@ -270,6 +270,17 @@ export interface StockMovement {
   createdAt: string;
   /** @nullable */
   createdBy?: string | null;
+  /** @nullable */
+  sku?: string | null;
+  /** @nullable */
+  unitName?: string | null;
+  /** @nullable */
+  stockCountId?: number | null;
+}
+
+export interface UncountedStockSummary {
+  movements: number;
+  products: number;
 }
 
 export interface StockMovementsPage {
@@ -1180,6 +1191,17 @@ export interface StockCountDetail {
   finalizedAt?: string | null;
 }
 
+/**
+ * all (default) seeds every active product; uncounted seeds only the products that moved and haven't been verified since — the quick session.
+ */
+export type StockCountInputScope = typeof StockCountInputScope[keyof typeof StockCountInputScope];
+
+
+export const StockCountInputScope = {
+  all: 'all',
+  uncounted: 'uncounted',
+} as const;
+
 export interface StockCountItemInput {
   productId: number;
   countedQty: number;
@@ -1189,6 +1211,8 @@ export interface StockCountItemInput {
 export interface StockCountInput {
   name?: string;
   notes?: string;
+  /** all (default) seeds every active product; uncounted seeds only the products that moved and haven't been verified since — the quick session. */
+  scope?: StockCountInputScope;
   items?: StockCountItemInput[];
 }
 
@@ -1420,6 +1444,10 @@ productId?: number;
 type?: string;
 dateFrom?: string;
 dateTo?: string;
+/**
+ * Only movements no stock count has reconciled yet.
+ */
+uncounted?: boolean;
 page?: number;
 limit?: number;
 };

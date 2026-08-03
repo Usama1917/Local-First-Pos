@@ -631,7 +631,10 @@ export const GetProductMovementsResponseItem = zod.object({
   "referenceId": zod.number().nullish(),
   "notes": zod.string().nullish(),
   "createdAt": zod.string(),
-  "createdBy": zod.string().nullish()
+  "createdBy": zod.string().nullish(),
+  "sku": zod.string().nullish(),
+  "unitName": zod.string().nullish(),
+  "stockCountId": zod.number().nullish()
 })
 export const GetProductMovementsResponse = zod.array(GetProductMovementsResponseItem)
 
@@ -2180,6 +2183,7 @@ export const ListStockMovementsQueryParams = zod.object({
   "type": zod.coerce.string().optional(),
   "dateFrom": zod.coerce.string().optional(),
   "dateTo": zod.coerce.string().optional(),
+  "uncounted": zod.coerce.boolean().optional().describe('Only movements no stock count has reconciled yet.'),
   "page": zod.coerce.number().optional(),
   "limit": zod.coerce.number().optional()
 })
@@ -2197,9 +2201,21 @@ export const ListStockMovementsResponse = zod.object({
   "referenceId": zod.number().nullish(),
   "notes": zod.string().nullish(),
   "createdAt": zod.string(),
-  "createdBy": zod.string().nullish()
+  "createdBy": zod.string().nullish(),
+  "sku": zod.string().nullish(),
+  "unitName": zod.string().nullish(),
+  "stockCountId": zod.number().nullish()
 })),
   "total": zod.number()
+})
+
+
+/**
+ * @summary How much stock movement is still waiting to be counted
+ */
+export const GetUncountedStockSummaryResponse = zod.object({
+  "movements": zod.number(),
+  "products": zod.number()
 })
 
 
@@ -2235,6 +2251,7 @@ export const ListStockCountsResponse = zod.array(ListStockCountsResponseItem)
 export const CreateStockCountBody = zod.object({
   "name": zod.string().optional(),
   "notes": zod.string().optional(),
+  "scope": zod.enum(['all', 'uncounted']).optional().describe('all (default) seeds every active product; uncounted seeds only the products that moved and haven\'t been verified since — the quick session.'),
   "items": zod.array(zod.object({
   "productId": zod.number(),
   "countedQty": zod.number(),

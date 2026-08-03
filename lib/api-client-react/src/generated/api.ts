@@ -116,6 +116,7 @@ import type {
   SupplierProfile,
   SupplierUpdate,
   SuppliersPage,
+  UncountedStockSummary,
   Unit,
   UnitInput,
   UnitUpdate,
@@ -6463,6 +6464,83 @@ export function useListStockMovements<TData = Awaited<ReturnType<typeof listStoc
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getListStockMovementsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetUncountedStockSummaryUrl = () => {
+
+
+
+
+  return `/api/stock/uncounted-summary`
+}
+
+/**
+ * @summary How much stock movement is still waiting to be counted
+ */
+export const getUncountedStockSummary = async ( options?: RequestInit): Promise<UncountedStockSummary> => {
+
+  return customFetch<UncountedStockSummary>(getGetUncountedStockSummaryUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetUncountedStockSummaryQueryKey = () => {
+    return [
+    `/api/stock/uncounted-summary`
+    ] as const;
+    }
+
+
+export const getGetUncountedStockSummaryQueryOptions = <TData = Awaited<ReturnType<typeof getUncountedStockSummary>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getUncountedStockSummary>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetUncountedStockSummaryQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getUncountedStockSummary>>> = ({ signal }) => getUncountedStockSummary({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getUncountedStockSummary>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetUncountedStockSummaryQueryResult = NonNullable<Awaited<ReturnType<typeof getUncountedStockSummary>>>
+export type GetUncountedStockSummaryQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary How much stock movement is still waiting to be counted
+ */
+
+export function useGetUncountedStockSummary<TData = Awaited<ReturnType<typeof getUncountedStockSummary>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getUncountedStockSummary>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetUncountedStockSummaryQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 
