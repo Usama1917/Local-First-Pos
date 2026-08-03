@@ -358,6 +358,18 @@ export interface SalesInvoice {
   updatedAt?: string;
   /** @nullable */
   updatedBy?: string | null;
+  /** @nullable */
+  amendedFromId?: number | null;
+  /** @nullable */
+  amendedFromSerial?: string | null;
+  /** @nullable */
+  amendedFromBy?: string | null;
+  /** @nullable */
+  amendedFromAt?: string | null;
+  /** @nullable */
+  amendedToId?: number | null;
+  /** @nullable */
+  amendedToSerial?: string | null;
 }
 
 export interface CustomerProfile {
@@ -646,6 +658,10 @@ export interface InvoiceItem {
   total: number;
   /** @nullable */
   notes?: string | null;
+  /** @nullable */
+  minSellingPrice?: number | null;
+  /** @nullable */
+  soldByWeight?: number | null;
 }
 
 export interface InvoiceItemInput {
@@ -803,6 +819,42 @@ export interface SalesInvoiceDetail {
   createdBy?: string | null;
   /** @nullable */
   updatedBy?: string | null;
+  /** @nullable */
+  amendedFromId?: number | null;
+  /** @nullable */
+  amendedFromSerial?: string | null;
+  /** @nullable */
+  amendedFromBy?: string | null;
+  /** @nullable */
+  amendedFromAt?: string | null;
+  /** @nullable */
+  amendedToId?: number | null;
+  /** @nullable */
+  amendedToSerial?: string | null;
+}
+
+/**
+ * cash = the difference changes hands now; account = it lands on the customer's balance.
+ */
+export type SalesInvoiceAmendInputSettlement = typeof SalesInvoiceAmendInputSettlement[keyof typeof SalesInvoiceAmendInputSettlement];
+
+
+export const SalesInvoiceAmendInputSettlement = {
+  cash: 'cash',
+  account: 'account',
+} as const;
+
+/**
+ * Corrected contents of a closed invoice. Supersedes it: the original is marked "amended" and a replacement is created with these lines. The difference against what was already paid is settled per `settlement`.
+ */
+export interface SalesInvoiceAmendInput {
+  customerId?: number;
+  craftsmanId?: number;
+  items: InvoiceItemInput[];
+  discount?: number;
+  notes?: string;
+  /** cash = the difference changes hands now; account = it lands on the customer's balance. */
+  settlement?: SalesInvoiceAmendInputSettlement;
 }
 
 export type SalesInvoiceInputPaymentType = typeof SalesInvoiceInputPaymentType[keyof typeof SalesInvoiceInputPaymentType];

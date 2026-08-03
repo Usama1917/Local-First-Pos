@@ -24,7 +24,7 @@ router.get("/reports/sales", (req, res) => {
       COALESCE(SUM(remainingAmount), 0) as totalCredit,
       COALESCE(SUM(discount), 0) as totalDiscount
     FROM sales_invoices
-    WHERE status NOT IN ('draft','cancelled') AND date(createdAt) BETWEEN ? AND ?
+    WHERE status NOT IN ('draft','cancelled','amended') AND date(createdAt) BETWEEN ? AND ?
   `).get(from, to) as any;
 
   // Returns/exchanges adjust net sales and cash: netAmount is negative for a pure
@@ -52,7 +52,7 @@ router.get("/reports/sales", (req, res) => {
       COALESCE(SUM(total), 0) as sales,
       COALESCE(SUM(paidAmount), 0) as cash
     FROM sales_invoices
-    WHERE status NOT IN ('draft','cancelled') AND date(createdAt) BETWEEN ? AND ?
+    WHERE status NOT IN ('draft','cancelled','amended') AND date(createdAt) BETWEEN ? AND ?
     GROUP BY date(createdAt) ORDER BY date ASC
   `).all(from, to);
 
@@ -63,7 +63,7 @@ router.get("/reports/sales", (req, res) => {
     JOIN products p ON sii.productId = p.id
     LEFT JOIN categories c ON p.categoryId = c.id
     JOIN sales_invoices si ON sii.invoiceId = si.id
-    WHERE si.status NOT IN ('draft','cancelled') AND date(si.createdAt) BETWEEN ? AND ?
+    WHERE si.status NOT IN ('draft','cancelled','amended') AND date(si.createdAt) BETWEEN ? AND ?
     GROUP BY p.categoryId ORDER BY sales DESC
   `).all(from, to);
 
@@ -109,7 +109,7 @@ router.get("/reports/best-sellers", (req, res) => {
     JOIN products p ON sii.productId = p.id
     LEFT JOIN categories c ON p.categoryId = c.id
     JOIN sales_invoices si ON sii.invoiceId = si.id
-    WHERE si.status NOT IN ('draft','cancelled') AND date(si.createdAt) BETWEEN ? AND ?
+    WHERE si.status NOT IN ('draft','cancelled','amended') AND date(si.createdAt) BETWEEN ? AND ?
     GROUP BY p.id ORDER BY totalQty DESC LIMIT ?
   `).all(from, to, Number(limit));
   res.json(items);
@@ -152,7 +152,7 @@ router.get("/reports/craftsman-commission", (req, res) => {
       COALESCE(SUM(si.craftsmanCommission), 0) as totalCommission
     FROM craftsmen cr
     LEFT JOIN sales_invoices si ON si.craftsmanId = cr.id
-      AND si.status NOT IN ('draft','cancelled')
+      AND si.status NOT IN ('draft','cancelled','amended')
       AND date(si.createdAt) BETWEEN ? AND ?
     GROUP BY cr.id
     HAVING cr.isActive = 1 OR COUNT(si.id) > 0

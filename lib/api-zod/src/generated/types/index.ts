@@ -103,6 +103,8 @@ export * from './returnSettlementType';
 export * from './returnsPage';
 export * from './returnType';
 export * from './salesInvoice';
+export * from './salesInvoiceAmendInput';
+export * from './salesInvoiceAmendInputSettlement';
 export * from './salesInvoiceDetail';
 export * from './salesInvoiceInput';
 export * from './salesInvoiceInputPaymentType';

@@ -20,15 +20,25 @@ export interface AuditInfoProps {
   createdAt?: string | null;
   updatedBy?: string | null;
   updatedAt?: string | null;
+  /** Serial of the document this one replaced (an amended invoice) — when set, the
+   *  popover also credits whoever made that original, so both hands are visible. */
+  originSerial?: string | null;
+  originBy?: string | null;
+  originAt?: string | null;
 }
 
 /**
  * A small "i" button that reveals who created (and, if different, who last modified)
  * a record and when. Used next to transactional rows (invoices, returns, purchases,
  * quotations, payments, payouts …). Renders nothing if there's no audit data.
+ *
+ * For an invoice that superseded an earlier one, the record was authored by the
+ * person who made the EDIT, so the first block is relabelled and the original
+ * invoice's author is shown underneath it.
  */
-export function AuditInfo({ createdBy, createdAt, updatedBy, updatedAt }: AuditInfoProps) {
+export function AuditInfo({ createdBy, createdAt, updatedBy, updatedAt, originSerial, originBy, originAt }: AuditInfoProps) {
   if (!createdBy && !createdAt && !updatedBy && !updatedAt) return null;
+  const isAmendment = !!originSerial;
 
   // Only show the "last modified" block when it's a real, later edit by/at a
   // different user/time than the creation.
@@ -48,10 +58,19 @@ export function AuditInfo({ createdBy, createdAt, updatedBy, updatedAt }: AuditI
       </PopoverTrigger>
       <PopoverContent align="start" className="w-64 space-y-3 text-sm" onClick={(e) => e.stopPropagation()}>
         <div className="space-y-0.5">
-          <p className="text-xs text-muted-foreground">أنشأها</p>
+          <p className="text-xs text-muted-foreground">{isAmendment ? "عمل التعديل" : "أنشأها"}</p>
           <p className="font-semibold">{createdBy || "غير معروف"}</p>
           <p className="text-xs text-muted-foreground">{fmtDateTime(createdAt)}</p>
         </div>
+        {isAmendment && (
+          <div className="space-y-0.5 border-t pt-2">
+            <p className="text-xs text-muted-foreground">
+              الفاتورة الأصلية <span className="font-mono">{originSerial}</span> — أنشأها
+            </p>
+            <p className="font-semibold">{originBy || "غير معروف"}</p>
+            <p className="text-xs text-muted-foreground">{fmtDateTime(originAt)}</p>
+          </div>
+        )}
         {wasEdited && (
           <div className="space-y-0.5 border-t pt-2">
             <p className="text-xs text-muted-foreground">آخر تعديل</p>

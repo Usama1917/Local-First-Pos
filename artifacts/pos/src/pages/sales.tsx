@@ -18,7 +18,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle, DialogClose } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { AuditInfo } from "@/components/ui/audit-info";
@@ -28,7 +28,7 @@ import { useListKeyboardNav } from "@/hooks/use-list-keyboard-nav";
 import { useBarcodeScanner } from "@/hooks/use-barcode-scanner";
 import { printInvoice } from "@/lib/print-invoice";
 import { PRINT_FORMATS, normalizeFormat } from "@/lib/print-document";
-import { Search, Printer, Receipt, Eye, HardHat, ChevronDown } from "lucide-react";
+import { Search, Printer, Receipt, Eye, HardHat, ChevronDown, Pencil, X } from "lucide-react";
 import { toast } from "sonner";
 
 const STATUS_LABELS: Record<string, { label: string; variant: any }> = {
@@ -38,7 +38,13 @@ const STATUS_LABELS: Record<string, { label: string; variant: any }> = {
   paid: { label: "مدفوعة", variant: "default" },
   credit: { label: "آجل", variant: "destructive" },
   cancelled: { label: "ملغية", variant: "secondary" },
+  amended: { label: "معدّلة", variant: "secondary" },
 };
+
+/** A closed, live invoice can be superseded by a corrected one. Drafts are edited
+ *  in place, and cancelled/already-amended invoices are frozen history. */
+const canAmend = (inv: any) =>
+  ["finalized", "partially_paid", "credit", "paid"].includes(inv.status) && !inv.amendedToId;
 const PAYMENT_LABELS: Record<string, string> = { cash: "نقدي", credit: "آجل", partial: "جزئي" };
 
 function Barcode({ value }: { value: string }) {
@@ -85,10 +91,24 @@ function InvoiceDetail({ invoiceId }: { invoiceId: number }) {
   const totalDiscount = itemsDiscount + (inv.discount || 0);
 
   return (
-    <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto gap-0 p-0">
+    // hideClose: the pinned corner ✕ sits on top of the right-aligned title in
+    // RTL, so this dialog carries its own close button in the toolbar instead.
+    <DialogContent hideClose className="max-w-3xl max-h-[90vh] overflow-y-auto gap-0 p-0">
       {/* Toolbar — not printed */}
-      <div className="no-print flex items-center justify-between border-b px-6 py-3">
-        <DialogTitle>فاتورة {inv.serial}</DialogTitle>
+      <div className="no-print flex items-center justify-between gap-3 border-b px-6 py-3">
+        {/* Close sits first so RTL puts it in the far-right corner, and being in
+            the flex flow it can't land on top of the title the way the pinned
+            `absolute right-4` one did. */}
+        <div className="flex items-center gap-2">
+          <DialogClose asChild>
+            <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" title="إغلاق">
+              <X className="h-4 w-4" />
+              <span className="sr-only">إغلاق</span>
+            </Button>
+          </DialogClose>
+          <DialogTitle>فاتورة {inv.serial}</DialogTitle>
+        </div>
+        <div className="flex items-center gap-2">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" size="sm">
@@ -111,6 +131,7 @@ function InvoiceDetail({ invoiceId }: { invoiceId: number }) {
             ))}
           </DropdownMenuContent>
         </DropdownMenu>
+        </div>
       </div>
 
       {/* Printable invoice document */}
@@ -143,6 +164,20 @@ function InvoiceDetail({ invoiceId }: { invoiceId: number }) {
           </div>
           <div><span className="text-muted-foreground">التاريخ:</span> <span className="font-medium">{new Date(inv.createdAt).toLocaleDateString("ar-EG")}</span></div>
           <div><span className="text-muted-foreground">طريقة الدفع:</span> <span>{PAYMENT_LABELS[inv.paymentType] || inv.paymentType}</span></div>
+          {/* Amendment chain — printed too, so a customer holding either copy can
+              tell which one is the valid invoice. */}
+          {inv.amendedFromSerial && (
+            <div className="col-span-2">
+              <span className="text-muted-foreground">تعديل للفاتورة:</span>{" "}
+              <span className="font-mono font-semibold">{inv.amendedFromSerial}</span>
+            </div>
+          )}
+          {inv.amendedToSerial && (
+            <div className="col-span-2 font-semibold text-destructive">
+              هذه الفاتورة تم تعديلها — الفاتورة السارية هي{" "}
+              <span className="font-mono">{inv.amendedToSerial}</span>
+            </div>
+          )}
         </div>
 
         {/* Line items */}
@@ -366,7 +401,20 @@ export default function SalesPage() {
               {isLoading ? <tr><td colSpan={9} className="p-8 text-center text-muted-foreground">جاري التحميل...</td></tr> :
                 invoices.map((inv: any, i: number) => (
                   <tr key={inv.id} {...getItemProps(i)} className={cn("border-b", activeIndex === i ? "nav-active" : "nav-hover")}>
-                    <td className="p-3 font-mono font-medium text-primary">{inv.serial}</td>
+                    <td className="p-3 font-mono font-medium text-primary">
+                      {inv.serial}
+                      {/* The amendment chain, readable from either row. */}
+                      {inv.amendedToSerial && (
+                        <span className="block font-sans text-[11px] text-muted-foreground">
+                          استُبدلت بـ <span className="font-mono">{inv.amendedToSerial}</span>
+                        </span>
+                      )}
+                      {inv.amendedFromSerial && (
+                        <span className="block font-sans text-[11px] text-amber-700 dark:text-amber-400">
+                          تعديل لـ <span className="font-mono">{inv.amendedFromSerial}</span>
+                        </span>
+                      )}
+                    </td>
                     <td className="p-3 text-muted-foreground">{new Date(inv.createdAt).toLocaleDateString("ar-EG")}</td>
                     <td className="p-3">{inv.customerName || <span className="text-muted-foreground">نقدي</span>}</td>
                     <td className="p-3">
@@ -379,12 +427,34 @@ export default function SalesPage() {
                     <td className="p-3 text-left font-semibold">{formatCurrency(inv.total)}</td>
                     <td className="p-3 text-left">{inv.remainingAmount > 0 ? <span className="text-destructive font-semibold">{formatCurrency(inv.remainingAmount)}</span> : <span className="text-emerald-600 dark:text-emerald-400">مسدد</span>}</td>
                     <td className="p-3">
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center justify-end gap-1">
                         <Button variant="ghost" size="sm" onClick={() => setSelectedId(inv.id)}>
                           <Eye className="h-4 w-4 ml-1" /> عرض
                         </Button>
+                        {/* Always rendered — hidden rather than dropped on rows that
+                            can't be amended, so the action buttons stay in the same
+                            column instead of sliding across from row to row. */}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          title="فتح الفاتورة في الكاشير للتعديل"
+                          onClick={() => setLocation(`/pos?amend=${inv.id}`)}
+                          className={cn(!canAmend(inv) && "invisible pointer-events-none")}
+                          aria-hidden={!canAmend(inv)}
+                          tabIndex={canAmend(inv) ? undefined : -1}
+                        >
+                          <Pencil className="h-4 w-4 ml-1" /> تعديل
+                        </Button>
                         <DeleteButton entity="sales" id={inv.id} label={`الفاتورة ${inv.serial}`} onDelete={() => handleDelete(inv.id)} />
-                        <AuditInfo createdBy={inv.createdBy} createdAt={inv.createdAt} updatedBy={inv.updatedBy} updatedAt={inv.updatedAt} />
+                        <AuditInfo
+                          createdBy={inv.createdBy}
+                          createdAt={inv.createdAt}
+                          updatedBy={inv.updatedBy}
+                          updatedAt={inv.updatedAt}
+                          originSerial={inv.amendedFromSerial}
+                          originBy={inv.amendedFromBy}
+                          originAt={inv.amendedFromAt}
+                        />
                       </div>
                     </td>
                   </tr>

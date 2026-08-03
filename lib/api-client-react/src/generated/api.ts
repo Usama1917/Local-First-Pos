@@ -93,6 +93,7 @@ import type {
   ReturnReceipt,
   ReturnsPage,
   SalesInvoice,
+  SalesInvoiceAmendInput,
   SalesInvoiceDetail,
   SalesInvoiceInput,
   SalesInvoiceUpdate,
@@ -5356,6 +5357,78 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getCancelSalesInvoiceMutationOptions(options));
+    }
+
+export const getAmendSalesInvoiceUrl = (id: number,) => {
+
+
+
+
+  return `/api/sales/${id}/amend`
+}
+
+/**
+ * @summary Supersede a closed invoice with a corrected one
+ */
+export const amendSalesInvoice = async (id: number,
+    salesInvoiceAmendInput: SalesInvoiceAmendInput, options?: RequestInit): Promise<SalesInvoiceDetail> => {
+
+  return customFetch<SalesInvoiceDetail>(getAmendSalesInvoiceUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      salesInvoiceAmendInput,)
+  }
+);}
+
+
+
+
+export const getAmendSalesInvoiceMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof amendSalesInvoice>>, TError,{id: number;data: BodyType<SalesInvoiceAmendInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof amendSalesInvoice>>, TError,{id: number;data: BodyType<SalesInvoiceAmendInput>}, TContext> => {
+
+const mutationKey = ['amendSalesInvoice'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof amendSalesInvoice>>, {id: number;data: BodyType<SalesInvoiceAmendInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  amendSalesInvoice(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AmendSalesInvoiceMutationResult = NonNullable<Awaited<ReturnType<typeof amendSalesInvoice>>>
+    export type AmendSalesInvoiceMutationBody = BodyType<SalesInvoiceAmendInput>
+    export type AmendSalesInvoiceMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Supersede a closed invoice with a corrected one
+ */
+export const useAmendSalesInvoice = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof amendSalesInvoice>>, TError,{id: number;data: BodyType<SalesInvoiceAmendInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof amendSalesInvoice>>,
+        TError,
+        {id: number;data: BodyType<SalesInvoiceAmendInput>},
+        TContext
+      > => {
+      return useMutation(getAmendSalesInvoiceMutationOptions(options));
     }
 
 export const getLookupSalesInvoiceBySerialUrl = (serial: string,) => {

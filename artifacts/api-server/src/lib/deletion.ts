@@ -120,6 +120,17 @@ function previewSales(id: number): DeletePreview | null {
     );
   }
 
+  // Blocker: this invoice was superseded by an amendment. It is an audit record
+  // whose stock was already reversed, and the replacement references it via
+  // amendedFromId (an FK) — deleting it would break that link and erase the trail
+  // of what was originally sold. Deleting the replacement is the way out.
+  if (inv.amendedToId) {
+    const next = db.prepare("SELECT serial FROM sales_invoices WHERE id = ?").get(inv.amendedToId) as any;
+    blockers.push(
+      `تم تعديل هذه الفاتورة واستبدالها بالفاتورة ${next?.serial || `#${inv.amendedToId}`} — هذه نسخة للسجل فقط؛ احذف الفاتورة الأحدث بدلاً منها`,
+    );
+  }
+
   // Stock: from actual movements, so drafts (no movements) show no stock effect.
   const deltas = docStockDeltas("sales_invoice", id);
   for (const d of deltas) {
@@ -144,7 +155,7 @@ function previewSales(id: number): DeletePreview | null {
       `سبق تحصيل ${money(inv.paidAmount)} نقداً على هذه الفاتورة — الحذف يزيل أثرها من التقارير وكشف حساب العميل، ولا يعيد النقدية تلقائياً`,
     );
   }
-  if (inv.craftsmanCommission > 0.005 && inv.commissionPaid <= 0.005 && !["draft", "cancelled"].includes(inv.status)) {
+  if (inv.craftsmanCommission > 0.005 && inv.commissionPaid <= 0.005 && !["draft", "cancelled", "amended"].includes(inv.status)) {
     effects.push(`إلغاء عمولة مستحقة (غير مصروفة) للصنايعي «${inv.craftsmanName}» بقيمة ${money(inv.craftsmanCommission)}`);
   }
   if (inv.quotationId) {
@@ -475,7 +486,7 @@ function previewCraftsman(id: number): DeletePreview | null {
 
   const outstanding = (db.prepare(`
     SELECT COALESCE(SUM(craftsmanCommission - commissionPaid), 0) as v
-    FROM sales_invoices WHERE craftsmanId = ? AND status NOT IN ('draft','cancelled')
+    FROM sales_invoices WHERE craftsmanId = ? AND status NOT IN ('draft','cancelled','amended')
   `).get(id) as any).v || 0;
   if (outstanding > 0.005) {
     blockers.push(`للصنايعي عمولة مستحقة غير مصروفة ${money(outstanding)} — اصرفها أو سوِّها قبل الحذف`);

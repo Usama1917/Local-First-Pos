@@ -12,11 +12,11 @@ const router = Router();
 const OUTSTANDING_SUBQUERY = `
   COALESCE((SELECT SUM(si.craftsmanCommission - si.commissionPaid)
             FROM sales_invoices si
-            WHERE si.craftsmanId = cr.id AND si.status NOT IN ('draft','cancelled')), 0)`;
+            WHERE si.craftsmanId = cr.id AND si.status NOT IN ('draft','cancelled','amended')), 0)`;
 const PAID_SUBQUERY = `
   COALESCE((SELECT SUM(si.commissionPaid)
             FROM sales_invoices si
-            WHERE si.craftsmanId = cr.id AND si.status NOT IN ('draft','cancelled')), 0)`;
+            WHERE si.craftsmanId = cr.id AND si.status NOT IN ('draft','cancelled','amended')), 0)`;
 
 router.get("/craftsmen", (req, res) => {
   const { search, isActive } = req.query as any;
@@ -35,8 +35,8 @@ router.get("/craftsmen", (req, res) => {
   const where = conditions.length ? "WHERE " + conditions.join(" AND ") : "";
   const items = db.prepare(`
     SELECT cr.*,
-      COALESCE((SELECT SUM(si.total) FROM sales_invoices si WHERE si.craftsmanId = cr.id AND si.status != 'draft' AND si.status != 'cancelled'), 0) as totalSales,
-      COALESCE((SELECT SUM(si.craftsmanCommission) FROM sales_invoices si WHERE si.craftsmanId = cr.id AND si.status != 'draft' AND si.status != 'cancelled'), 0) as totalCommission,
+      COALESCE((SELECT SUM(si.total) FROM sales_invoices si WHERE si.craftsmanId = cr.id AND si.status NOT IN ('draft','cancelled','amended')), 0) as totalSales,
+      COALESCE((SELECT SUM(si.craftsmanCommission) FROM sales_invoices si WHERE si.craftsmanId = cr.id AND si.status NOT IN ('draft','cancelled','amended')), 0) as totalCommission,
       ${PAID_SUBQUERY} as paidCommission,
       ${OUTSTANDING_SUBQUERY} as outstandingCommission
     FROM craftsmen cr ${where} ORDER BY cr.name
@@ -58,8 +58,8 @@ router.get("/craftsmen/:id", (req, res) => {
   const id = Number(req.params.id);
   const row = db.prepare(`
     SELECT cr.*,
-      COALESCE((SELECT SUM(si.total) FROM sales_invoices si WHERE si.craftsmanId = cr.id AND si.status != 'draft' AND si.status != 'cancelled'), 0) as totalSales,
-      COALESCE((SELECT SUM(si.craftsmanCommission) FROM sales_invoices si WHERE si.craftsmanId = cr.id AND si.status != 'draft' AND si.status != 'cancelled'), 0) as totalCommission,
+      COALESCE((SELECT SUM(si.total) FROM sales_invoices si WHERE si.craftsmanId = cr.id AND si.status NOT IN ('draft','cancelled','amended')), 0) as totalSales,
+      COALESCE((SELECT SUM(si.craftsmanCommission) FROM sales_invoices si WHERE si.craftsmanId = cr.id AND si.status NOT IN ('draft','cancelled','amended')), 0) as totalCommission,
       ${PAID_SUBQUERY} as paidCommission,
       ${OUTSTANDING_SUBQUERY} as outstandingCommission,
       COALESCE((SELECT COUNT(DISTINCT si.customerId) FROM sales_invoices si WHERE si.craftsmanId = cr.id AND si.customerId IS NOT NULL AND si.status != 'draft'), 0) as uniqueCustomers,
@@ -147,7 +147,7 @@ router.delete("/craftsmen/:id", (req, res) => {
 function outstandingFor(id: number): number {
   const r = db.prepare(`
     SELECT COALESCE(SUM(craftsmanCommission - commissionPaid), 0) as v
-    FROM sales_invoices WHERE craftsmanId = ? AND status NOT IN ('draft','cancelled')
+    FROM sales_invoices WHERE craftsmanId = ? AND status NOT IN ('draft','cancelled','amended')
   `).get(id) as any;
   return r?.v || 0;
 }
@@ -202,7 +202,7 @@ router.post("/craftsmen/:id/payouts", (req, res) => {
     const unsettled = db.prepare(`
       SELECT id, (craftsmanCommission - commissionPaid) as due
       FROM sales_invoices
-      WHERE craftsmanId = ? AND status NOT IN ('draft','cancelled')
+      WHERE craftsmanId = ? AND status NOT IN ('draft','cancelled','amended')
         AND (craftsmanCommission - commissionPaid) > 0.001
       ORDER BY createdAt ASC, id ASC
     `).all(id) as any[];

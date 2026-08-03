@@ -1,9 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useSearch, useLocation } from "wouter";
 import {
   useSearchProducts,
   getSearchProductsQueryKey,
   useCreateSalesInvoice,
   useFinalizeSalesInvoice,
+  useAmendSalesInvoice,
+  useGetSalesInvoice,
+  getGetSalesInvoiceQueryKey,
   useListCustomers,
   useListCraftsmen,
   useSaveDraft,
@@ -25,7 +29,7 @@ import { useListKeyboardNav } from "@/hooks/use-list-keyboard-nav";
 import { useHotkeys, type Hotkey } from "@/hooks/use-hotkeys";
 import { ShortcutHintBar } from "@/components/shortcut-hint-bar";
 import { beep } from "@/lib/feedback";
-import { Search, Plus, Minus, Trash2, ShoppingCart, CheckCircle, X, Package, AlertTriangle } from "lucide-react";
+import { Search, Plus, Minus, Trash2, ShoppingCart, CheckCircle, X, Package, AlertTriangle, Pencil } from "lucide-react";
 import { toast } from "sonner";
 
 interface CartItem {
@@ -90,7 +94,22 @@ export default function POSPage() {
   const draftSaved = useRef(false);
   const searchRef = useRef<HTMLInputElement>(null);
 
+  // Amend mode: /pos?amend=<invoiceId> re-opens a closed invoice here with all its
+  // details so it can be corrected freely. Saving supersedes the original rather
+  // than mutating it (see POST /sales/:id/amend). The param stays in the URL while
+  // editing so a refresh resumes the amendment instead of dropping it.
+  const searchString = useSearch();
+  const [, setLocation] = useLocation();
+  const amendId = Number(new URLSearchParams(searchString).get("amend")) || 0;
+  const [settlement, setSettlement] = useState<"cash" | "account">("cash");
+  const amendLoaded = useRef(0);
+
   const qc = useQueryClient();
+  const { data: amendSource } = useGetSalesInvoice(amendId, {
+    query: { enabled: amendId > 0, queryKey: getGetSalesInvoiceQueryKey(amendId) },
+  });
+  const original: any = amendId ? amendSource : null;
+  const amendInvoice = useAmendSalesInvoice();
   const { data: searchResults } = useSearchProducts({ q: searchQuery }, { query: { enabled: searchQuery.length >= 1, queryKey: getSearchProductsQueryKey({ q: searchQuery }) } });
   // Only active customers/craftsmen are selectable (archived ones are hidden).
   const { data: customersData } = useListCustomers({ isActive: true });
@@ -101,7 +120,34 @@ export default function POSPage() {
   const deleteDraft = useDeleteDraft();
   const { data: existingDraft } = useGetDraft("sales_invoice", "new");
 
+  // Load the invoice being amended into the cart, once. Guarded by id so a
+  // background refetch can't wipe out edits already made on this screen.
   useEffect(() => {
+    if (!original || amendLoaded.current === original.id) return;
+    amendLoaded.current = original.id;
+    setCart((original.items || []).map((it: any) => ({
+      productId: it.productId,
+      productName: it.productName,
+      sku: it.sku || "",
+      // The line's own price is what was actually charged — not today's list price.
+      sellingPrice: it.unitPrice,
+      minSellingPrice: it.minSellingPrice || 0,
+      soldByWeight: it.soldByWeight ? 1 : 0,
+      quantity: it.quantity,
+      discount: it.discount || 0,
+      total: it.total,
+    })));
+    setCustomerId(original.customerId ? String(original.customerId) : "");
+    setCraftsmanId(original.craftsmanId ? String(original.craftsmanId) : "");
+    setInvoiceDiscount(original.discount || 0);
+    setNotes(original.notes || "");
+    // An invoice that already carried a balance most likely settles on account again.
+    setSettlement(original.customerId && original.remainingAmount > 0.005 ? "account" : "cash");
+  }, [original]);
+
+  useEffect(() => {
+    // Held drafts belong to the "new sale" flow — never offer one over an amendment.
+    if (amendId) return;
     if (existingDraft && !draftSaved.current && cart.length === 0) {
       try {
         const parsed = JSON.parse(existingDraft.data);
@@ -111,9 +157,11 @@ export default function POSPage() {
         }
       } catch {}
     }
-  }, [existingDraft]);
+  }, [existingDraft, amendId]);
 
   const autoSave = useCallback(() => {
+    // Autosaving an amendment would overwrite an unrelated held new-sale draft.
+    if (amendId) return;
     if (cart.length === 0) return;
     saveDraft.mutate({
       data: {
@@ -122,7 +170,7 @@ export default function POSPage() {
         data: JSON.stringify({ cart, customerId, craftsmanId, invoiceDiscount, paymentType, paidAmount, notes }),
       },
     });
-  }, [cart, customerId, craftsmanId, invoiceDiscount, paymentType, paidAmount, notes]);
+  }, [cart, customerId, craftsmanId, invoiceDiscount, paymentType, paidAmount, notes, amendId]);
 
   useEffect(() => {
     const timer = setTimeout(autoSave, 2000);
@@ -236,7 +284,54 @@ export default function POSPage() {
     setPaymentType("cash");
     setPaidAmount("");
     setNotes("");
-    deleteDraft.mutate({ type: "sales_invoice", entityId: "new" });
+    // Only the new-sale flow owns the held draft; an amendment must leave it alone.
+    if (!amendId) deleteDraft.mutate({ type: "sales_invoice", entityId: "new" });
+  };
+
+  // Money already collected on the original follows the customer to the corrected
+  // invoice, so this is what actually changes hands now: > 0 the customer pays the
+  // difference, < 0 the shop refunds it.
+  const alreadyPaid = original?.paidAmount || 0;
+  const difference = Math.round((total - alreadyPaid) * 100) / 100;
+  // A leftover balance needs a named customer to hang it on.
+  const canSettleOnAccount = !!customerId;
+
+  const exitAmend = () => {
+    amendLoaded.current = 0;
+    clearCart();
+    setLocation("/sales");
+  };
+
+  const handleAmend = async () => {
+    if (cart.length === 0) { toast.error("السلة فارغة"); return; }
+    if (settlement === "account" && !canSettleOnAccount) {
+      toast.error("التسوية على الحساب تحتاج عميل مسجّل — اختر العميل أو سوِّ الفرق نقدي");
+      return;
+    }
+    try {
+      const inv = await amendInvoice.mutateAsync({
+        id: original.id,
+        data: {
+          customerId: customerId ? Number(customerId) : undefined,
+          craftsmanId: craftsmanId ? Number(craftsmanId) : undefined,
+          discount: invoiceDiscount,
+          notes: notes || undefined,
+          settlement,
+          items: cart.map(i => ({ productId: i.productId, quantity: i.quantity, unitPrice: i.sellingPrice, discount: i.discount })),
+        },
+      });
+      // Stock, debt, commission, reports and the invoices list all moved.
+      qc.invalidateQueries();
+      beep("success");
+      toast.success(`تم تعديل ${original.serial} — الفاتورة السارية الآن ${(inv as any).serial}`);
+      setShowFinalizeDialog(false);
+      amendLoaded.current = 0;
+      clearCart();
+      setLocation(`/sales?open=${(inv as any).id}`);
+    } catch (e: any) {
+      beep("error");
+      toast.error(e.message || "خطأ أثناء تعديل الفاتورة");
+    }
   };
 
   const handleFinalize = async () => {
@@ -295,8 +390,8 @@ export default function POSPage() {
   const hotkeys: Hotkey[] = [
     { combo: "mod+k", label: "بحث", allowInInput: true, run: () => searchRef.current?.focus() },
     { combo: "/", label: "بحث", run: () => searchRef.current?.focus() },
-    { combo: "f2", label: "إنهاء الفاتورة", allowInInput: true, run: openFinalize },
-    { combo: "mod+enter", label: "تأكيد", allowInInput: true, run: () => { if (showFinalizeDialog) handleFinalize(); else openFinalize(); } },
+    { combo: "f2", label: original ? "حفظ التعديل" : "إنهاء الفاتورة", allowInInput: true, run: openFinalize },
+    { combo: "mod+enter", label: "تأكيد", allowInInput: true, run: () => { if (showFinalizeDialog) { original ? handleAmend() : handleFinalize(); } else openFinalize(); } },
     { combo: "mod+backspace", label: "مسح السلة", allowInInput: true, run: () => { if (cart.length) { clearCart(); beep("warn"); } } },
   ];
   useHotkeys(hotkeys);
@@ -323,38 +418,95 @@ export default function POSPage() {
 
       <Dialog open={showFinalizeDialog} onOpenChange={setShowFinalizeDialog}>
         <DialogContent className="max-w-md">
-          <DialogHeader><DialogTitle>إنهاء الفاتورة</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{original ? `تعديل الفاتورة ${original.serial}` : "إنهاء الفاتورة"}</DialogTitle></DialogHeader>
           <div className="space-y-4">
             <div className="bg-muted/50 p-4 rounded-lg space-y-1">
               <div className="flex justify-between text-sm"><span>الإجمالي الفرعي:</span><span>{formatCurrency(subtotal)}</span></div>
               <div className="flex justify-between text-sm"><span>الخصم:</span><span>- {formatCurrency(invoiceDiscount)}</span></div>
               <div className="flex justify-between font-bold text-lg border-t pt-2"><span>الإجمالي:</span><span className="text-primary">{formatCurrency(total)}</span></div>
             </div>
-            <div className="space-y-2">
-              <Label>طريقة الدفع</Label>
-              <Select value={paymentType} onValueChange={(v: any) => setPaymentType(v)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="cash">نقدي</SelectItem>
-                  <SelectItem value="credit">آجل</SelectItem>
-                  <SelectItem value="partial">جزئي</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            {paymentType === "partial" && (
-              <div className="space-y-2">
-                <Label>المبلغ المدفوع</Label>
-                <Input type="number" value={paidAmount} onChange={e => setPaidAmount(e.target.value)} placeholder="0.00" />
-                <p className="text-xs text-muted-foreground">المتبقي: {formatCurrency(total - parseFloat(paidAmount || "0"))}</p>
-              </div>
+
+            {original ? (
+              /* Amend: what changed, and where the difference goes. */
+              <>
+                <div className="rounded-lg border p-4 space-y-1 text-sm">
+                  <div className="flex justify-between text-muted-foreground"><span>إجمالي الفاتورة الأصلية:</span><span>{formatCurrency(original.total)}</span></div>
+                  <div className="flex justify-between text-muted-foreground"><span>المدفوع فعلاً:</span><span>{formatCurrency(alreadyPaid)}</span></div>
+                  <div className="flex justify-between"><span>الإجمالي بعد التعديل:</span><span className="font-semibold">{formatCurrency(total)}</span></div>
+                  <div className="flex justify-between border-t pt-2 font-bold">
+                    {difference > 0.005 ? (
+                      <><span className="text-destructive">مطلوب من العميل:</span><span className="text-destructive">{formatCurrency(difference)}</span></>
+                    ) : difference < -0.005 ? (
+                      <><span className="text-emerald-600 dark:text-emerald-400">يُرد للعميل:</span><span className="text-emerald-600 dark:text-emerald-400">{formatCurrency(-difference)}</span></>
+                    ) : (
+                      <><span>لا يوجد فرق مالي</span><span>—</span></>
+                    )}
+                  </div>
+                </div>
+
+                {Math.abs(difference) > 0.005 && (
+                  <div className="space-y-2">
+                    <Label>تسوية الفرق</Label>
+                    <Select value={settlement} onValueChange={(v: any) => setSettlement(v)}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="cash">{difference > 0 ? "استلمت الفرق نقدي الآن" : "رديت الفرق نقدي الآن"}</SelectItem>
+                        <SelectItem value="account" disabled={!canSettleOnAccount}>
+                          على حساب العميل{!canSettleOnAccount && " (يحتاج عميل مسجّل)"}
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      {settlement === "cash"
+                        ? "الفاتورة الجديدة هتطلع مسددة بالكامل."
+                        : difference > 0
+                          ? "الفرق هيتضاف على مديونية العميل."
+                          : "الفرق هيتحسب رصيد للعميل (ينقص مديونيته)."}
+                    </p>
+                  </div>
+                )}
+
+                <p className="text-xs text-muted-foreground border-t pt-3">
+                  الفاتورة {original.serial} هتتقفل كـ «معدّلة» وتفضل في السجل، وهتتعمل فاتورة جديدة بالبنود دي.
+                  المخزون والعمولة هيتعاد حسابهم على الفاتورة الجديدة.
+                </p>
+              </>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  <Label>طريقة الدفع</Label>
+                  <Select value={paymentType} onValueChange={(v: any) => setPaymentType(v)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="cash">نقدي</SelectItem>
+                      <SelectItem value="credit">آجل</SelectItem>
+                      <SelectItem value="partial">جزئي</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {paymentType === "partial" && (
+                  <div className="space-y-2">
+                    <Label>المبلغ المدفوع</Label>
+                    <Input type="number" value={paidAmount} onChange={e => setPaidAmount(e.target.value)} placeholder="0.00" />
+                    <p className="text-xs text-muted-foreground">المتبقي: {formatCurrency(total - parseFloat(paidAmount || "0"))}</p>
+                  </div>
+                )}
+              </>
             )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowFinalizeDialog(false)}>إلغاء</Button>
-            <Button onClick={handleFinalize} disabled={createInvoice.isPending || finalizeInvoice.isPending}>
-              <CheckCircle className="h-4 w-4 ml-2" />
-              {createInvoice.isPending || finalizeInvoice.isPending ? "جاري الإنشاء..." : "إنهاء الفاتورة"}
-            </Button>
+            {original ? (
+              <Button onClick={handleAmend} disabled={amendInvoice.isPending}>
+                <CheckCircle className="h-4 w-4 ml-2" />
+                {amendInvoice.isPending ? "جاري الحفظ..." : "حفظ التعديل"}
+              </Button>
+            ) : (
+              <Button onClick={handleFinalize} disabled={createInvoice.isPending || finalizeInvoice.isPending}>
+                <CheckCircle className="h-4 w-4 ml-2" />
+                {createInvoice.isPending || finalizeInvoice.isPending ? "جاري الإنشاء..." : "إنهاء الفاتورة"}
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -422,6 +574,22 @@ export default function POSPage() {
 
       {/* Cart Panel */}
       <div className="flex-1 flex flex-col gap-3">
+        {original && (
+          <div className="flex items-center gap-3 rounded-lg border border-amber-500/40 bg-amber-50 px-4 py-2.5 text-sm dark:bg-amber-950/30">
+            <Pencil className="h-4 w-4 shrink-0 text-amber-700 dark:text-amber-400" />
+            <div className="flex-1">
+              <p className="font-semibold text-amber-900 dark:text-amber-200">
+                تعديل الفاتورة <span className="font-mono">{original.serial}</span>
+              </p>
+              <p className="text-xs text-amber-800/80 dark:text-amber-300/80">
+                عدّل الأصناف والأسعار براحتك — الحفظ هيعمل فاتورة جديدة ويقفل القديمة كـ «معدّلة».
+              </p>
+            </div>
+            <Button variant="ghost" size="sm" onClick={exitAmend}>
+              <X className="h-4 w-4 ml-1" /> إلغاء التعديل
+            </Button>
+          </div>
+        )}
         <div className="flex gap-2">
           <Select value={customerId || "__none__"} onValueChange={(v) => setCustomerId(v === "__none__" ? "" : v)}>
             <SelectTrigger className="flex-1">
@@ -558,7 +726,7 @@ export default function POSPage() {
               <div className="flex gap-2">
                 <Button size="lg" className="h-14 px-8 text-base" onClick={() => setShowFinalizeDialog(true)} disabled={cart.length === 0}>
                   <CheckCircle className="h-5 w-5 ml-2" />
-                  إنهاء الفاتورة
+                  {original ? "حفظ التعديل" : "إنهاء الفاتورة"}
                 </Button>
               </div>
             </div>

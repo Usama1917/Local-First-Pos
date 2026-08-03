@@ -153,7 +153,13 @@ export const GetRecentInvoicesResponseItem = zod.object({
   "createdAt": zod.string(),
   "createdBy": zod.string().nullish(),
   "updatedAt": zod.string().optional(),
-  "updatedBy": zod.string().nullish()
+  "updatedBy": zod.string().nullish(),
+  "amendedFromId": zod.number().nullish(),
+  "amendedFromSerial": zod.string().nullish(),
+  "amendedFromBy": zod.string().nullish(),
+  "amendedFromAt": zod.string().nullish(),
+  "amendedToId": zod.number().nullish(),
+  "amendedToSerial": zod.string().nullish()
 })
 export const GetRecentInvoicesResponse = zod.array(GetRecentInvoicesResponseItem)
 
@@ -714,7 +720,13 @@ export const GetCustomerResponse = zod.object({
   "createdAt": zod.string(),
   "createdBy": zod.string().nullish(),
   "updatedAt": zod.string().optional(),
-  "updatedBy": zod.string().nullish()
+  "updatedBy": zod.string().nullish(),
+  "amendedFromId": zod.number().nullish(),
+  "amendedFromSerial": zod.string().nullish(),
+  "amendedFromBy": zod.string().nullish(),
+  "amendedFromAt": zod.string().nullish(),
+  "amendedToId": zod.number().nullish(),
+  "amendedToSerial": zod.string().nullish()
 })),
   "totalDebt": zod.number(),
   "totalPaid": zod.number(),
@@ -847,7 +859,13 @@ export const GetCustomerInvoicesResponse = zod.object({
   "createdAt": zod.string(),
   "createdBy": zod.string().nullish(),
   "updatedAt": zod.string().optional(),
-  "updatedBy": zod.string().nullish()
+  "updatedBy": zod.string().nullish(),
+  "amendedFromId": zod.number().nullish(),
+  "amendedFromSerial": zod.string().nullish(),
+  "amendedFromBy": zod.string().nullish(),
+  "amendedFromAt": zod.string().nullish(),
+  "amendedToId": zod.number().nullish(),
+  "amendedToSerial": zod.string().nullish()
 })),
   "total": zod.number()
 })
@@ -966,7 +984,13 @@ export const GetCraftsmanResponse = zod.object({
   "createdAt": zod.string(),
   "createdBy": zod.string().nullish(),
   "updatedAt": zod.string().optional(),
-  "updatedBy": zod.string().nullish()
+  "updatedBy": zod.string().nullish(),
+  "amendedFromId": zod.number().nullish(),
+  "amendedFromSerial": zod.string().nullish(),
+  "amendedFromBy": zod.string().nullish(),
+  "amendedFromAt": zod.string().nullish(),
+  "amendedToId": zod.number().nullish(),
+  "amendedToSerial": zod.string().nullish()
 })),
   "totalSales": zod.number(),
   "totalCommission": zod.number()
@@ -1314,7 +1338,9 @@ export const GetQuotationResponse = zod.object({
   "unitPrice": zod.number(),
   "discount": zod.number().optional(),
   "total": zod.number(),
-  "notes": zod.string().nullish()
+  "notes": zod.string().nullish(),
+  "minSellingPrice": zod.number().nullish(),
+  "soldByWeight": zod.number().nullish()
 })),
   "subtotal": zod.number().optional(),
   "discount": zod.number().optional(),
@@ -1369,7 +1395,9 @@ export const UpdateQuotationResponse = zod.object({
   "unitPrice": zod.number(),
   "discount": zod.number().optional(),
   "total": zod.number(),
-  "notes": zod.string().nullish()
+  "notes": zod.string().nullish(),
+  "minSellingPrice": zod.number().nullish(),
+  "soldByWeight": zod.number().nullish()
 })),
   "subtotal": zod.number().optional(),
   "discount": zod.number().optional(),
@@ -1451,7 +1479,13 @@ export const ListSalesInvoicesResponse = zod.object({
   "createdAt": zod.string(),
   "createdBy": zod.string().nullish(),
   "updatedAt": zod.string().optional(),
-  "updatedBy": zod.string().nullish()
+  "updatedBy": zod.string().nullish(),
+  "amendedFromId": zod.number().nullish(),
+  "amendedFromSerial": zod.string().nullish(),
+  "amendedFromBy": zod.string().nullish(),
+  "amendedFromAt": zod.string().nullish(),
+  "amendedToId": zod.number().nullish(),
+  "amendedToSerial": zod.string().nullish()
 })),
   "total": zod.number()
 })
@@ -1504,7 +1538,9 @@ export const GetSalesInvoiceResponse = zod.object({
   "unitPrice": zod.number(),
   "discount": zod.number().optional(),
   "total": zod.number(),
-  "notes": zod.string().nullish()
+  "notes": zod.string().nullish(),
+  "minSellingPrice": zod.number().nullish(),
+  "soldByWeight": zod.number().nullish()
 })),
   "subtotal": zod.number().optional(),
   "discount": zod.number().optional(),
@@ -1518,7 +1554,13 @@ export const GetSalesInvoiceResponse = zod.object({
   "createdAt": zod.string(),
   "updatedAt": zod.string().optional(),
   "createdBy": zod.string().nullish(),
-  "updatedBy": zod.string().nullish()
+  "updatedBy": zod.string().nullish(),
+  "amendedFromId": zod.number().nullish(),
+  "amendedFromSerial": zod.string().nullish(),
+  "amendedFromBy": zod.string().nullish(),
+  "amendedFromAt": zod.string().nullish(),
+  "amendedToId": zod.number().nullish(),
+  "amendedToSerial": zod.string().nullish()
 })
 
 
@@ -1564,7 +1606,9 @@ export const UpdateSalesInvoiceResponse = zod.object({
   "unitPrice": zod.number(),
   "discount": zod.number().optional(),
   "total": zod.number(),
-  "notes": zod.string().nullish()
+  "notes": zod.string().nullish(),
+  "minSellingPrice": zod.number().nullish(),
+  "soldByWeight": zod.number().nullish()
 })),
   "subtotal": zod.number().optional(),
   "discount": zod.number().optional(),
@@ -1578,7 +1622,13 @@ export const UpdateSalesInvoiceResponse = zod.object({
   "createdAt": zod.string(),
   "updatedAt": zod.string().optional(),
   "createdBy": zod.string().nullish(),
-  "updatedBy": zod.string().nullish()
+  "updatedBy": zod.string().nullish(),
+  "amendedFromId": zod.number().nullish(),
+  "amendedFromSerial": zod.string().nullish(),
+  "amendedFromBy": zod.string().nullish(),
+  "amendedFromAt": zod.string().nullish(),
+  "amendedToId": zod.number().nullish(),
+  "amendedToSerial": zod.string().nullish()
 })
 
 
@@ -1622,7 +1672,9 @@ export const FinalizeSalesInvoiceResponse = zod.object({
   "unitPrice": zod.number(),
   "discount": zod.number().optional(),
   "total": zod.number(),
-  "notes": zod.string().nullish()
+  "notes": zod.string().nullish(),
+  "minSellingPrice": zod.number().nullish(),
+  "soldByWeight": zod.number().nullish()
 })),
   "subtotal": zod.number().optional(),
   "discount": zod.number().optional(),
@@ -1636,7 +1688,13 @@ export const FinalizeSalesInvoiceResponse = zod.object({
   "createdAt": zod.string(),
   "updatedAt": zod.string().optional(),
   "createdBy": zod.string().nullish(),
-  "updatedBy": zod.string().nullish()
+  "updatedBy": zod.string().nullish(),
+  "amendedFromId": zod.number().nullish(),
+  "amendedFromSerial": zod.string().nullish(),
+  "amendedFromBy": zod.string().nullish(),
+  "amendedFromAt": zod.string().nullish(),
+  "amendedToId": zod.number().nullish(),
+  "amendedToSerial": zod.string().nullish()
 })
 
 
@@ -1665,7 +1723,9 @@ export const CancelSalesInvoiceResponse = zod.object({
   "unitPrice": zod.number(),
   "discount": zod.number().optional(),
   "total": zod.number(),
-  "notes": zod.string().nullish()
+  "notes": zod.string().nullish(),
+  "minSellingPrice": zod.number().nullish(),
+  "soldByWeight": zod.number().nullish()
 })),
   "subtotal": zod.number().optional(),
   "discount": zod.number().optional(),
@@ -1679,8 +1739,37 @@ export const CancelSalesInvoiceResponse = zod.object({
   "createdAt": zod.string(),
   "updatedAt": zod.string().optional(),
   "createdBy": zod.string().nullish(),
-  "updatedBy": zod.string().nullish()
+  "updatedBy": zod.string().nullish(),
+  "amendedFromId": zod.number().nullish(),
+  "amendedFromSerial": zod.string().nullish(),
+  "amendedFromBy": zod.string().nullish(),
+  "amendedFromAt": zod.string().nullish(),
+  "amendedToId": zod.number().nullish(),
+  "amendedToSerial": zod.string().nullish()
 })
+
+
+/**
+ * @summary Supersede a closed invoice with a corrected one
+ */
+export const AmendSalesInvoiceParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const AmendSalesInvoiceBody = zod.object({
+  "customerId": zod.number().optional(),
+  "craftsmanId": zod.number().optional(),
+  "items": zod.array(zod.object({
+  "productId": zod.number(),
+  "quantity": zod.number(),
+  "unitPrice": zod.number(),
+  "discount": zod.number().optional(),
+  "notes": zod.string().optional()
+})),
+  "discount": zod.number().optional(),
+  "notes": zod.string().optional(),
+  "settlement": zod.enum(['cash', 'account']).optional().describe('cash = the difference changes hands now; account = it lands on the customer\'s balance.')
+}).describe('Corrected contents of a closed invoice. Supersedes it: the original is marked \"amended\" and a replacement is created with these lines. The difference against what was already paid is settled per `settlement`.')
 
 
 /**
@@ -1711,7 +1800,9 @@ export const LookupSalesInvoiceBySerialResponse = zod.object({
   "unitPrice": zod.number(),
   "discount": zod.number().optional(),
   "total": zod.number(),
-  "notes": zod.string().nullish()
+  "notes": zod.string().nullish(),
+  "minSellingPrice": zod.number().nullish(),
+  "soldByWeight": zod.number().nullish()
 })),
   "subtotal": zod.number().optional(),
   "discount": zod.number().optional(),
@@ -1725,7 +1816,13 @@ export const LookupSalesInvoiceBySerialResponse = zod.object({
   "createdAt": zod.string(),
   "updatedAt": zod.string().optional(),
   "createdBy": zod.string().nullish(),
-  "updatedBy": zod.string().nullish()
+  "updatedBy": zod.string().nullish(),
+  "amendedFromId": zod.number().nullish(),
+  "amendedFromSerial": zod.string().nullish(),
+  "amendedFromBy": zod.string().nullish(),
+  "amendedFromAt": zod.string().nullish(),
+  "amendedToId": zod.number().nullish(),
+  "amendedToSerial": zod.string().nullish()
 })
 
 

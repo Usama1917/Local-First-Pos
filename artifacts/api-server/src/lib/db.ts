@@ -183,6 +183,11 @@ export function initializeSchema() {
       craftsmanCommission REAL NOT NULL DEFAULT 0,
       commissionPaid REAL NOT NULL DEFAULT 0,
       quotationId INTEGER REFERENCES quotations(id),
+      -- Amendment chain: a corrected invoice points back at the one it replaced
+      -- (amendedFromId), and the superseded one points forward (amendedToId) and
+      -- moves to status 'amended' — kept for the record, out of every ledger.
+      amendedFromId INTEGER REFERENCES sales_invoices(id),
+      amendedToId INTEGER REFERENCES sales_invoices(id),
       barcode TEXT,
       notes TEXT,
       createdBy TEXT,
@@ -388,6 +393,9 @@ export function initializeSchema() {
   ensureColumn("users", "permissions", "TEXT");
   // Shop's custom sale terms (one per line) printed on invoices above the signatures.
   ensureColumn("settings", "invoiceTerms", "TEXT");
+  // Invoice amendment chain (see the CREATE TABLE comment above).
+  ensureColumn("sales_invoices", "amendedFromId", "INTEGER");
+  ensureColumn("sales_invoices", "amendedToId", "INTEGER");
 
   // Audit trail: who created / last modified each transactional record. `createdBy`
   // exists in the CREATE TABLE definitions but pre-existing installs need the ALTER;

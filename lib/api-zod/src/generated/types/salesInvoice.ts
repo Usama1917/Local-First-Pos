@@ -35,4 +35,16 @@ export interface SalesInvoice {
   updatedAt?: string;
   /** @nullable */
   updatedBy?: string | null;
+  /** @nullable */
+  amendedFromId?: number | null;
+  /** @nullable */
+  amendedFromSerial?: string | null;
+  /** @nullable */
+  amendedFromBy?: string | null;
+  /** @nullable */
+  amendedFromAt?: string | null;
+  /** @nullable */
+  amendedToId?: number | null;
+  /** @nullable */
+  amendedToSerial?: string | null;
 }

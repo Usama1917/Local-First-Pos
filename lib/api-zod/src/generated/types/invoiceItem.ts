@@ -22,4 +22,8 @@ export interface InvoiceItem {
   total: number;
   /** @nullable */
   notes?: string | null;
+  /** @nullable */
+  minSellingPrice?: number | null;
+  /** @nullable */
+  soldByWeight?: number | null;
 }

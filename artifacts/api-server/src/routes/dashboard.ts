@@ -15,7 +15,7 @@ router.get("/dashboard/summary", (_req, res) => {
       COALESCE(SUM(paidAmount), 0) as cash,
       COALESCE(SUM(remainingAmount), 0) as credit
     FROM sales_invoices
-    WHERE status != 'draft' AND status != 'cancelled' AND date(createdAt) = ?
+    WHERE status NOT IN ('draft','cancelled','amended') AND date(createdAt) = ?
   `).get(today) as any;
 
   // Sum of POSITIVE per-customer balances, using the SAME formula as /debts/customers

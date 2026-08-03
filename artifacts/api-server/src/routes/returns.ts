@@ -44,8 +44,8 @@ router.get("/returns/lookup/:serial", (req, res) => {
     WHERE si.serial = ?
   `).get(req.params.serial) as any;
   if (!inv) return res.status(404).json({ error: "الفاتورة غير موجودة" });
-  if (inv.status === "draft" || inv.status === "cancelled") {
-    return res.status(400).json({ error: "الفاتورة غير مكتملة، لا يمكن عمل مرتجع لها" });
+  if (["draft", "cancelled", "amended"].includes(inv.status)) {
+    return res.status(400).json({ error: inv.status === "amended" ? "تم تعديل هذه الفاتورة — اعمل المرتجع على الفاتورة الأحدث" : "الفاتورة غير مكتملة، لا يمكن عمل مرتجع لها" });
   }
 
   const rawItems = db.prepare(`
@@ -102,8 +102,8 @@ router.post("/returns", (req, res) => {
 
   const inv = db.prepare("SELECT * FROM sales_invoices WHERE id = ?").get(Number(originalInvoiceId)) as any;
   if (!inv) return res.status(404).json({ error: "الفاتورة غير موجودة" });
-  if (inv.status === "draft" || inv.status === "cancelled") {
-    return res.status(400).json({ error: "الفاتورة غير مكتملة" });
+  if (["draft", "cancelled", "amended"].includes(inv.status)) {
+    return res.status(400).json({ error: inv.status === "amended" ? "تم تعديل هذه الفاتورة — اعمل المرتجع على الفاتورة الأحدث" : "الفاتورة غير مكتملة" });
   }
   if (!returnedItems.length && !newItems.length) {
     return res.status(400).json({ error: "اختر صنفًا للمرتجع أو الاستبدال" });

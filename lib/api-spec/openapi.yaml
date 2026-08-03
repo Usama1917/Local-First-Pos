@@ -1132,6 +1132,26 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/SalesInvoiceDetail"
+  /sales/{id}/amend:
+    post:
+      operationId: amendSalesInvoice
+      tags: [sales]
+      summary: Supersede a closed invoice with a corrected one
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SalesInvoiceAmendInput"
+      responses:
+        "201":
+          description: The replacement invoice
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SalesInvoiceDetail"
   /sales/lookup/{serial}:
     get:
       operationId: lookupSalesInvoiceBySerial
@@ -2345,6 +2365,9 @@ components:
         discount: { type: number }
         total: { type: number }
         notes: { type: ["string", "null"] }
+        # Product rules the cashier needs to rebuild an editable cart line.
+        minSellingPrice: { type: ["number", "null"] }
+        soldByWeight: { type: ["integer", "null"] }
     InvoiceItemInput:
       type: object
       required: [productId, quantity, unitPrice]
@@ -2475,6 +2498,12 @@ components:
         createdBy: { type: ["string", "null"] }
         updatedAt: { type: string }
         updatedBy: { type: ["string", "null"] }
+        amendedFromId: { type: ["integer", "null"] }
+        amendedFromSerial: { type: ["string", "null"] }
+        amendedFromBy: { type: ["string", "null"] }
+        amendedFromAt: { type: ["string", "null"] }
+        amendedToId: { type: ["integer", "null"] }
+        amendedToSerial: { type: ["string", "null"] }
     SalesInvoiceDetail:
       type: object
       required: [id, serial, status, items, total, createdAt]
@@ -2505,6 +2534,32 @@ components:
         updatedAt: { type: string }
         createdBy: { type: ["string", "null"] }
         updatedBy: { type: ["string", "null"] }
+        amendedFromId: { type: ["integer", "null"] }
+        amendedFromSerial: { type: ["string", "null"] }
+        amendedFromBy: { type: ["string", "null"] }
+        amendedFromAt: { type: ["string", "null"] }
+        amendedToId: { type: ["integer", "null"] }
+        amendedToSerial: { type: ["string", "null"] }
+    SalesInvoiceAmendInput:
+      type: object
+      description: >-
+        Corrected contents of a closed invoice. Supersedes it: the original is
+        marked "amended" and a replacement is created with these lines. The
+        difference against what was already paid is settled per `settlement`.
+      required: [items]
+      properties:
+        customerId: { type: integer }
+        craftsmanId: { type: integer }
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/InvoiceItemInput"
+        discount: { type: number }
+        notes: { type: string }
+        settlement:
+          type: string
+          enum: [cash, account]
+          description: cash = the difference changes hands now; account = it lands on the customer's balance.
     SalesInvoiceInput:
       type: object
       properties:
