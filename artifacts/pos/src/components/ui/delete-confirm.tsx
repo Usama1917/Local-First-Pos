@@ -15,7 +15,8 @@ import { toast } from "sonner";
 type DeletableEntity =
   | "sales" | "purchases" | "returns" | "quotations"
   | "products" | "customers" | "craftsmen" | "suppliers"
-  | "categories" | "brands" | "units";
+  | "categories" | "brands" | "units"
+  | "expenses" | "recurring-expenses";
 
 interface DeleteButtonProps {
   entity: DeletableEntity;

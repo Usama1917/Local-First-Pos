@@ -386,6 +386,52 @@ export function initializeSchema() {
     );
     CREATE INDEX IF NOT EXISTS idx_return_items_return ON return_items(returnId);
 
+    -- Shop operating costs. Two halves of the same story:
+    --   recurring_expenses = the COMMITMENT, registered once (a salary, the rent).
+    --   expenses           = the actual money that LEFT the drawer, one row per payment.
+    -- Paying a commitment writes an expenses row linked back to it, so "how much did
+    -- the shop spend this month" is a single sum over one table — never a sum of two
+    -- lists that can disagree.
+    CREATE TABLE IF NOT EXISTS recurring_expenses (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,                            -- employee name, or the name of the commitment
+      type TEXT NOT NULL DEFAULT 'other',            -- 'salary' | 'rent' | 'other'
+      jobTitle TEXT,                                 -- المنصب — what an employee does here
+      phone TEXT,
+      amount REAL NOT NULL DEFAULT 0,                -- the monthly amount
+      dayOfMonth INTEGER NOT NULL DEFAULT 1,         -- agreed pay day (1-31; clamped to the month's length)
+      startDate TEXT,                                -- YYYY-MM-DD; nothing is due before it
+      notes TEXT,
+      isActive INTEGER NOT NULL DEFAULT 1,
+      createdBy TEXT,
+      createdAt TEXT NOT NULL DEFAULT (datetime('now')),
+      updatedAt TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_recurring_expenses_active ON recurring_expenses(isActive);
+
+    CREATE TABLE IF NOT EXISTS expenses (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      amount REAL NOT NULL DEFAULT 0,
+      description TEXT NOT NULL,                     -- what the money went on
+      category TEXT,                                 -- free-text bucket (كهربا، مواصلات…)
+      -- Local YYYY-MM-DD (like customer_payments.date), NOT a UTC datetime: the shop
+      -- thinks in calendar days, and every filter here compares dates as text.
+      date TEXT NOT NULL,
+      notes TEXT,
+      -- Set when this payment settles a monthly commitment; NULL for an ad-hoc expense.
+      recurringExpenseId INTEGER REFERENCES recurring_expenses(id),
+      periodKey TEXT,                                -- 'YYYY-MM' — which month it settles
+      createdBy TEXT,
+      createdAt TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_expenses_date ON expenses(date);
+    CREATE INDEX IF NOT EXISTS idx_expenses_recurring ON expenses(recurringExpenseId);
+    -- One payment per commitment per month, enforced by the DB so a double-click or a
+    -- second open tab can never pay the same salary twice. Partial (WHERE … NOT NULL)
+    -- so ad-hoc expenses, which share NULL on both columns, are unconstrained.
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_expenses_recurring_period
+      ON expenses(recurringExpenseId, periodKey) WHERE recurringExpenseId IS NOT NULL;
+
     INSERT OR IGNORE INTO settings (id, shopName) VALUES (1, 'محل الأدوات الصحية والدهانات');
 
     INSERT OR IGNORE INTO users (username, password, name, role)
@@ -407,7 +453,36 @@ export function initializeSchema() {
   // Which stock count reconciled a movement (NULL = not yet counted).
   ensureColumn("stock_movements", "stockCountId", "INTEGER");
   db.exec("CREATE INDEX IF NOT EXISTS idx_movements_uncounted ON stock_movements(stockCountId)");
+  // Unit cost of the goods AT THE MOMENT they left the shop. `products.trueCost` is
+  // overwritten by every purchase that records a cost, so without this snapshot last
+  // month's profit would silently change whenever a supplier raises a price.
+  ensureColumn("sales_invoice_items", "costAtSale", "REAL");
+  ensureColumn("return_items", "costAtSale", "REAL");
   backfillCountedMovements();
+  backfillSaleCosts();
+}
+
+/**
+ * Give already-closed sale/return lines a cost, so the profit report covers history
+ * instead of starting from zero. The current `products.trueCost` is the only cost
+ * those lines ever had available, so it is the best estimate — and freezing it here
+ * means it stops moving from now on.
+ *
+ * Only fills NULLs, so it is idempotent and never overwrites a real snapshot. Draft
+ * invoice lines are left NULL on purpose: they haven't sold anything yet, and
+ * finalizing them takes the snapshot at that moment.
+ */
+function backfillSaleCosts(): void {
+  db.exec(`
+    UPDATE sales_invoice_items SET costAtSale = COALESCE(
+      (SELECT p.trueCost FROM products p WHERE p.id = sales_invoice_items.productId), 0)
+    WHERE costAtSale IS NULL
+      AND invoiceId IN (SELECT id FROM sales_invoices WHERE status != 'draft');
+
+    UPDATE return_items SET costAtSale = COALESCE(
+      (SELECT p.trueCost FROM products p WHERE p.id = return_items.productId), 0)
+    WHERE costAtSale IS NULL;
+  `);
 }
 
 /**

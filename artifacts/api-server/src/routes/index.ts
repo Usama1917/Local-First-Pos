@@ -20,6 +20,7 @@ import settingsRouter from "./settings.js";
 import backupRouter from "./backup.js";
 import returnsRouter from "./returns.js";
 import usersRouter from "./users.js";
+import expensesRouter from "./expenses.js";
 import deletePreviewRouter from "./delete-preview.js";
 
 const router: IRouter = Router();
@@ -45,6 +46,7 @@ router.use(draftsRouter);
 router.use(reportsRouter);
 router.use(settingsRouter);
 router.use(backupRouter);
+router.use(expensesRouter);
 router.use(deletePreviewRouter);
 
 export default router;

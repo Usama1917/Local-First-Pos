@@ -27,6 +27,7 @@ tags:
   - name: payments
   - name: drafts
   - name: reports
+  - name: expenses
   - name: settings
   - name: backup
 
@@ -1256,7 +1257,7 @@ paths:
           required: true
           schema:
             type: string
-            enum: [sales, purchases, returns, quotations, products, customers, craftsmen, suppliers, categories, brands, units]
+            enum: [sales, purchases, returns, quotations, products, customers, craftsmen, suppliers, categories, brands, units, expenses, recurring-expenses]
         - { name: id, in: path, required: true, schema: { type: integer } }
       responses:
         "200":
@@ -1651,6 +1652,21 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/PurchasesReport"
+  /reports/profit:
+    get:
+      operationId: getProfitReport
+      tags: [reports]
+      summary: Full P&L for a period — revenue, COGS, commission, expenses, net profit
+      parameters:
+        - { name: dateFrom, in: query, schema: { type: string } }
+        - { name: dateTo, in: query, schema: { type: string } }
+      responses:
+        "200":
+          description: Profit report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProfitReport"
   /reports/craftsman-commission:
     get:
       operationId: getCraftsmanCommissionReport
@@ -1735,6 +1751,206 @@ paths:
       responses:
         "200":
           description: Restored
+
+  # --- Expenses (shop operating costs) ---------------------------------------
+  /expenses/due-summary:
+    get:
+      operationId: getExpensesDueSummary
+      tags: [expenses]
+      summary: Monthly commitments that are due or overdue, plus this month's spend
+      responses:
+        "200":
+          description: Due summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExpensesDueSummary"
+  /expenses:
+    get:
+      operationId: listExpenses
+      tags: [expenses]
+      summary: Expense log (defaults to the current month)
+      parameters:
+        - { name: search, in: query, schema: { type: string } }
+        - { name: dateFrom, in: query, schema: { type: string } }
+        - { name: dateTo, in: query, schema: { type: string } }
+        - { name: recurringId, in: query, schema: { type: integer } }
+        - { name: limit, in: query, schema: { type: integer } }
+        - { name: offset, in: query, schema: { type: integer } }
+      responses:
+        "200":
+          description: Expenses
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExpensePage"
+    post:
+      operationId: createExpense
+      tags: [expenses]
+      summary: Record an expense
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExpenseInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Expense"
+  /expenses/{id}:
+    get:
+      operationId: getExpense
+      tags: [expenses]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: Expense
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Expense"
+        "404":
+          description: Not found
+    patch:
+      operationId: updateExpense
+      tags: [expenses]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExpenseUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Expense"
+    delete:
+      operationId: deleteExpense
+      tags: [expenses]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: Deleted
+  /recurring-expenses:
+    get:
+      operationId: listRecurringExpenses
+      tags: [expenses]
+      summary: Monthly commitments (salaries, rent) with their live due status
+      parameters:
+        - { name: search, in: query, schema: { type: string } }
+        - { name: isActive, in: query, schema: { type: boolean } }
+      responses:
+        "200":
+          description: Commitments
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecurringExpensePage"
+    post:
+      operationId: createRecurringExpense
+      tags: [expenses]
+      summary: Register a monthly commitment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecurringExpenseInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecurringExpense"
+  /recurring-expenses/{id}:
+    get:
+      operationId: getRecurringExpense
+      tags: [expenses]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: Commitment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecurringExpense"
+        "404":
+          description: Not found
+    patch:
+      operationId: updateRecurringExpense
+      tags: [expenses]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecurringExpenseUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecurringExpense"
+    delete:
+      operationId: deleteRecurringExpense
+      tags: [expenses]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: Deleted or archived
+  /recurring-expenses/{id}/pending:
+    get:
+      operationId: getRecurringExpensePending
+      tags: [expenses]
+      summary: Every month this commitment still owes
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: Pending months
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DueExpensePage"
+  /recurring-expenses/{id}/pay:
+    post:
+      operationId: payRecurringExpense
+      tags: [expenses]
+      summary: Record payment of a monthly commitment (writes a linked expense row)
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecurringExpensePayInput"
+      responses:
+        "201":
+          description: Recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Expense"
+        "400":
+          description: Already paid for that month, or invalid amount
 
 components:
   schemas:
@@ -3079,3 +3295,250 @@ components:
         createdAt: { type: string }
         size: { type: integer }
         path: { type: ["string", "null"] }
+
+    # Profit
+    ProfitTotals:
+      type: object
+      required: [dateFrom, dateTo, revenue, cogs, grossProfit, commission, expenses, netProfit]
+      properties:
+        dateFrom: { type: string }
+        dateTo: { type: string }
+        invoiceCount: { type: integer }
+        # Revenue side
+        grossSales: { type: number }
+        invoiceDiscount: { type: number }
+        returnedRevenue: { type: number }
+        exchangeRevenue: { type: number }
+        revenue: { type: number }
+        # Cost side
+        soldCost: { type: number }
+        recoveredCost: { type: number }
+        damagedCost: { type: number }
+        exchangeCost: { type: number }
+        cogs: { type: number }
+        # Results
+        grossProfit: { type: number }
+        commission: { type: number }
+        expenses: { type: number }
+        expenseCount: { type: integer }
+        netProfit: { type: number }
+        grossMargin: { type: number }
+        netMargin: { type: number }
+        # Lines whose cost is unknown/zero — they inflate the profit.
+        zeroCostLines: { type: integer }
+        lineCount: { type: integer }
+    ProfitWindow:
+      allOf:
+        - $ref: "#/components/schemas/ProfitTotals"
+        - type: object
+          properties:
+            key: { type: string }
+            label: { type: string }
+            months: { type: integer }
+    ProfitBreakdownRow:
+      type: object
+      properties:
+        category: { type: string }
+        id: { type: integer }
+        nameAr: { type: string }
+        sku: { type: ["string", "null"] }
+        qty: { type: number }
+        revenue: { type: number }
+        cost: { type: number }
+        profit: { type: number }
+        margin: { type: number }
+    ProfitDailyRow:
+      type: object
+      properties:
+        date: { type: string }
+        revenue: { type: number }
+        cost: { type: number }
+        profit: { type: number }
+        margin: { type: number }
+    ExpenseCategoryRow:
+      type: object
+      properties:
+        category: { type: string }
+        total: { type: number }
+        count: { type: integer }
+    ProfitReport:
+      allOf:
+        - $ref: "#/components/schemas/ProfitTotals"
+        - type: object
+          required: [windows, daily, byCategory, byProduct, expensesByCategory]
+          properties:
+            windows:
+              type: array
+              items:
+                $ref: "#/components/schemas/ProfitWindow"
+            daily:
+              type: array
+              items:
+                $ref: "#/components/schemas/ProfitDailyRow"
+            byCategory:
+              type: array
+              items:
+                $ref: "#/components/schemas/ProfitBreakdownRow"
+            byProduct:
+              type: array
+              items:
+                $ref: "#/components/schemas/ProfitBreakdownRow"
+            expensesByCategory:
+              type: array
+              items:
+                $ref: "#/components/schemas/ExpenseCategoryRow"
+
+    # Expenses
+    Expense:
+      type: object
+      required: [id, amount, description, date]
+      properties:
+        id: { type: integer }
+        amount: { type: number }
+        description: { type: string }
+        category: { type: ["string", "null"] }
+        # Local calendar day, YYYY-MM-DD (not a UTC timestamp).
+        date: { type: string }
+        notes: { type: ["string", "null"] }
+        # Set when this row settles a monthly commitment.
+        recurringExpenseId: { type: ["integer", "null"] }
+        periodKey: { type: ["string", "null"] }
+        recurringName: { type: ["string", "null"] }
+        recurringType: { type: ["string", "null"] }
+        recurringJobTitle: { type: ["string", "null"] }
+        createdBy: { type: ["string", "null"] }
+        createdAt: { type: string }
+    ExpenseInput:
+      type: object
+      required: [amount, description]
+      properties:
+        amount: { type: number }
+        description: { type: string }
+        category: { type: string }
+        date: { type: string }
+        notes: { type: string }
+    ExpenseUpdate:
+      type: object
+      properties:
+        amount: { type: number }
+        description: { type: string }
+        category: { type: ["string", "null"] }
+        date: { type: string }
+        notes: { type: ["string", "null"] }
+    ExpensePage:
+      type: object
+      required: [items, total, totalAmount]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Expense"
+        total: { type: integer }
+        totalAmount: { type: number }
+        dateFrom: { type: string }
+        dateTo: { type: string }
+    RecurringExpense:
+      type: object
+      required: [id, name, type, amount, dayOfMonth, isActive, status, dueCount, dueTotal]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        type: { type: string, enum: [salary, rent, other] }
+        jobTitle: { type: ["string", "null"] }
+        phone: { type: ["string", "null"] }
+        amount: { type: number }
+        dayOfMonth: { type: integer }
+        startDate: { type: ["string", "null"] }
+        notes: { type: ["string", "null"] }
+        isActive: { type: integer }
+        createdBy: { type: ["string", "null"] }
+        createdAt: { type: string }
+        updatedAt: { type: string }
+        # Live due state, computed per request (never stored).
+        paidCurrentPeriod: { type: boolean }
+        currentPeriod: { type: string }
+        currentDueDate: { type: string }
+        # Every unpaid month, including one not yet at its pay day.
+        pendingCount: { type: integer }
+        pendingTotal: { type: number }
+        # Only what is owed today — the same definition the due-summary uses.
+        dueCount: { type: integer }
+        dueTotal: { type: number }
+        nextDuePeriod: { type: ["string", "null"] }
+        nextDueDate: { type: ["string", "null"] }
+        status: { type: string, enum: [paid, overdue, due, soon, upcoming] }
+    RecurringExpenseInput:
+      type: object
+      required: [name, amount]
+      properties:
+        name: { type: string }
+        type: { type: string, enum: [salary, rent, other] }
+        jobTitle: { type: string }
+        phone: { type: string }
+        amount: { type: number }
+        dayOfMonth: { type: integer }
+        startDate: { type: string }
+        notes: { type: string }
+    RecurringExpenseUpdate:
+      type: object
+      properties:
+        name: { type: string }
+        type: { type: string, enum: [salary, rent, other] }
+        jobTitle: { type: ["string", "null"] }
+        phone: { type: ["string", "null"] }
+        amount: { type: number }
+        dayOfMonth: { type: integer }
+        startDate: { type: string }
+        notes: { type: ["string", "null"] }
+        isActive: { type: boolean }
+    RecurringExpensePage:
+      type: object
+      required: [items, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/RecurringExpense"
+        total: { type: integer }
+    RecurringExpensePayInput:
+      type: object
+      properties:
+        # Defaults to the commitment's own amount / today / the current month.
+        amount: { type: number }
+        date: { type: string }
+        periodKey: { type: string }
+        notes: { type: string }
+    DueExpense:
+      type: object
+      required: [recurringExpenseId, name, type, amount, periodKey, dueDate, status]
+      properties:
+        recurringExpenseId: { type: integer }
+        name: { type: string }
+        type: { type: string }
+        typeLabel: { type: string }
+        jobTitle: { type: ["string", "null"] }
+        amount: { type: number }
+        periodKey: { type: string }
+        dueDate: { type: string }
+        status: { type: string, enum: [overdue, due, soon, upcoming] }
+    DueExpensePage:
+      type: object
+      required: [items, total]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/DueExpense"
+        total: { type: integer }
+    ExpensesDueSummary:
+      type: object
+      required: [dueCount, dueTotal, overdueCount, monthTotal, items]
+      properties:
+        dueCount: { type: integer }
+        dueTotal: { type: number }
+        overdueCount: { type: integer }
+        monthTotal: { type: number }
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/DueExpense"

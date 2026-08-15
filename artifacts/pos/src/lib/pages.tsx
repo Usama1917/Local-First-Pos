@@ -1,7 +1,7 @@
 import type { ComponentType } from "react";
 import {
   LayoutDashboard, ShoppingCart, FileText, Receipt, RotateCcw, ShoppingBag,
-  Package, ClipboardList, Users, HardHat, Truck, CreditCard, BarChart3, Settings,
+  Package, ClipboardList, Users, HardHat, Truck, CreditCard, BarChart3, Wallet, Settings,
   type LucideIcon,
 } from "lucide-react";
 
@@ -18,6 +18,7 @@ import CraftsmenPage from "@/pages/craftsmen";
 import SuppliersPage from "@/pages/suppliers";
 import DebtsPage from "@/pages/debts";
 import ReportsPage from "@/pages/reports";
+import ExpensesPage from "@/pages/expenses";
 import SettingsPage from "@/pages/settings";
 
 export interface PageDef {
@@ -45,6 +46,7 @@ export const PAGES: PageDef[] = [
   { key: "/suppliers", label: "الموردين والماركات", icon: Truck, component: SuppliersPage },
   { key: "/debts", label: "المديونيات", icon: CreditCard, component: DebtsPage },
   { key: "/reports", label: "التقارير", icon: BarChart3, component: ReportsPage },
+  { key: "/expenses", label: "المصروفات", icon: Wallet, component: ExpensesPage },
   { key: "/settings", label: "الإعدادات", icon: Settings, component: SettingsPage },
 ];
 

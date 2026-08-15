@@ -203,6 +203,14 @@ router.post("/sales/:id/finalize", (req, res) => {
       updateStock.run(item.quantity, item.productId);
       insertMove.run(item.productId, "sale", item.quantity, before, before - item.quantity, "sales_invoice", id, `فاتورة ${inv.serial}`);
     }
+
+    // Freeze each line's cost now that the goods have actually left. Later purchases
+    // move products.trueCost, and this invoice's profit must not move with it.
+    db.prepare(`
+      UPDATE sales_invoice_items SET costAtSale = COALESCE(
+        (SELECT p.trueCost FROM products p WHERE p.id = sales_invoice_items.productId), 0)
+      WHERE invoiceId = ?
+    `).run(id);
     db.exec("COMMIT");
   } catch (e) {
     db.exec("ROLLBACK");
@@ -358,6 +366,13 @@ router.post("/sales/:id/amend", (req, res) => {
       updateStock.run(item.quantity, item.productId);
       insertMove.run(item.productId, "sale", item.quantity, before, before - item.quantity, "sales_invoice", newId, `فاتورة ${serial}`, actor);
     }
+
+    // Same cost snapshot the finalize path takes — the replacement is a real sale.
+    db.prepare(`
+      UPDATE sales_invoice_items SET costAtSale = COALESCE(
+        (SELECT p.trueCost FROM products p WHERE p.id = sales_invoice_items.productId), 0)
+      WHERE invoiceId = ?
+    `).run(newId);
 
     // 4. Retire the original and point the two at each other.
     db.prepare("UPDATE sales_invoices SET status = 'amended', amendedToId = ?, updatedBy = ?, updatedAt = datetime('now') WHERE id = ?")

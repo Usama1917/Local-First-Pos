@@ -12,9 +12,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
+import { ProfitTab } from "@/components/profit-tab";
 import { formatCurrency } from "@/lib/format";
 import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from "recharts";
-import { Calendar, TrendingUp, Package, Star, HardHat, ShoppingBag } from "lucide-react";
+import { Calendar, TrendingUp, Package, Star, HardHat, ShoppingBag, Coins } from "lucide-react";
 
 function DateRangePicker({ from, to, onFrom, onTo }: { from: string; to: string; onFrom: (v: string) => void; onTo: (v: string) => void }) {
   return (
@@ -31,9 +32,14 @@ function DateRangePicker({ from, to, onFrom, onTo }: { from: string; to: string;
   );
 }
 
+// Local YYYY-MM-DD. toISOString() shifts to UTC and can hand the backend the wrong
+// day near midnight, which silently moves a whole day of sales into another report.
+const localISO = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
 export default function ReportsPage() {
-  const today = new Date().toISOString().split("T")[0];
-  const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split("T")[0];
+  const today = localISO(new Date());
+  const monthStart = localISO(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
   const [dateFrom, setDateFrom] = useState(monthStart);
   const [dateTo, setDateTo] = useState(today);
 
@@ -59,11 +65,20 @@ export default function ReportsPage() {
       <Tabs defaultValue="sales">
         <TabsList>
           <TabsTrigger value="sales"><TrendingUp className="h-4 w-4 ml-1" />المبيعات</TabsTrigger>
+          <TabsTrigger value="profit"><Coins className="h-4 w-4 ml-1" />الأرباح</TabsTrigger>
           <TabsTrigger value="inventory"><Package className="h-4 w-4 ml-1" />المخزون</TabsTrigger>
           <TabsTrigger value="best"><Star className="h-4 w-4 ml-1" />الأكثر مبيعاً</TabsTrigger>
           <TabsTrigger value="commission"><HardHat className="h-4 w-4 ml-1" />عمولات الصنايعية</TabsTrigger>
           <TabsTrigger value="purchases"><ShoppingBag className="h-4 w-4 ml-1" />المشتريات</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="profit">
+          <ProfitTab
+            dateFrom={dateFrom}
+            dateTo={dateTo}
+            onRange={(f, t) => { setDateFrom(f); setDateTo(t); }}
+          />
+        </TabsContent>
 
         <TabsContent value="sales" className="space-y-4">
           {loadSales ? <div className="p-8 text-center text-muted-foreground">جاري التحميل...</div> : (

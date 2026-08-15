@@ -67,3 +67,6 @@ pos-config.json
 # Per-machine production notes written on the shop PC during setup/cleanup.
 # May contain shop-specific paths/details — never commit it.
 PRODUCTION_DATA_CLEANUP_NOTE.txt
+
+# Claude Code per-machine settings
+.claude/settings.local.json

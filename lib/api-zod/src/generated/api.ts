@@ -1959,7 +1959,7 @@ export const DeleteReturnParams = zod.object({
  * @summary Effects / warnings / blockers of deleting a record (Arabic, rendered verbatim in the confirmation dialog)
  */
 export const GetDeletePreviewParams = zod.object({
-  "entity": zod.enum(['sales', 'purchases', 'returns', 'quotations', 'products', 'customers', 'craftsmen', 'suppliers', 'categories', 'brands', 'units']),
+  "entity": zod.enum(['sales', 'purchases', 'returns', 'quotations', 'products', 'customers', 'craftsmen', 'suppliers', 'categories', 'brands', 'units', 'expenses', 'recurring-expenses']),
   "id": zod.coerce.number()
 })
 
@@ -2511,6 +2511,103 @@ export const GetPurchasesReportResponse = zod.object({
 })
 
 
+/**
+ * @summary Full P&L for a period — revenue, COGS, commission, expenses, net profit
+ */
+export const GetProfitReportQueryParams = zod.object({
+  "dateFrom": zod.coerce.string().optional(),
+  "dateTo": zod.coerce.string().optional()
+})
+
+export const GetProfitReportResponse = zod.object({
+  "dateFrom": zod.string(),
+  "dateTo": zod.string(),
+  "invoiceCount": zod.number().optional(),
+  "grossSales": zod.number().optional(),
+  "invoiceDiscount": zod.number().optional(),
+  "returnedRevenue": zod.number().optional(),
+  "exchangeRevenue": zod.number().optional(),
+  "revenue": zod.number(),
+  "soldCost": zod.number().optional(),
+  "recoveredCost": zod.number().optional(),
+  "damagedCost": zod.number().optional(),
+  "exchangeCost": zod.number().optional(),
+  "cogs": zod.number(),
+  "grossProfit": zod.number(),
+  "commission": zod.number(),
+  "expenses": zod.number(),
+  "expenseCount": zod.number().optional(),
+  "netProfit": zod.number(),
+  "grossMargin": zod.number().optional(),
+  "netMargin": zod.number().optional(),
+  "zeroCostLines": zod.number().optional(),
+  "lineCount": zod.number().optional()
+}).and(zod.object({
+  "windows": zod.array(zod.object({
+  "dateFrom": zod.string(),
+  "dateTo": zod.string(),
+  "invoiceCount": zod.number().optional(),
+  "grossSales": zod.number().optional(),
+  "invoiceDiscount": zod.number().optional(),
+  "returnedRevenue": zod.number().optional(),
+  "exchangeRevenue": zod.number().optional(),
+  "revenue": zod.number(),
+  "soldCost": zod.number().optional(),
+  "recoveredCost": zod.number().optional(),
+  "damagedCost": zod.number().optional(),
+  "exchangeCost": zod.number().optional(),
+  "cogs": zod.number(),
+  "grossProfit": zod.number(),
+  "commission": zod.number(),
+  "expenses": zod.number(),
+  "expenseCount": zod.number().optional(),
+  "netProfit": zod.number(),
+  "grossMargin": zod.number().optional(),
+  "netMargin": zod.number().optional(),
+  "zeroCostLines": zod.number().optional(),
+  "lineCount": zod.number().optional()
+}).and(zod.object({
+  "key": zod.string().optional(),
+  "label": zod.string().optional(),
+  "months": zod.number().optional()
+}))),
+  "daily": zod.array(zod.object({
+  "date": zod.string().optional(),
+  "revenue": zod.number().optional(),
+  "cost": zod.number().optional(),
+  "profit": zod.number().optional(),
+  "margin": zod.number().optional()
+})),
+  "byCategory": zod.array(zod.object({
+  "category": zod.string().optional(),
+  "id": zod.number().optional(),
+  "nameAr": zod.string().optional(),
+  "sku": zod.string().nullish(),
+  "qty": zod.number().optional(),
+  "revenue": zod.number().optional(),
+  "cost": zod.number().optional(),
+  "profit": zod.number().optional(),
+  "margin": zod.number().optional()
+})),
+  "byProduct": zod.array(zod.object({
+  "category": zod.string().optional(),
+  "id": zod.number().optional(),
+  "nameAr": zod.string().optional(),
+  "sku": zod.string().nullish(),
+  "qty": zod.number().optional(),
+  "revenue": zod.number().optional(),
+  "cost": zod.number().optional(),
+  "profit": zod.number().optional(),
+  "margin": zod.number().optional()
+})),
+  "expensesByCategory": zod.array(zod.object({
+  "category": zod.string().optional(),
+  "total": zod.number().optional(),
+  "count": zod.number().optional()
+}))
+}))
+
+
 export const GetCraftsmanCommissionReportQueryParams = zod.object({
   "dateFrom": zod.coerce.string().optional(),
   "dateTo": zod.coerce.string().optional(),
@@ -2607,6 +2704,300 @@ export const ListBackupsResponse = zod.array(ListBackupsResponseItem)
  */
 export const RestoreBackupParams = zod.object({
   "filename": zod.coerce.string()
+})
+
+
+/**
+ * @summary Monthly commitments that are due or overdue, plus this month's spend
+ */
+export const GetExpensesDueSummaryResponse = zod.object({
+  "dueCount": zod.number(),
+  "dueTotal": zod.number(),
+  "overdueCount": zod.number(),
+  "monthTotal": zod.number(),
+  "items": zod.array(zod.object({
+  "recurringExpenseId": zod.number(),
+  "name": zod.string(),
+  "type": zod.string(),
+  "typeLabel": zod.string().optional(),
+  "jobTitle": zod.string().nullish(),
+  "amount": zod.number(),
+  "periodKey": zod.string(),
+  "dueDate": zod.string(),
+  "status": zod.enum(['overdue', 'due', 'soon', 'upcoming'])
+}))
+})
+
+
+/**
+ * @summary Expense log (defaults to the current month)
+ */
+export const ListExpensesQueryParams = zod.object({
+  "search": zod.coerce.string().optional(),
+  "dateFrom": zod.coerce.string().optional(),
+  "dateTo": zod.coerce.string().optional(),
+  "recurringId": zod.coerce.number().optional(),
+  "limit": zod.coerce.number().optional(),
+  "offset": zod.coerce.number().optional()
+})
+
+export const ListExpensesResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.number(),
+  "amount": zod.number(),
+  "description": zod.string(),
+  "category": zod.string().nullish(),
+  "date": zod.string(),
+  "notes": zod.string().nullish(),
+  "recurringExpenseId": zod.number().nullish(),
+  "periodKey": zod.string().nullish(),
+  "recurringName": zod.string().nullish(),
+  "recurringType": zod.string().nullish(),
+  "recurringJobTitle": zod.string().nullish(),
+  "createdBy": zod.string().nullish(),
+  "createdAt": zod.string().optional()
+})),
+  "total": zod.number(),
+  "totalAmount": zod.number(),
+  "dateFrom": zod.string().optional(),
+  "dateTo": zod.string().optional()
+})
+
+
+/**
+ * @summary Record an expense
+ */
+export const CreateExpenseBody = zod.object({
+  "amount": zod.number(),
+  "description": zod.string(),
+  "category": zod.string().optional(),
+  "date": zod.string().optional(),
+  "notes": zod.string().optional()
+})
+
+
+export const GetExpenseParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetExpenseResponse = zod.object({
+  "id": zod.number(),
+  "amount": zod.number(),
+  "description": zod.string(),
+  "category": zod.string().nullish(),
+  "date": zod.string(),
+  "notes": zod.string().nullish(),
+  "recurringExpenseId": zod.number().nullish(),
+  "periodKey": zod.string().nullish(),
+  "recurringName": zod.string().nullish(),
+  "recurringType": zod.string().nullish(),
+  "recurringJobTitle": zod.string().nullish(),
+  "createdBy": zod.string().nullish(),
+  "createdAt": zod.string().optional()
+})
+
+
+export const UpdateExpenseParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const UpdateExpenseBody = zod.object({
+  "amount": zod.number().optional(),
+  "description": zod.string().optional(),
+  "category": zod.string().nullish(),
+  "date": zod.string().optional(),
+  "notes": zod.string().nullish()
+})
+
+export const UpdateExpenseResponse = zod.object({
+  "id": zod.number(),
+  "amount": zod.number(),
+  "description": zod.string(),
+  "category": zod.string().nullish(),
+  "date": zod.string(),
+  "notes": zod.string().nullish(),
+  "recurringExpenseId": zod.number().nullish(),
+  "periodKey": zod.string().nullish(),
+  "recurringName": zod.string().nullish(),
+  "recurringType": zod.string().nullish(),
+  "recurringJobTitle": zod.string().nullish(),
+  "createdBy": zod.string().nullish(),
+  "createdAt": zod.string().optional()
+})
+
+
+export const DeleteExpenseParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+/**
+ * @summary Monthly commitments (salaries, rent) with their live due status
+ */
+export const ListRecurringExpensesQueryParams = zod.object({
+  "search": zod.coerce.string().optional(),
+  "isActive": zod.coerce.boolean().optional()
+})
+
+export const ListRecurringExpensesResponse = zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "type": zod.enum(['salary', 'rent', 'other']),
+  "jobTitle": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "amount": zod.number(),
+  "dayOfMonth": zod.number(),
+  "startDate": zod.string().nullish(),
+  "notes": zod.string().nullish(),
+  "isActive": zod.number(),
+  "createdBy": zod.string().nullish(),
+  "createdAt": zod.string().optional(),
+  "updatedAt": zod.string().optional(),
+  "paidCurrentPeriod": zod.boolean().optional(),
+  "currentPeriod": zod.string().optional(),
+  "currentDueDate": zod.string().optional(),
+  "pendingCount": zod.number().optional(),
+  "pendingTotal": zod.number().optional(),
+  "dueCount": zod.number(),
+  "dueTotal": zod.number(),
+  "nextDuePeriod": zod.string().nullish(),
+  "nextDueDate": zod.string().nullish(),
+  "status": zod.enum(['paid', 'overdue', 'due', 'soon', 'upcoming'])
+})),
+  "total": zod.number()
+})
+
+
+/**
+ * @summary Register a monthly commitment
+ */
+export const CreateRecurringExpenseBody = zod.object({
+  "name": zod.string(),
+  "type": zod.enum(['salary', 'rent', 'other']).optional(),
+  "jobTitle": zod.string().optional(),
+  "phone": zod.string().optional(),
+  "amount": zod.number(),
+  "dayOfMonth": zod.number().optional(),
+  "startDate": zod.string().optional(),
+  "notes": zod.string().optional()
+})
+
+
+export const GetRecurringExpenseParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetRecurringExpenseResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "type": zod.enum(['salary', 'rent', 'other']),
+  "jobTitle": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "amount": zod.number(),
+  "dayOfMonth": zod.number(),
+  "startDate": zod.string().nullish(),
+  "notes": zod.string().nullish(),
+  "isActive": zod.number(),
+  "createdBy": zod.string().nullish(),
+  "createdAt": zod.string().optional(),
+  "updatedAt": zod.string().optional(),
+  "paidCurrentPeriod": zod.boolean().optional(),
+  "currentPeriod": zod.string().optional(),
+  "currentDueDate": zod.string().optional(),
+  "pendingCount": zod.number().optional(),
+  "pendingTotal": zod.number().optional(),
+  "dueCount": zod.number(),
+  "dueTotal": zod.number(),
+  "nextDuePeriod": zod.string().nullish(),
+  "nextDueDate": zod.string().nullish(),
+  "status": zod.enum(['paid', 'overdue', 'due', 'soon', 'upcoming'])
+})
+
+
+export const UpdateRecurringExpenseParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const UpdateRecurringExpenseBody = zod.object({
+  "name": zod.string().optional(),
+  "type": zod.enum(['salary', 'rent', 'other']).optional(),
+  "jobTitle": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "amount": zod.number().optional(),
+  "dayOfMonth": zod.number().optional(),
+  "startDate": zod.string().optional(),
+  "notes": zod.string().nullish(),
+  "isActive": zod.boolean().optional()
+})
+
+export const UpdateRecurringExpenseResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "type": zod.enum(['salary', 'rent', 'other']),
+  "jobTitle": zod.string().nullish(),
+  "phone": zod.string().nullish(),
+  "amount": zod.number(),
+  "dayOfMonth": zod.number(),
+  "startDate": zod.string().nullish(),
+  "notes": zod.string().nullish(),
+  "isActive": zod.number(),
+  "createdBy": zod.string().nullish(),
+  "createdAt": zod.string().optional(),
+  "updatedAt": zod.string().optional(),
+  "paidCurrentPeriod": zod.boolean().optional(),
+  "currentPeriod": zod.string().optional(),
+  "currentDueDate": zod.string().optional(),
+  "pendingCount": zod.number().optional(),
+  "pendingTotal": zod.number().optional(),
+  "dueCount": zod.number(),
+  "dueTotal": zod.number(),
+  "nextDuePeriod": zod.string().nullish(),
+  "nextDueDate": zod.string().nullish(),
+  "status": zod.enum(['paid', 'overdue', 'due', 'soon', 'upcoming'])
+})
+
+
+export const DeleteRecurringExpenseParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+/**
+ * @summary Every month this commitment still owes
+ */
+export const GetRecurringExpensePendingParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetRecurringExpensePendingResponse = zod.object({
+  "items": zod.array(zod.object({
+  "recurringExpenseId": zod.number(),
+  "name": zod.string(),
+  "type": zod.string(),
+  "typeLabel": zod.string().optional(),
+  "jobTitle": zod.string().nullish(),
+  "amount": zod.number(),
+  "periodKey": zod.string(),
+  "dueDate": zod.string(),
+  "status": zod.enum(['overdue', 'due', 'soon', 'upcoming'])
+})),
+  "total": zod.number()
+})
+
+
+/**
+ * @summary Record payment of a monthly commitment (writes a linked expense row)
+ */
+export const PayRecurringExpenseParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const PayRecurringExpenseBody = zod.object({
+  "amount": zod.number().optional(),
+  "date": zod.string().optional(),
+  "periodKey": zod.string().optional(),
+  "notes": zod.string().optional()
 })
 
 

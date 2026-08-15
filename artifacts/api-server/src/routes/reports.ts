@@ -137,6 +137,204 @@ router.get("/reports/purchases", (req, res) => {
   res.json({ summary, bySupplier, dateFrom: from, dateTo: to });
 });
 
+// ------------------------------------------------------------- profit ------
+// One period's full P&L. Everything is attributed to the period the DOCUMENT falls
+// in — a return in October adjusts October, even if the sale it reverses was in
+// September. That is the only rule that keeps each period's numbers final once the
+// period closes.
+//
+// Costs come from the `costAtSale` snapshot written when the goods left, NOT from
+// products.trueCost, so a supplier's price rise today cannot rewrite last month's
+// profit. Rows predating the snapshot were backfilled once at boot (see db.ts).
+
+const LIVE_INVOICES = "si.status NOT IN ('draft','cancelled','amended')";
+const r2 = (n: number) => Math.round((n || 0) * 100) / 100;
+
+function computeProfit(from: string, to: string) {
+  // 1. What the shop invoiced, and the commission those invoices accrued.
+  const inv = db.prepare(`
+    SELECT COUNT(*) as invoiceCount,
+           COALESCE(SUM(si.total), 0) as revenue,
+           COALESCE(SUM(si.discount), 0) as discount,
+           COALESCE(SUM(si.craftsmanCommission), 0) as commission
+    FROM sales_invoices si
+    WHERE ${LIVE_INVOICES} AND date(si.createdAt) BETWEEN ? AND ?
+  `).get(from, to) as any;
+
+  // 2. Cost of everything those invoices shipped.
+  const sold = db.prepare(`
+    SELECT COALESCE(SUM(sii.quantity * COALESCE(sii.costAtSale, p.trueCost, 0)), 0) as cogs,
+           COUNT(*) as lineCount,
+           COUNT(CASE WHEN COALESCE(sii.costAtSale, p.trueCost, 0) <= 0 THEN 1 END) as zeroCostLines
+    FROM sales_invoice_items sii
+    JOIN sales_invoices si ON sii.invoiceId = si.id
+    LEFT JOIN products p ON sii.productId = p.id
+    WHERE ${LIVE_INVOICES} AND date(si.createdAt) BETWEEN ? AND ?
+  `).get(from, to) as any;
+
+  // 3. Returns & exchanges. A restocked return hands the goods back, so its cost
+  //    comes OUT of COGS; a damaged one doesn't, so that cost stays a loss.
+  const ret = db.prepare(`
+    SELECT
+      COALESCE(SUM(CASE WHEN ri.kind = 'returned' THEN ri.total ELSE 0 END), 0) as returnedRevenue,
+      COALESCE(SUM(CASE WHEN ri.kind = 'new' THEN ri.total ELSE 0 END), 0) as exchangeRevenue,
+      COALESCE(SUM(CASE WHEN ri.kind = 'returned' AND ri.restock = 1
+                        THEN ri.quantity * COALESCE(ri.costAtSale, p.trueCost, 0) ELSE 0 END), 0) as recoveredCost,
+      COALESCE(SUM(CASE WHEN ri.kind = 'returned' AND ri.restock = 0
+                        THEN ri.quantity * COALESCE(ri.costAtSale, p.trueCost, 0) ELSE 0 END), 0) as damagedCost,
+      COALESCE(SUM(CASE WHEN ri.kind = 'new'
+                        THEN ri.quantity * COALESCE(ri.costAtSale, p.trueCost, 0) ELSE 0 END), 0) as exchangeCost
+    FROM return_items ri
+    JOIN returns r ON ri.returnId = r.id
+    LEFT JOIN products p ON ri.productId = p.id
+    WHERE date(r.createdAt) BETWEEN ? AND ?
+  `).get(from, to) as any;
+
+  // 4. Operating costs recorded on the expenses page (ad-hoc + paid salaries/rent).
+  //    expenses.date is already a local calendar day, so it compares directly.
+  const exp = db.prepare(`
+    SELECT COALESCE(SUM(amount), 0) as total, COUNT(*) as count
+    FROM expenses WHERE date BETWEEN ? AND ?
+  `).get(from, to) as any;
+
+  const revenue = (inv.revenue || 0) - (ret.returnedRevenue || 0) + (ret.exchangeRevenue || 0);
+  const cogs = (sold.cogs || 0) - (ret.recoveredCost || 0) + (ret.exchangeCost || 0);
+  const grossProfit = revenue - cogs;
+  const commission = inv.commission || 0;
+  const expenses = exp.total || 0;
+  const netProfit = grossProfit - commission - expenses;
+
+  return {
+    dateFrom: from,
+    dateTo: to,
+    invoiceCount: inv.invoiceCount || 0,
+    // Revenue side
+    grossSales: r2(inv.revenue),
+    invoiceDiscount: r2(inv.discount),
+    returnedRevenue: r2(ret.returnedRevenue),
+    exchangeRevenue: r2(ret.exchangeRevenue),
+    revenue: r2(revenue),
+    // Cost side
+    soldCost: r2(sold.cogs),
+    recoveredCost: r2(ret.recoveredCost),
+    damagedCost: r2(ret.damagedCost),
+    exchangeCost: r2(ret.exchangeCost),
+    cogs: r2(cogs),
+    // Results
+    grossProfit: r2(grossProfit),
+    commission: r2(commission),
+    expenses: r2(expenses),
+    expenseCount: exp.count || 0,
+    netProfit: r2(netProfit),
+    grossMargin: revenue > 0 ? r2((grossProfit / revenue) * 100) : 0,
+    netMargin: revenue > 0 ? r2((netProfit / revenue) * 100) : 0,
+    // Honesty flag: lines whose cost is unknown/zero make the profit look too good.
+    zeroCostLines: sold.zeroCostLines || 0,
+    lineCount: sold.lineCount || 0,
+  };
+}
+
+/** Shift a local YYYY-MM-DD by N months, clamping to the target month's length. */
+function shiftMonths(iso: string, months: number): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  const lastDay = new Date(y, m - 1 + months + 1, 0).getDate();
+  return localISO(new Date(y, m - 1 + months, Math.min(d, lastDay)));
+}
+
+router.get("/reports/profit", (req, res) => {
+  const { dateFrom, dateTo } = req.query as any;
+  const from = dateFrom || monthStart();
+  const to = dateTo || todayLocal();
+  const today = todayLocal();
+
+  // Rolling windows so the owner can compare without changing the range.
+  const windows = [
+    { key: "1m", label: "آخر شهر", months: 1 },
+    { key: "3m", label: "آخر 3 شهور", months: 3 },
+    { key: "6m", label: "آخر 6 شهور", months: 6 },
+  ].map((w) => {
+    // computeProfit already reports the range it covered, so don't restate it.
+    return { ...w, ...computeProfit(shiftMonths(today, -w.months), today) };
+  });
+
+  // Per-day series for the trend. Revenue and cost are aggregated separately and
+  // merged here — one pass each, instead of a correlated subquery per day.
+  const dailyRevenue = db.prepare(`
+    SELECT date(si.createdAt) as date, COALESCE(SUM(si.total), 0) as revenue
+    FROM sales_invoices si
+    WHERE ${LIVE_INVOICES} AND date(si.createdAt) BETWEEN ? AND ?
+    GROUP BY date(si.createdAt)
+  `).all(from, to) as any[];
+
+  const dailyCost = db.prepare(`
+    SELECT date(si.createdAt) as date,
+           COALESCE(SUM(sii.quantity * COALESCE(sii.costAtSale, p.trueCost, 0)), 0) as cost
+    FROM sales_invoice_items sii
+    JOIN sales_invoices si ON sii.invoiceId = si.id
+    LEFT JOIN products p ON sii.productId = p.id
+    WHERE ${LIVE_INVOICES} AND date(si.createdAt) BETWEEN ? AND ?
+    GROUP BY date(si.createdAt)
+  `).all(from, to) as any[];
+
+  const costByDate = new Map(dailyCost.map((d) => [d.date, d.cost]));
+  const daily = dailyRevenue
+    .map((d) => ({ date: d.date, revenue: d.revenue, cost: costByDate.get(d.date) || 0 }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  // Profit per category — where the money is actually made.
+  const byCategory = db.prepare(`
+    SELECT COALESCE(c.name, 'بدون تصنيف') as category,
+           COALESCE(SUM(sii.total), 0) as revenue,
+           COALESCE(SUM(sii.quantity * COALESCE(sii.costAtSale, p.trueCost, 0)), 0) as cost,
+           COALESCE(SUM(sii.quantity), 0) as qty
+    FROM sales_invoice_items sii
+    JOIN sales_invoices si ON sii.invoiceId = si.id
+    JOIN products p ON sii.productId = p.id
+    LEFT JOIN categories c ON p.categoryId = c.id
+    WHERE ${LIVE_INVOICES} AND date(si.createdAt) BETWEEN ? AND ?
+    GROUP BY p.categoryId ORDER BY (revenue - cost) DESC
+  `).all(from, to) as any[];
+
+  // Most/least profitable products.
+  const byProduct = db.prepare(`
+    SELECT p.id, p.nameAr, p.sku,
+           COALESCE(SUM(sii.quantity), 0) as qty,
+           COALESCE(SUM(sii.total), 0) as revenue,
+           COALESCE(SUM(sii.quantity * COALESCE(sii.costAtSale, p.trueCost, 0)), 0) as cost
+    FROM sales_invoice_items sii
+    JOIN sales_invoices si ON sii.invoiceId = si.id
+    JOIN products p ON sii.productId = p.id
+    WHERE ${LIVE_INVOICES} AND date(si.createdAt) BETWEEN ? AND ?
+    GROUP BY p.id ORDER BY (revenue - cost) DESC LIMIT 50
+  `).all(from, to) as any[];
+
+  // What the operating costs were spent on, so a bad month can be explained.
+  const expensesByCategory = db.prepare(`
+    SELECT COALESCE(NULLIF(category, ''), 'بدون بند') as category,
+           COALESCE(SUM(amount), 0) as total, COUNT(*) as count
+    FROM expenses WHERE date BETWEEN ? AND ?
+    GROUP BY COALESCE(NULLIF(category, ''), 'بدون بند') ORDER BY total DESC
+  `).all(from, to) as any[];
+
+  const withProfit = (rows: any[]) =>
+    rows.map((r) => ({
+      ...r,
+      revenue: r2(r.revenue),
+      cost: r2(r.cost),
+      profit: r2(r.revenue - r.cost),
+      margin: r.revenue > 0 ? r2(((r.revenue - r.cost) / r.revenue) * 100) : 0,
+    }));
+
+  res.json({
+    ...computeProfit(from, to),
+    windows,
+    daily: withProfit(daily),
+    byCategory: withProfit(byCategory),
+    byProduct: withProfit(byProduct),
+    expensesByCategory,
+  });
+});
+
 router.get("/reports/craftsman-commission", (req, res) => {
   const { dateFrom, dateTo } = req.query as any;
   const from = dateFrom || monthStart();

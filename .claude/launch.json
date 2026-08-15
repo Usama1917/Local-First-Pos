@@ -1,0 +1,23 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "api",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": [
+        "-c",
+        "export NODE_ENV=development PORT=8090 && pnpm --config.verify-deps-before-run=false --filter @workspace/api-server run build && pnpm --config.verify-deps-before-run=false --filter @workspace/api-server run start"
+      ],
+      "port": 8090
+    },
+    {
+      "name": "pos",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": [
+        "-c",
+        "export PORT=24730 BASE_PATH=/ API_PROXY_TARGET=http://localhost:8090 && pnpm --config.verify-deps-before-run=false --filter @workspace/pos run dev"
+      ],
+      "port": 24730
+    }
+  ]
+}

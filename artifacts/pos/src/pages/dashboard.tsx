@@ -13,13 +13,17 @@ import {
   getListStockMovementsQueryKey,
   useCreateStockCount,
   getListStockCountsQueryKey,
+  useGetExpensesDueSummary,
+  getGetExpensesDueSummaryQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { formatCurrency, formatNumber } from "@/lib/format";
 import { Link, useLocation } from "wouter";
-import { Receipt, FileText, Package, ShoppingCart, TrendingUp, AlertCircle, Clock, PlusCircle, Zap, ArrowUp, ArrowDown } from "lucide-react";
+import { canAccess, type SessionUser } from "@/lib/pages";
+import { Receipt, FileText, Package, ShoppingCart, TrendingUp, AlertCircle, Clock, PlusCircle, Zap, ArrowUp, ArrowDown, Wallet } from "lucide-react";
 import { toast } from "sonner";
 
 const MOVE_LABELS: Record<string, string> = {
@@ -34,9 +38,22 @@ const fmtWhen = (v?: string | null) => {
   return isNaN(d.getTime()) ? v : d.toLocaleString("ar-EG", { dateStyle: "short", timeStyle: "short" });
 };
 
+/** The logged-in user, read the same way App.tsx does (RBAC here is client-side). */
+function storedUser(): SessionUser | null {
+  try {
+    return JSON.parse(localStorage.getItem("pos_user") || "null");
+  } catch {
+    return null;
+  }
+}
+
+const DUE_STATUS_LABELS: Record<string, string> = { overdue: "متأخر", due: "مستحق النهارده", soon: "قرّب" };
+
 export default function Dashboard() {
   const qc = useQueryClient();
   const [, setLocation] = useLocation();
+  // Salaries are sensitive — don't surface them to a cashier who can't open the page.
+  const canSeeExpenses = canAccess(storedUser(), "/expenses");
   const { data: summary, isLoading: isSummaryLoading } = useGetDashboardSummary({
     query: { queryKey: getGetDashboardSummaryQueryKey() }
   });
@@ -62,6 +79,13 @@ export default function Dashboard() {
     query: { queryKey: getListStockMovementsQueryKey(uncountedParams) }
   });
   const createCount = useCreateStockCount();
+
+  // Monthly commitments (salaries/rent) that are due, overdue, or about to fall due.
+  const { data: expensesDue } = useGetExpensesDueSummary({
+    query: { queryKey: getGetExpensesDueSummaryQueryKey(), enabled: canSeeExpenses }
+  });
+  const due = expensesDue as any;
+  const dueItems: any[] = due?.items || [];
 
   const pendingProducts = (uncounted as any)?.products || 0;
   const moves: any[] = (pendingMoves as any)?.items || [];
@@ -110,6 +134,52 @@ export default function Dashboard() {
           </Link>
         </div>
       </div>
+
+      {/* Due monthly expenses. Rendered ONLY when something actually needs paying, so
+          it costs no permanent dashboard space but is impossible to miss when it shows. */}
+      {canSeeExpenses && due?.dueCount > 0 && (
+        <Card className="border-amber-400 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="flex items-center gap-2 text-amber-900 dark:text-amber-200">
+              <Wallet className="h-5 w-5" />
+              مصروفات شهرية مستحقة الصرف
+            </CardTitle>
+            <Link
+              href="/expenses?tab=monthly"
+              className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+            >
+              صرف الآن
+            </Link>
+          </CardHeader>
+          <CardContent>
+            <p className="mb-3 text-sm text-amber-900/80 dark:text-amber-200/80">
+              {formatNumber(due.dueCount)} دفعة مستحقة بإجمالي{" "}
+              <span className="font-bold">{formatCurrency(due.dueTotal)}</span>
+              {due.overdueCount > 0 && ` — منهم ${formatNumber(due.overdueCount)} متأخر عن معاده`}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {dueItems.slice(0, 6).map((d) => (
+                <div
+                  key={`${d.recurringExpenseId}-${d.periodKey}`}
+                  className="flex items-center gap-2 rounded-md bg-background/70 px-2.5 py-1.5 text-sm"
+                >
+                  <Badge variant={d.status === "overdue" ? "destructive" : "secondary"}>
+                    {DUE_STATUS_LABELS[d.status] || d.status}
+                  </Badge>
+                  <span className="font-medium">{d.typeLabel} {d.name}</span>
+                  <span className="text-xs text-muted-foreground">{d.periodKey}</span>
+                  <span className="font-semibold text-destructive">{formatCurrency(d.amount)}</span>
+                </div>
+              ))}
+              {dueItems.length > 6 && (
+                <span className="self-center text-xs text-muted-foreground">
+                  + {formatNumber(dueItems.length - 6)} غيرهم
+                </span>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>

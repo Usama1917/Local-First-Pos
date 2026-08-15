@@ -566,6 +566,74 @@ function deleteSupplier(id: number): string | null {
   return null;
 }
 
+// -------------------------------------------------------------- expenses ----
+
+function previewExpense(id: number): DeletePreview | null {
+  const e = db.prepare(`
+    SELECT e.*, re.name as recurringName FROM expenses e
+    LEFT JOIN recurring_expenses re ON e.recurringExpenseId = re.id WHERE e.id = ?
+  `).get(id) as any;
+  if (!e) return null;
+
+  const effects = [`حذف مصروف «${e.description}» بقيمة ${money(e.amount)} بتاريخ ${e.date} نهائياً`];
+  const warnings: string[] = [];
+
+  // A payment against a monthly commitment is what marks that month settled, so
+  // removing it puts the month back on the due list. Say so plainly — the owner
+  // may be deleting a typo, not reversing a payment.
+  if (e.recurringExpenseId && e.periodKey) {
+    warnings.push(
+      `ده صرف «${e.recurringName || ""}» عن شهر ${e.periodKey} — بعد الحذف الشهر ده هيرجع «مستحق» تاني في المصروفات الشهرية`,
+    );
+  }
+  warnings.push("الفلوس اتصرفت فعلاً — الحذف بيشيل أثرها من إجمالي المصروفات بس، مش بيرجّع نقدية");
+
+  return { canDelete: true, mode: "hard", effects, warnings, blockers: [] };
+}
+
+function deleteExpense(id: number): string | null {
+  const p = previewExpense(id);
+  if (!p) return "غير موجود";
+  db.prepare("DELETE FROM expenses WHERE id = ?").run(id);
+  return null;
+}
+
+function previewRecurringExpense(id: number): DeletePreview | null {
+  const r = db.prepare("SELECT * FROM recurring_expenses WHERE id = ?").get(id) as any;
+  if (!r) return null;
+
+  const paid = db.prepare(
+    "SELECT COUNT(*) as c, COALESCE(SUM(amount), 0) as v FROM expenses WHERE recurringExpenseId = ?",
+  ).get(id) as any;
+  const hasHistory = (paid?.c || 0) > 0;
+
+  const effects: string[] = [];
+  const warnings: string[] = [];
+
+  if (hasHistory) {
+    effects.push(
+      `تم صرف ${paid.c} دفعة بإجمالي ${money(paid.v)} على «${r.name}» — سيتم أرشفته (إيقافه) وليس حذفه، مع الاحتفاظ بكل الدفعات في سجل المصروفات`,
+    );
+    effects.push("هيقف عن توليد استحقاقات جديدة ويختفي من قائمة المصروفات الشهرية، ويمكن إعادة تفعيله لاحقاً");
+  } else {
+    effects.push(`حذف «${r.name}» نهائياً — لم يُصرف له أي مبلغ`);
+  }
+
+  return { canDelete: true, mode: hasHistory ? "archive" : "hard", effects, warnings, blockers: [] };
+}
+
+function deleteRecurringExpense(id: number): string | null {
+  const p = previewRecurringExpense(id);
+  if (!p) return "غير موجود";
+  // Archiving keeps the row alive for the expenses rows that point at it (FK-safe).
+  if (p.mode === "archive") {
+    db.prepare("UPDATE recurring_expenses SET isActive = 0, updatedAt = datetime('now') WHERE id = ?").run(id);
+  } else {
+    db.prepare("DELETE FROM recurring_expenses WHERE id = ?").run(id);
+  }
+  return null;
+}
+
 // -------------------------------------- categories / brands / units ----------
 
 function previewAttribute(table: "categories" | "brands" | "units", column: string, label: string, id: number): DeletePreview | null {
@@ -599,6 +667,7 @@ export const DELETABLE_ENTITIES = [
   "sales", "purchases", "returns", "quotations",
   "products", "customers", "craftsmen", "suppliers",
   "categories", "brands", "units",
+  "expenses", "recurring-expenses",
 ] as const;
 export type DeletableEntity = (typeof DELETABLE_ENTITIES)[number];
 
@@ -615,6 +684,8 @@ export function previewDelete(entity: string, id: number): DeletePreview | null 
     case "categories": return previewAttribute("categories", "categoryId", "التصنيف", id);
     case "brands": return previewAttribute("brands", "brandId", "الماركة", id);
     case "units": return previewAttribute("units", "unitId", "الوحدة", id);
+    case "expenses": return previewExpense(id);
+    case "recurring-expenses": return previewRecurringExpense(id);
     default: return undefined; // unknown entity
   }
 }
@@ -633,6 +704,8 @@ export function performDelete(entity: string, id: number, actor?: string | null)
     case "categories": return deleteAttribute("categories", "categoryId", "التصنيف", id);
     case "brands": return deleteAttribute("brands", "brandId", "الماركة", id);
     case "units": return deleteAttribute("units", "unitId", "الوحدة", id);
+    case "expenses": return deleteExpense(id);
+    case "recurring-expenses": return deleteRecurringExpense(id);
     default: return undefined;
   }
 }

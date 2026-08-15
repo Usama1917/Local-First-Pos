@@ -1361,6 +1361,267 @@ export interface BackupInfo {
   path?: string | null;
 }
 
+export interface ProfitTotals {
+  dateFrom: string;
+  dateTo: string;
+  invoiceCount?: number;
+  grossSales?: number;
+  invoiceDiscount?: number;
+  returnedRevenue?: number;
+  exchangeRevenue?: number;
+  revenue: number;
+  soldCost?: number;
+  recoveredCost?: number;
+  damagedCost?: number;
+  exchangeCost?: number;
+  cogs: number;
+  grossProfit: number;
+  commission: number;
+  expenses: number;
+  expenseCount?: number;
+  netProfit: number;
+  grossMargin?: number;
+  netMargin?: number;
+  zeroCostLines?: number;
+  lineCount?: number;
+}
+
+export type ProfitWindow = ProfitTotals & {
+  key?: string;
+  label?: string;
+  months?: number;
+};
+
+export interface ProfitBreakdownRow {
+  category?: string;
+  id?: number;
+  nameAr?: string;
+  /** @nullable */
+  sku?: string | null;
+  qty?: number;
+  revenue?: number;
+  cost?: number;
+  profit?: number;
+  margin?: number;
+}
+
+export interface ProfitDailyRow {
+  date?: string;
+  revenue?: number;
+  cost?: number;
+  profit?: number;
+  margin?: number;
+}
+
+export interface ExpenseCategoryRow {
+  category?: string;
+  total?: number;
+  count?: number;
+}
+
+export type ProfitReport = ProfitTotals & {
+  windows: ProfitWindow[];
+  daily: ProfitDailyRow[];
+  byCategory: ProfitBreakdownRow[];
+  byProduct: ProfitBreakdownRow[];
+  expensesByCategory: ExpenseCategoryRow[];
+};
+
+export interface Expense {
+  id: number;
+  amount: number;
+  description: string;
+  /** @nullable */
+  category?: string | null;
+  date: string;
+  /** @nullable */
+  notes?: string | null;
+  /** @nullable */
+  recurringExpenseId?: number | null;
+  /** @nullable */
+  periodKey?: string | null;
+  /** @nullable */
+  recurringName?: string | null;
+  /** @nullable */
+  recurringType?: string | null;
+  /** @nullable */
+  recurringJobTitle?: string | null;
+  /** @nullable */
+  createdBy?: string | null;
+  createdAt?: string;
+}
+
+export interface ExpenseInput {
+  amount: number;
+  description: string;
+  category?: string;
+  date?: string;
+  notes?: string;
+}
+
+export interface ExpenseUpdate {
+  amount?: number;
+  description?: string;
+  /** @nullable */
+  category?: string | null;
+  date?: string;
+  /** @nullable */
+  notes?: string | null;
+}
+
+export interface ExpensePage {
+  items: Expense[];
+  total: number;
+  totalAmount: number;
+  dateFrom?: string;
+  dateTo?: string;
+}
+
+export type RecurringExpenseType = typeof RecurringExpenseType[keyof typeof RecurringExpenseType];
+
+
+export const RecurringExpenseType = {
+  salary: 'salary',
+  rent: 'rent',
+  other: 'other',
+} as const;
+
+export type RecurringExpenseStatus = typeof RecurringExpenseStatus[keyof typeof RecurringExpenseStatus];
+
+
+export const RecurringExpenseStatus = {
+  paid: 'paid',
+  overdue: 'overdue',
+  due: 'due',
+  soon: 'soon',
+  upcoming: 'upcoming',
+} as const;
+
+export interface RecurringExpense {
+  id: number;
+  name: string;
+  type: RecurringExpenseType;
+  /** @nullable */
+  jobTitle?: string | null;
+  /** @nullable */
+  phone?: string | null;
+  amount: number;
+  dayOfMonth: number;
+  /** @nullable */
+  startDate?: string | null;
+  /** @nullable */
+  notes?: string | null;
+  isActive: number;
+  /** @nullable */
+  createdBy?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+  paidCurrentPeriod?: boolean;
+  currentPeriod?: string;
+  currentDueDate?: string;
+  pendingCount?: number;
+  pendingTotal?: number;
+  dueCount: number;
+  dueTotal: number;
+  /** @nullable */
+  nextDuePeriod?: string | null;
+  /** @nullable */
+  nextDueDate?: string | null;
+  status: RecurringExpenseStatus;
+}
+
+export type RecurringExpenseInputType = typeof RecurringExpenseInputType[keyof typeof RecurringExpenseInputType];
+
+
+export const RecurringExpenseInputType = {
+  salary: 'salary',
+  rent: 'rent',
+  other: 'other',
+} as const;
+
+export interface RecurringExpenseInput {
+  name: string;
+  type?: RecurringExpenseInputType;
+  jobTitle?: string;
+  phone?: string;
+  amount: number;
+  dayOfMonth?: number;
+  startDate?: string;
+  notes?: string;
+}
+
+export type RecurringExpenseUpdateType = typeof RecurringExpenseUpdateType[keyof typeof RecurringExpenseUpdateType];
+
+
+export const RecurringExpenseUpdateType = {
+  salary: 'salary',
+  rent: 'rent',
+  other: 'other',
+} as const;
+
+export interface RecurringExpenseUpdate {
+  name?: string;
+  type?: RecurringExpenseUpdateType;
+  /** @nullable */
+  jobTitle?: string | null;
+  /** @nullable */
+  phone?: string | null;
+  amount?: number;
+  dayOfMonth?: number;
+  startDate?: string;
+  /** @nullable */
+  notes?: string | null;
+  isActive?: boolean;
+}
+
+export interface RecurringExpensePage {
+  items: RecurringExpense[];
+  total: number;
+}
+
+export interface RecurringExpensePayInput {
+  amount?: number;
+  date?: string;
+  periodKey?: string;
+  notes?: string;
+}
+
+export type DueExpenseStatus = typeof DueExpenseStatus[keyof typeof DueExpenseStatus];
+
+
+export const DueExpenseStatus = {
+  overdue: 'overdue',
+  due: 'due',
+  soon: 'soon',
+  upcoming: 'upcoming',
+} as const;
+
+export interface DueExpense {
+  recurringExpenseId: number;
+  name: string;
+  type: string;
+  typeLabel?: string;
+  /** @nullable */
+  jobTitle?: string | null;
+  amount: number;
+  periodKey: string;
+  dueDate: string;
+  status: DueExpenseStatus;
+}
+
+export interface DueExpensePage {
+  items: DueExpense[];
+  total: number;
+}
+
+export interface ExpensesDueSummary {
+  dueCount: number;
+  dueTotal: number;
+  overdueCount: number;
+  monthTotal: number;
+  items: DueExpense[];
+}
+
 export type ListProductsParams = {
 search?: string;
 categoryId?: number;
@@ -1481,9 +1742,28 @@ dateTo?: string;
 supplierId?: number;
 };
 
+export type GetProfitReportParams = {
+dateFrom?: string;
+dateTo?: string;
+};
+
 export type GetCraftsmanCommissionReportParams = {
 dateFrom?: string;
 dateTo?: string;
 craftsmanId?: number;
+};
+
+export type ListExpensesParams = {
+search?: string;
+dateFrom?: string;
+dateTo?: string;
+recurringId?: number;
+limit?: number;
+offset?: number;
+};
+
+export type ListRecurringExpensesParams = {
+search?: string;
+isActive?: boolean;
 };
 

@@ -139,8 +139,16 @@ router.post("/returns", (req, res) => {
       Math.round(returnedTotal * 100) / 100, Math.round(newItemsTotal * 100) / 100, netAmount, notes || null, actorName(req));
     const returnId = r.lastInsertRowid as number;
 
+    // costAtSale freezes the unit cost as of this document, so the profit report
+    // stays put when a later purchase moves products.trueCost.
     const addItem = db.prepare(
-      "INSERT INTO return_items (returnId, kind, productId, productName, quantity, unitPrice, total, restock) VALUES (?,?,?,?,?,?,?,?)",
+      "INSERT INTO return_items (returnId, kind, productId, productName, quantity, unitPrice, total, restock, costAtSale) VALUES (?,?,?,?,?,?,?,?,?)",
+    );
+    // A returned item must give back exactly the cost it was SOLD at, not today's
+    // product cost — otherwise a supplier price change between the sale and the
+    // return invents (or destroys) profit out of nothing.
+    const soldCostOf = db.prepare(
+      "SELECT costAtSale FROM sales_invoice_items WHERE invoiceId = ? AND productId = ? ORDER BY id LIMIT 1",
     );
     const moveStock = db.prepare("UPDATE products SET currentStock = currentStock + ?, updatedAt = datetime('now') WHERE id = ?");
     const insertMove = db.prepare("INSERT INTO stock_movements (productId, type, quantity, balanceBefore, balanceAfter, referenceType, referenceId, notes) VALUES (?,?,?,?,?,?,?,?)");
@@ -151,8 +159,10 @@ router.post("/returns", (req, res) => {
       const qty = Number(it.quantity);
       const price = Number(it.unitPrice);
       const restock = it.restock === false ? 0 : 1;
-      const prod = db.prepare("SELECT nameAr, currentStock FROM products WHERE id = ?").get(pid) as any;
-      addItem.run(returnId, "returned", pid, prod?.nameAr || null, qty, price, Math.round(qty * price * 100) / 100, restock);
+      const prod = db.prepare("SELECT nameAr, currentStock, trueCost FROM products WHERE id = ?").get(pid) as any;
+      const origCost = (soldCostOf.get(inv.id, pid) as any)?.costAtSale;
+      addItem.run(returnId, "returned", pid, prod?.nameAr || null, qty, price, Math.round(qty * price * 100) / 100, restock,
+        origCost ?? prod?.trueCost ?? 0);
       if (restock) {
         const before = prod?.currentStock || 0;
         moveStock.run(qty, pid);
@@ -165,8 +175,8 @@ router.post("/returns", (req, res) => {
       const pid = Number(it.productId);
       const qty = Number(it.quantity);
       const price = Number(it.unitPrice);
-      const prod = db.prepare("SELECT nameAr, currentStock FROM products WHERE id = ?").get(pid) as any;
-      addItem.run(returnId, "new", pid, prod?.nameAr || null, qty, price, Math.round(qty * price * 100) / 100, 1);
+      const prod = db.prepare("SELECT nameAr, currentStock, trueCost FROM products WHERE id = ?").get(pid) as any;
+      addItem.run(returnId, "new", pid, prod?.nameAr || null, qty, price, Math.round(qty * price * 100) / 100, 1, prod?.trueCost || 0);
       const before = prod?.currentStock || 0;
       db.prepare("UPDATE products SET currentStock = currentStock - ?, updatedAt = datetime('now') WHERE id = ?").run(qty, pid);
       insertMove.run(pid, "sale", qty, before, before - qty, "return", returnId, `استبدال ${inv.serial}`);
