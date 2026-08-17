@@ -1,5 +1,5 @@
 import { formatCurrency } from "./format";
-import { PrintFormat, printHtml, shopHeaderHtml, escapeHtml, fmtDate } from "./print-document";
+import { PrintFormat, printHtml, shopHeaderHtml, escapeHtml, fmtDate, cellMoney, colGroup } from "./print-document";
 
 export interface CommissionReceiptItem {
   serial: string;
@@ -43,9 +43,9 @@ export function printCommissionReceipt(r: CommissionReceipt, shop: ShopInfo = {}
         <td class="mono">${escapeHtml(it.serial)}</td>
         <td>${escapeHtml(it.customerName || "نقدي")}</td>
         <td class="c">${fmtDate(it.createdAt)}</td>
-        <td class="l">${formatCurrency(it.invoiceTotal || 0)}</td>
-        <td class="l">${formatCurrency(it.invoiceCommission || 0)}</td>
-        <td class="l b">${formatCurrency(it.amount || 0)}</td>
+        <td class="l">${cellMoney(it.invoiceTotal || 0, format)}</td>
+        <td class="l">${cellMoney(it.invoiceCommission || 0, format)}</td>
+        <td class="l b">${cellMoney(it.amount || 0, format)}</td>
       </tr>`,
     )
     .join("");
@@ -68,6 +68,7 @@ export function printCommissionReceipt(r: CommissionReceipt, shop: ShopInfo = {}
   </div>
 
   <table>
+    ${colGroup([5, 17, 17, 13, 16, 16, 16])}
     <thead>
       <tr>
         <th class="c">#</th>

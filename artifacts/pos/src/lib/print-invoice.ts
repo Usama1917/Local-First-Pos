@@ -1,6 +1,6 @@
 import JsBarcode from "jsbarcode";
 import { formatCurrency } from "./format";
-import { PrintFormat, printHtml, shopHeaderHtml, escapeHtml, fmtDate } from "./print-document";
+import { PrintFormat, printHtml, shopHeaderHtml, escapeHtml, fmtDate, cellMoney, colGroup } from "./print-document";
 
 export interface ShopInfo {
   shopName?: string | null;
@@ -51,21 +51,44 @@ export function printInvoice(inv: any, shop: ShopInfo = {}, format: PrintFormat 
         .join("")}</ul></div>`
     : "";
 
+  // 60mm of thermal paper cannot hold six legible columns — squeezed to fit, the
+  // amounts wrap mid-number. So the receipt drops the row number and folds the
+  // discount under the product name, leaving four columns wide enough to read.
+  const thermal = format === "thermal";
+  const colCount = thermal ? 4 : 6;
+
+  const itemName = (item: any) => {
+    const sku = item.sku ? ` <span class="sku">(${escapeHtml(item.sku)})</span>` : "";
+    const disc = thermal && item.discount
+      ? `<div class="sub">خصم ${cellMoney(item.discount, format)}</div>`
+      : "";
+    return `${escapeHtml(item.productName)}${sku}${disc}`;
+  };
+  const qty = (item: any) => `${item.quantity}${item.unitName ? ` ${escapeHtml(item.unitName)}` : ""}`;
+
   const rows = items.length
     ? items
-        .map(
-          (item, idx) => `
+        .map((item, idx) =>
+          thermal
+            ? `
+      <tr>
+        <td>${itemName(item)}</td>
+        <td class="c">${qty(item)}</td>
+        <td class="l">${cellMoney(item.unitPrice, format)}</td>
+        <td class="l b">${cellMoney(item.total, format)}</td>
+      </tr>`
+            : `
       <tr>
         <td class="c">${idx + 1}</td>
-        <td>${escapeHtml(item.productName)}${item.sku ? ` <span class="sku">(${escapeHtml(item.sku)})</span>` : ""}</td>
-        <td class="c">${item.quantity}${item.unitName ? ` ${escapeHtml(item.unitName)}` : ""}</td>
-        <td class="l">${formatCurrency(item.unitPrice)}</td>
-        <td class="l">${item.discount ? formatCurrency(item.discount) : "—"}</td>
-        <td class="l b">${formatCurrency(item.total)}</td>
+        <td>${itemName(item)}</td>
+        <td class="c">${qty(item)}</td>
+        <td class="l">${cellMoney(item.unitPrice, format)}</td>
+        <td class="l">${item.discount ? cellMoney(item.discount, format) : "—"}</td>
+        <td class="l b">${cellMoney(item.total, format)}</td>
       </tr>`,
         )
         .join("")
-    : `<tr><td colspan="6" class="c">لا توجد أصناف</td></tr>`;
+    : `<tr><td colspan="${colCount}" class="c">لا توجد أصناف</td></tr>`;
 
   const body = `
   ${shopHeaderHtml(shop)}
@@ -84,13 +107,14 @@ export function printInvoice(inv: any, shop: ShopInfo = {}, format: PrintFormat 
   </div>
 
   <table>
+    ${thermal ? colGroup([38, 16, 22, 24]) : colGroup([5, 37, 13, 15, 13, 17])}
     <thead>
       <tr>
-        <th class="c">#</th>
+        ${thermal ? "" : `<th class="c">#</th>`}
         <th>المنتج</th>
-        <th class="c">الكمية</th>
+        <th class="c">${thermal ? "كمية" : "الكمية"}</th>
         <th class="l">السعر</th>
-        <th class="l">الخصم</th>
+        ${thermal ? "" : `<th class="l">الخصم</th>`}
         <th class="l">الإجمالي</th>
       </tr>
     </thead>

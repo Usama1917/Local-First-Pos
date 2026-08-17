@@ -8,6 +8,8 @@
 // typography come from the chosen format, so the *same* body markup renders correctly
 // as A4, A5, or an 80mm thermal receipt.
 
+import { formatCurrency } from "./format";
+
 export type PrintFormat = "a4" | "a5" | "thermal";
 
 export const PRINT_FORMATS: { key: PrintFormat; label: string }[] = [
@@ -30,6 +32,26 @@ export function escapeHtml(s: unknown): string {
 export function fmtDate(d?: string | null): string {
   if (!d) return "—";
   try { return new Date(d).toLocaleDateString("ar-EG"); } catch { return "—"; }
+}
+
+/**
+ * Money for a table cell. On thermal the " ج.م" suffix is dropped: it more than
+ * doubles the width of every price column on a 60mm roll, and the currency is
+ * already stated in the totals block below the table. A4/A5 keep it.
+ */
+export function cellMoney(value: number | null | undefined, format: PrintFormat): string {
+  if (format !== "thermal") return formatCurrency(value);
+  return Number(value ?? 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+/**
+ * Column widths for a printed table, as percentages that must add up to 100.
+ * Thermal uses `table-layout: fixed`, which obeys these exactly — that is what
+ * stops a table from growing wider than the paper. On A4/A5 they are hints and
+ * the browser may still relax them.
+ */
+export function colGroup(widths: number[]): string {
+  return `<colgroup>${widths.map((w) => `<col style="width:${w}%">`).join("")}</colgroup>`;
 }
 
 // Match the app's own font (see `--app-font-sans` in index.css) so printed
@@ -125,8 +147,29 @@ function baseCss(format: PrintFormat): string {
   body.fmt-thermal .head h1 { font-weight: 800; }
   body.fmt-thermal .info { flex-direction: column; gap: 2px; }
   body.fmt-thermal h2 { font-weight: 800; }
-  body.fmt-thermal table { font-size: 0.85em; margin-top: 6px; }
-  body.fmt-thermal th, body.fmt-thermal td { padding: 2px 3px; font-weight: 700; }
+  /* THE rule that keeps a receipt inside the paper. With the default auto table
+     layout the browser widens each column to fit its longest unbreakable token —
+     a few "1,570.00 ج.م" cells are enough to push the table past the 60mm column,
+     and in RTL the overflow spills off the LEFT edge and gets clipped by the print
+     head. Fixed layout makes the colgroup percentages binding instead of advisory,
+     so the table can never exceed its container. */
+  body.fmt-thermal table { font-size: 0.85em; margin-top: 6px; table-layout: fixed; }
+  /* With fixed columns a token that doesn't fit must be allowed to break, or it
+     would overflow its own cell and clip again. Product names and internal codes
+     wrap freely. */
+  body.fmt-thermal th, body.fmt-thermal td { padding: 2px 3px; font-weight: 700;
+                                             overflow-wrap: anywhere; word-break: break-word; }
+  /* …except money. "1,570.00" broken after the dot is unreadable on a receipt, so
+     the amount columns never wrap — their widths below are set to hold the widest
+     realistic amount instead. */
+  body.fmt-thermal td.l, body.fmt-thermal th.l { white-space: nowrap;
+                                                 word-break: normal; overflow-wrap: normal; }
+  /* Internal codes are the least important thing on a customer receipt — let them
+     shrink so the product name keeps the room. */
+  body.fmt-thermal .sku { font-size: 0.78em; }
+  /* Detail folded under a product name when its own column had to go (the line
+     discount on thermal), so the information survives the narrower table. */
+  .sub { font-size: 0.82em; }
   body.fmt-thermal .totals { width: 100%; }
   body.fmt-thermal .totals > div { font-weight: 800; }
   body.fmt-thermal .sign { display: none; }

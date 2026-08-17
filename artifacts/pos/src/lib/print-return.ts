@@ -1,5 +1,5 @@
 import { formatCurrency } from "./format";
-import { PrintFormat, printHtml, shopHeaderHtml, escapeHtml, fmtDate } from "./print-document";
+import { PrintFormat, printHtml, shopHeaderHtml, escapeHtml, fmtDate, cellMoney, colGroup } from "./print-document";
 
 export interface ReturnReceiptItem {
   kind: "returned" | "new" | string;
@@ -32,7 +32,7 @@ export interface ReturnReceiptData {
   items: ReturnReceiptItem[];
 }
 
-function rows(items: ReturnReceiptItem[], kind: string, showRestock: boolean): string {
+function rows(items: ReturnReceiptItem[], kind: string, showRestock: boolean, format: PrintFormat): string {
   const list = items.filter((i) => i.kind === kind);
   if (!list.length) return "";
   return list
@@ -42,8 +42,8 @@ function rows(items: ReturnReceiptItem[], kind: string, showRestock: boolean): s
         <td class="c">${i + 1}</td>
         <td>${escapeHtml(it.productName || "")}${it.sku ? ` <span class="sku">(${escapeHtml(it.sku)})</span>` : ""}</td>
         <td class="c">${it.quantity}</td>
-        <td class="l">${formatCurrency(it.unitPrice || 0)}</td>
-        <td class="l b">${formatCurrency(it.total || 0)}</td>
+        <td class="l">${cellMoney(it.unitPrice || 0, format)}</td>
+        <td class="l b">${cellMoney(it.total || 0, format)}</td>
         ${showRestock ? `<td class="c">${it.restock ? "سليم ↺" : "تالف"}</td>` : ""}
       </tr>`,
     )
@@ -63,8 +63,8 @@ export function printReturnReceipt(r: ReturnReceiptData, shop: ShopInfo = {}, fo
   const netLabel = net > 0 ? "مطلوب من العميل" : net < 0 ? "مسترد للعميل" : "لا فرق";
   const settle = r.settlementType === "account" ? "على حساب العميل (مديونية)" : "كاش";
 
-  const returnedRows = rows(r.items || [], "returned", true);
-  const newRows = rows(r.items || [], "new", false);
+  const returnedRows = rows(r.items || [], "returned", true, format);
+  const newRows = rows(r.items || [], "new", false, format);
 
   const body = `
   ${shopHeaderHtml(shop)}
@@ -87,6 +87,7 @@ export function printReturnReceipt(r: ReturnReceiptData, shop: ShopInfo = {}, fo
     returnedRows
       ? `<h2>الأصناف المرتجعة</h2>
   <table>
+    ${colGroup([6, 31, 12, 16, 18, 17])}
     <thead><tr><th class="c">#</th><th>الصنف</th><th class="c">الكمية</th><th class="l">سعر الوحدة</th><th class="l">الإجمالي</th><th class="c">الحالة</th></tr></thead>
     <tbody>${returnedRows}</tbody>
   </table>`
@@ -97,6 +98,7 @@ export function printReturnReceipt(r: ReturnReceiptData, shop: ShopInfo = {}, fo
     newRows
       ? `<h2>الأصناف البديلة (الجديدة)</h2>
   <table>
+    ${colGroup([6, 38, 14, 20, 22])}
     <thead><tr><th class="c">#</th><th>الصنف</th><th class="c">الكمية</th><th class="l">سعر الوحدة</th><th class="l">الإجمالي</th></tr></thead>
     <tbody>${newRows}</tbody>
   </table>`
