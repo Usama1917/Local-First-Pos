@@ -28,29 +28,21 @@ function barcodeDataUrl(value: string): string {
   }
 }
 
-/**
- * Print a sales invoice in the chosen paper format (A4 / A5 / thermal). Returns false
- * if the popup was blocked. The layout, totals, and signatures match the on-screen
- * invoice; thermal drops the signature lines and prints as a single narrow column.
- */
-export function printInvoice(inv: any, shop: ShopInfo = {}, format: PrintFormat = "a4"): boolean {
-  const items: any[] = inv?.items || [];
-  const grossSubtotal = items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
-  const itemsDiscount = items.reduce((s, i) => s + (i.discount || 0), 0);
-  const totalDiscount = itemsDiscount + (inv?.discount || 0);
-  const barcode = barcodeDataUrl(inv?.serial || "");
-
-  // Shop's custom sale terms (one per line in settings), printed above the signatures.
+/** Shop's custom sale terms (one per line in settings), printed above the signatures. */
+function termsBlockHtml(shop: ShopInfo): string {
   const terms = String(shop?.invoiceTerms || "")
     .split("\n")
     .map((t) => t.trim())
     .filter(Boolean);
-  const termsHtml = terms.length
+  return terms.length
     ? `<div class="terms"><div class="terms-title">الشروط والأحكام</div><ul>${terms
         .map((t) => `<li>${escapeHtml(t)}</li>`)
         .join("")}</ul></div>`
     : "";
+}
 
+/** The line-items table shared by invoices and quotations. */
+function itemsTableHtml(items: any[], format: PrintFormat): string {
   // 60mm of thermal paper cannot hold six legible columns — squeezed to fit, the
   // amounts wrap mid-number. So the receipt drops the row number and folds the
   // discount under the product name, leaving four columns wide enough to read.
@@ -91,6 +83,43 @@ export function printInvoice(inv: any, shop: ShopInfo = {}, format: PrintFormat 
         .join("")
     : `<tr><td colspan="${colCount}" class="c">لا توجد أصناف</td></tr>`;
 
+  return `<table>
+    ${thermal ? colGroup([38, 16, 22, 24]) : colGroup([5, 37, 13, 15, 13, 17])}
+    <thead>
+      <tr>
+        ${thermal ? "" : `<th class="c">#</th>`}
+        <th>المنتج</th>
+        <th class="c">${thermal ? "كمية" : "الكمية"}</th>
+        <th class="l">السعر</th>
+        ${thermal ? "" : `<th class="l">الخصم</th>`}
+        <th class="l">الإجمالي</th>
+      </tr>
+    </thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+
+/** Net discount line for the totals box — a negative discount is a surcharge, so it prints as an addition. */
+function discountLinesHtml(totalDiscount: number): string {
+  if (totalDiscount > 0) return `<div class="neg"><span>إجمالي الخصم:</span><span>- ${formatCurrency(totalDiscount)}</span></div>`;
+  if (totalDiscount < 0) return `<div class="muted"><span>إجمالي الإضافة:</span><span>+ ${formatCurrency(-totalDiscount)}</span></div>`;
+  return "";
+}
+
+/**
+ * Print a sales invoice in the chosen paper format (A4 / A5 / thermal). Returns false
+ * if the popup was blocked. The layout, totals, and signatures match the on-screen
+ * invoice; thermal drops the signature lines and prints as a single narrow column.
+ */
+export function printInvoice(inv: any, shop: ShopInfo = {}, format: PrintFormat = "a4"): boolean {
+  const items: any[] = inv?.items || [];
+  const grossSubtotal = items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
+  const itemsDiscount = items.reduce((s, i) => s + (i.discount || 0), 0);
+  const totalDiscount = itemsDiscount + (inv?.discount || 0);
+  const barcode = barcodeDataUrl(inv?.serial || "");
+
+  const termsHtml = termsBlockHtml(shop);
+
   const body = `
   ${shopHeaderHtml(shop)}
   ${barcode ? `<div class="barcode"><img src="${barcode}" alt="${escapeHtml(inv.serial)}" /></div>` : ""}
@@ -107,25 +136,11 @@ export function printInvoice(inv: any, shop: ShopInfo = {}, format: PrintFormat 
     <div><b>طريقة الدفع:</b> ${escapeHtml(PAYMENT_LABELS[inv?.paymentType] || inv?.paymentType || "—")}</div>
   </div>
 
-  <table>
-    ${thermal ? colGroup([38, 16, 22, 24]) : colGroup([5, 37, 13, 15, 13, 17])}
-    <thead>
-      <tr>
-        ${thermal ? "" : `<th class="c">#</th>`}
-        <th>المنتج</th>
-        <th class="c">${thermal ? "كمية" : "الكمية"}</th>
-        <th class="l">السعر</th>
-        ${thermal ? "" : `<th class="l">الخصم</th>`}
-        <th class="l">الإجمالي</th>
-      </tr>
-    </thead>
-    <tbody>${rows}</tbody>
-  </table>
+  ${itemsTableHtml(items, format)}
 
   <div class="totals">
     <div class="muted"><span>الإجمالي الفرعي:</span><span>${formatCurrency(grossSubtotal)}</span></div>
-    ${totalDiscount > 0 ? `<div class="neg"><span>إجمالي الخصم:</span><span>- ${formatCurrency(totalDiscount)}</span></div>` : ""}
-    ${totalDiscount < 0 ? `<div class="muted"><span>إجمالي الإضافة:</span><span>+ ${formatCurrency(-totalDiscount)}</span></div>` : ""}
+    ${discountLinesHtml(totalDiscount)}
     <div class="net"><span>الإجمالي:</span><span>${formatCurrency(inv?.total || 0)}</span></div>
     ${inv?.paidAmount > 0 ? `<div class="pos"><span>المدفوع:</span><span>${formatCurrency(inv.paidAmount)}</span></div>` : ""}
     ${inv?.remainingAmount > 0 ? `<div class="neg"><span>المتبقي (على العميل):</span><span>${formatCurrency(inv.remainingAmount)}</span></div>` : ""}
@@ -144,4 +159,53 @@ export function printInvoice(inv: any, shop: ShopInfo = {}, format: PrintFormat 
   `;
 
   return printHtml({ title: `فاتورة ${inv?.serial || ""}`, bodyHtml: body, format });
+}
+
+/**
+ * Print a quotation (عرض سعر) in the chosen paper format. Same layout as the
+ * invoice minus everything about payment; shows the validity date instead.
+ * Returns false if the popup was blocked.
+ */
+export function printQuotation(q: any, shop: ShopInfo = {}, format: PrintFormat = "a4"): boolean {
+  const items: any[] = q?.items || [];
+  const grossSubtotal = items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
+  const itemsDiscount = items.reduce((s, i) => s + (i.discount || 0), 0);
+  const totalDiscount = itemsDiscount + (q?.discount || 0);
+  const barcode = barcodeDataUrl(q?.serial || "");
+
+  const body = `
+  ${shopHeaderHtml(shop)}
+  ${barcode ? `<div class="barcode"><img src="${barcode}" alt="${escapeHtml(q.serial)}" /></div>` : ""}
+  <div class="head">
+    <div>
+      <h1>عرض سعر</h1>
+      <div class="serial">${escapeHtml(q?.serial || "")}</div>
+    </div>
+    <div style="text-align:left">التاريخ: ${fmtDate(q?.createdAt)}</div>
+  </div>
+
+  <div class="info">
+    <div><b>العميل:</b> ${escapeHtml(q?.customerName || "—")}</div>
+    ${q?.validUntil ? `<div><b>صالح حتى:</b> ${fmtDate(q.validUntil)}</div>` : ""}
+  </div>
+
+  ${itemsTableHtml(items, format)}
+
+  <div class="totals">
+    <div class="muted"><span>الإجمالي الفرعي:</span><span>${formatCurrency(grossSubtotal)}</span></div>
+    ${discountLinesHtml(totalDiscount)}
+    <div class="net"><span>الإجمالي:</span><span>${formatCurrency(q?.total || 0)}</span></div>
+  </div>
+
+  ${q?.notes ? `<div class="notes"><b>ملاحظات:</b> ${escapeHtml(q.notes)}</div>` : ""}
+
+  <div class="sign">
+    <div>توقيع صاحب المحل</div>
+    <div>توقيع العميل</div>
+  </div>
+
+  <div class="footer">شكراً لتعاملكم معنا${shop?.shopPhone ? ` — للاستفسار: ${escapeHtml(shop.shopPhone)}` : ""}</div>
+  `;
+
+  return printHtml({ title: `عرض سعر ${q?.serial || ""}`, bodyHtml: body, format });
 }

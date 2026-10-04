@@ -1364,8 +1364,8 @@ export const UpdateQuotationParams = zod.object({
 })
 
 export const UpdateQuotationBody = zod.object({
-  "customerId": zod.number().optional(),
-  "craftsmanId": zod.number().optional(),
+  "customerId": zod.number().nullish(),
+  "craftsmanId": zod.number().nullish(),
   "status": zod.string().optional(),
   "items": zod.array(zod.object({
   "productId": zod.number(),
@@ -1375,9 +1375,9 @@ export const UpdateQuotationBody = zod.object({
   "notes": zod.string().optional()
 })).optional(),
   "discount": zod.number().optional(),
-  "notes": zod.string().optional(),
-  "validUntil": zod.string().optional()
-})
+  "notes": zod.string().nullish(),
+  "validUntil": zod.string().nullish()
+}).describe('A field that is sent replaces the stored value (null clears customerId \/ craftsmanId \/ notes \/ validUntil); a field that is omitted is kept. Refused (400) once the quotation was converted to an invoice.')
 
 export const UpdateQuotationResponse = zod.object({
   "id": zod.number(),

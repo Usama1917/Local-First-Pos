@@ -2683,17 +2683,21 @@ components:
         validUntil: { type: string }
     QuotationUpdate:
       type: object
+      description: >-
+        A field that is sent replaces the stored value (null clears customerId /
+        craftsmanId / notes / validUntil); a field that is omitted is kept.
+        Refused (400) once the quotation was converted to an invoice.
       properties:
-        customerId: { type: integer }
-        craftsmanId: { type: integer }
+        customerId: { type: ["integer", "null"] }
+        craftsmanId: { type: ["integer", "null"] }
         status: { type: string }
         items:
           type: array
           items:
             $ref: "#/components/schemas/InvoiceItemInput"
         discount: { type: number }
-        notes: { type: string }
-        validUntil: { type: string }
+        notes: { type: ["string", "null"] }
+        validUntil: { type: ["string", "null"] }
     QuotationConvertInput:
       type: object
       properties:

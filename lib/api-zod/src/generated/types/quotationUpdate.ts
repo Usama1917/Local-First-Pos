@@ -7,12 +7,19 @@
  */
 import type { InvoiceItemInput } from './invoiceItemInput';
 
+/**
+ * A field that is sent replaces the stored value (null clears customerId / craftsmanId / notes / validUntil); a field that is omitted is kept. Refused (400) once the quotation was converted to an invoice.
+ */
 export interface QuotationUpdate {
-  customerId?: number;
-  craftsmanId?: number;
+  /** @nullable */
+  customerId?: number | null;
+  /** @nullable */
+  craftsmanId?: number | null;
   status?: string;
   items?: InvoiceItemInput[];
   discount?: number;
-  notes?: string;
-  validUntil?: string;
+  /** @nullable */
+  notes?: string | null;
+  /** @nullable */
+  validUntil?: string | null;
 }

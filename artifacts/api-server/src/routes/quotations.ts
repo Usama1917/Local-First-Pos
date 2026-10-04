@@ -89,11 +89,19 @@ router.patch("/quotations/:id", (req, res) => {
   const id = Number(req.params.id);
   const existing = db.prepare("SELECT * FROM quotations WHERE id = ?").get(id) as any;
   if (!existing) return res.status(404).json({ error: "غير موجود" });
-  const { customerId, craftsmanId, discount, notes, validUntil, status, items } = req.body;
+  // The invoice was built from this quotation's lines — editing it now would make
+  // the two disagree. Duplicate it instead.
+  if (existing.status === "converted") return res.status(400).json({ error: "لا يمكن تعديل تسعيرة تم تحويلها إلى فاتورة — استخدم النسخ" });
+  const body = req.body || {};
+  const { discount, status, items } = body;
 
   // Use the effective discount (new one if given, else the stored one) so an
   // items-only edit doesn't recompute the total as if there were no discount.
   const effDiscount = discount ?? existing.discount ?? 0;
+  // A field that is SENT replaces the stored value — null/"" clears it (e.g. the
+  // edit dialog switched to «بدون عميل»). A field that is left out is kept.
+  const sent = (k: string) => Object.prototype.hasOwnProperty.call(body, k);
+  const pick = (k: string) => (sent(k) ? body[k] || null : existing[k]);
 
   db.exec("BEGIN");
   try {
@@ -110,11 +118,15 @@ router.patch("/quotations/:id", (req, res) => {
       }
     }
 
+    // A discount-only edit must re-derive the total too (items didn't change).
+    if (items === undefined) {
+      db.prepare("UPDATE quotations SET total = subtotal - ? WHERE id = ?").run(effDiscount, id);
+    }
     db.prepare(`UPDATE quotations SET
-      customerId = COALESCE(?, customerId), craftsmanId = COALESCE(?, craftsmanId),
-      discount = ?, notes = COALESCE(?, notes), validUntil = COALESCE(?, validUntil),
+      customerId = ?, craftsmanId = ?,
+      discount = ?, notes = ?, validUntil = ?,
       status = COALESCE(?, status), updatedBy = ?, updatedAt = datetime('now') WHERE id = ?
-    `).run(customerId || null, craftsmanId || null, effDiscount, notes || null, validUntil || null, status || null, actorName(req), id);
+    `).run(pick("customerId"), pick("craftsmanId"), effDiscount, pick("notes"), pick("validUntil"), status || null, actorName(req), id);
     db.exec("COMMIT");
   } catch (e) {
     db.exec("ROLLBACK");
