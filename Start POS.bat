@@ -43,7 +43,7 @@ REM --- هل الخادم شغّال بالفعل على المنفذ 8080؟ ---
 netstat -ano | findstr ":8080" | findstr "LISTENING" >nul 2>nul
 if not errorlevel 1 (
   echo النظام يعمل بالفعل. جارٍ فتح المتصفح...
-  start "" "http://localhost:8080"
+  call :openbrowser
   exit /b 0
 )
 
@@ -82,10 +82,32 @@ goto waitloop
 
 :ready
 echo النظام جاهز ✓ جارٍ فتح المتصفح...
-start "" "http://localhost:8080"
+call :openbrowser
 exit /b 0
 
 :slow
 echo [تنبيه] الخادم اتأخر في البدء. هفتح المتصفح برضو — لو الصفحة مش بتفتح راجع "logs\pos-server.log".
+call :openbrowser
+exit /b 0
+
+REM ============================================
+REM  فتح النظام في Google Chrome إجبارياً.
+REM  لو Chrome مش متثبّت، يفتح في المتصفح الافتراضي بتاع ويندوز.
+REM ============================================
+:openbrowser
+set "CHROME="
+if exist "%ProgramFiles%\Google\Chrome\Application\chrome.exe" set "CHROME=%ProgramFiles%\Google\Chrome\Application\chrome.exe"
+if not defined CHROME if exist "%ProgramFiles(x86)%\Google\Chrome\Application\chrome.exe" set "CHROME=%ProgramFiles(x86)%\Google\Chrome\Application\chrome.exe"
+if not defined CHROME if exist "%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe" set "CHROME=%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe"
+REM --- لو متثبّت في مكان غير معتاد: ندوّر عليه في الريجستري ---
+if not defined CHROME for /f "tokens=2,*" %%a in ('reg query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\chrome.exe" /ve 2^>nul ^| findstr /i "REG_SZ"') do set "CHROME=%%b"
+if not defined CHROME for /f "tokens=2,*" %%a in ('reg query "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\chrome.exe" /ve 2^>nul ^| findstr /i "REG_SZ"') do set "CHROME=%%b"
+if defined CHROME if not exist "%CHROME%" set "CHROME="
+if not defined CHROME goto opendefault
+start "" "%CHROME%" "http://localhost:8080"
+exit /b 0
+
+:opendefault
+echo [تنبيه] Google Chrome مش متثبّت — هيفتح في المتصفح الافتراضي.
 start "" "http://localhost:8080"
 exit /b 0
