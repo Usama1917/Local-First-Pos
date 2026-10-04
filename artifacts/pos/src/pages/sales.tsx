@@ -202,7 +202,7 @@ function InvoiceDetail({ invoiceId }: { invoiceId: number }) {
                 </td>
                 <td className="border border-foreground/20 p-2 text-center">{item.quantity} {item.unitName || ""}</td>
                 <td className="border border-foreground/20 p-2 text-center">{formatCurrency(item.unitPrice)}</td>
-                <td className="border border-foreground/20 p-2 text-center">{item.discount ? formatCurrency(item.discount) : "—"}</td>
+                <td className="border border-foreground/20 p-2 text-center">{item.discount ? `${item.discount < 0 ? "+ " : ""}${formatCurrency(Math.abs(item.discount))}` : "—"}</td>
                 <td className="border border-foreground/20 p-2 text-center font-semibold">{formatCurrency(item.total)}</td>
               </tr>
             ))}
@@ -217,6 +217,7 @@ function InvoiceDetail({ invoiceId }: { invoiceId: number }) {
           <div className="w-72 space-y-1 text-sm">
             <div className="flex justify-between"><span className="text-muted-foreground">الإجمالي الفرعي:</span><span>{formatCurrency(grossSubtotal)}</span></div>
             {totalDiscount > 0 && <div className="flex justify-between text-destructive"><span>إجمالي الخصم:</span><span>- {formatCurrency(totalDiscount)}</span></div>}
+            {totalDiscount < 0 && <div className="flex justify-between text-muted-foreground"><span>إجمالي الإضافة:</span><span>+ {formatCurrency(-totalDiscount)}</span></div>}
             <div className="flex justify-between border-t border-foreground/40 pt-1 text-base font-bold"><span>الإجمالي:</span><span>{formatCurrency(inv.total)}</span></div>
             {inv.paidAmount > 0 && <div className="flex justify-between text-emerald-700 dark:text-emerald-400"><span>المدفوع:</span><span>{formatCurrency(inv.paidAmount)}</span></div>}
             {inv.remainingAmount > 0 && <div className="flex justify-between font-semibold text-destructive"><span>المتبقي (على العميل):</span><span>{formatCurrency(inv.remainingAmount)}</span></div>}

@@ -18,6 +18,7 @@ import { DeleteButton } from "@/components/ui/delete-confirm";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { NumericInput } from "@/components/ui/numeric-input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -202,16 +203,12 @@ function NewQuotationDialog({ onClose, open }: { onClose: () => void; open: bool
               <td className="p-2 text-left">{formatCurrency(item.unitPrice)}</td>
               <td className="p-2">
                 <div className="flex items-center gap-1">
-                  <Input
-                    type="number"
+                  <NumericInput
                     className="h-7 text-left"
                     placeholder="0"
                     title="نسبة خصم % — قيمة سالبة تعني إضافة على السعر"
-                    value={item.discountPercent || ""}
-                    onChange={e => {
-                      const d = parseFloat(e.target.value) || 0;
-                      setCart(prev => prev.map((i, ix) => ix !== idx ? i : { ...i, discountPercent: d, total: lineTotal(i.quantity, i.unitPrice, d) }));
-                    }}
+                    value={item.discountPercent}
+                    onValue={d => setCart(prev => prev.map((i, ix) => ix !== idx ? i : { ...i, discountPercent: d, total: lineTotal(i.quantity, i.unitPrice, d) }))}
                   />
                   <span className="text-xs text-muted-foreground">%</span>
                 </div>
@@ -225,7 +222,7 @@ function NewQuotationDialog({ onClose, open }: { onClose: () => void; open: bool
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-2 text-sm">
           <span>خصم:</span>
-          <Input type="number" className="w-24 h-7" value={discount || ""} onChange={e => setDiscount(parseFloat(e.target.value) || 0)} />
+          <NumericInput className="w-24 h-7" placeholder="0" title="خصم على التسعيرة كلها — قيمة سالبة تعني إضافة" value={discount} onValue={setDiscount} />
         </div>
         <div className="text-left">
           <p className="text-sm text-muted-foreground">فرعي: {formatCurrency(subtotal)}</p>

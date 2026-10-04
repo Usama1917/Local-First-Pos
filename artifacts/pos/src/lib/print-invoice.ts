@@ -59,8 +59,9 @@ export function printInvoice(inv: any, shop: ShopInfo = {}, format: PrintFormat 
 
   const itemName = (item: any) => {
     const sku = item.sku ? ` <span class="sku">(${escapeHtml(item.sku)})</span>` : "";
+    // A negative discount is a surcharge — print it as an addition, not "خصم -50".
     const disc = thermal && item.discount
-      ? `<div class="sub">خصم ${cellMoney(item.discount, format)}</div>`
+      ? `<div class="sub">${item.discount > 0 ? "خصم" : "إضافة"} ${cellMoney(Math.abs(item.discount), format)}</div>`
       : "";
     return `${escapeHtml(item.productName)}${sku}${disc}`;
   };
@@ -83,7 +84,7 @@ export function printInvoice(inv: any, shop: ShopInfo = {}, format: PrintFormat 
         <td>${itemName(item)}</td>
         <td class="c">${qty(item)}</td>
         <td class="l">${cellMoney(item.unitPrice, format)}</td>
-        <td class="l">${item.discount ? cellMoney(item.discount, format) : "—"}</td>
+        <td class="l">${item.discount ? `${item.discount < 0 ? "+ " : ""}${cellMoney(Math.abs(item.discount), format)}` : "—"}</td>
         <td class="l b">${cellMoney(item.total, format)}</td>
       </tr>`,
         )
@@ -124,6 +125,7 @@ export function printInvoice(inv: any, shop: ShopInfo = {}, format: PrintFormat 
   <div class="totals">
     <div class="muted"><span>الإجمالي الفرعي:</span><span>${formatCurrency(grossSubtotal)}</span></div>
     ${totalDiscount > 0 ? `<div class="neg"><span>إجمالي الخصم:</span><span>- ${formatCurrency(totalDiscount)}</span></div>` : ""}
+    ${totalDiscount < 0 ? `<div class="muted"><span>إجمالي الإضافة:</span><span>+ ${formatCurrency(-totalDiscount)}</span></div>` : ""}
     <div class="net"><span>الإجمالي:</span><span>${formatCurrency(inv?.total || 0)}</span></div>
     ${inv?.paidAmount > 0 ? `<div class="pos"><span>المدفوع:</span><span>${formatCurrency(inv.paidAmount)}</span></div>` : ""}
     ${inv?.remainingAmount > 0 ? `<div class="neg"><span>المتبقي (على العميل):</span><span>${formatCurrency(inv.remainingAmount)}</span></div>` : ""}

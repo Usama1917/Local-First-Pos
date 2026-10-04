@@ -253,7 +253,7 @@ function ProductFormFields({
         <p className="text-sm font-semibold text-muted-foreground">حسبة الأسعار</p>
         <div className="grid grid-cols-3 gap-3">
           <div className="space-y-1"><Label>السعر القائمة{perUnitHint}</Label><Input type="number" value={form.listPrice} onChange={e => updateForm("listPrice", e.target.value)} /></div>
-          <div className="space-y-1"><Label>خصم المورد %</Label><Input type="number" value={form.supplierDiscount} onChange={e => updateForm("supplierDiscount", e.target.value)} /></div>
+          <div className="space-y-1"><Label>خصم المورد %</Label><Input type="number" title="قيمة سالبة تعني إضافة على السعر" value={form.supplierDiscount} onChange={e => updateForm("supplierDiscount", e.target.value)} /></div>
           <div className="space-y-1"><Label>صافي شراء{perUnitHint}</Label><Input type="number" value={form.netPurchasePrice} readOnly className="bg-muted" /></div>
           <div className="space-y-1"><Label>تكاليف إضافية{perUnitHint}</Label><Input type="number" value={form.extraCost} onChange={e => updateForm("extraCost", e.target.value)} /></div>
           <div className="space-y-1"><Label>التكلفة الحقيقية{perUnitHint}</Label><Input type="number" value={form.trueCost} readOnly className="bg-muted" /></div>

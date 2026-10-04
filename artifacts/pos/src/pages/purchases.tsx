@@ -17,6 +17,7 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { NumericInput } from "@/components/ui/numeric-input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -333,7 +334,7 @@ function NewPurchaseDialog({ onClose, open, invoiceId }: { onClose: () => void; 
                 <td className="p-2 font-medium truncate">{item.productName}</td>
                 <td className="p-2"><Input type="number" disabled={readOnly} className="h-7 text-xs text-center w-full" value={item.quantity} onChange={e => updateItem(idx, "quantity", e.target.value === "" ? item.quantity : (parseFloat(e.target.value) || 0))} /></td>
                 <td className="p-2"><Input type="number" disabled={readOnly} className="h-7 text-xs w-full" value={item.listPrice} onChange={e => updateItem(idx, "listPrice", parseFloat(e.target.value) || 0)} /></td>
-                <td className="p-2"><Input type="number" disabled={readOnly} className="h-7 text-xs w-full" value={item.supplierDiscount} onChange={e => updateItem(idx, "supplierDiscount", parseFloat(e.target.value) || 0)} /></td>
+                <td className="p-2"><NumericInput disabled={readOnly} className="h-7 text-xs w-full" placeholder="0" title="خصم المورد % — قيمة سالبة تعني إضافة على السعر" value={item.supplierDiscount} onValue={n => updateItem(idx, "supplierDiscount", n)} /></td>
                 <td className="p-2 text-left text-muted-foreground">{formatCurrency(item.netPrice)}</td>
                 <td className="p-2"><Input type="number" disabled={readOnly} className="h-7 text-xs w-full" value={item.extraCost} onChange={e => updateItem(idx, "extraCost", parseFloat(e.target.value) || 0)} /></td>
                 <td className="p-2 text-left font-medium">{formatCurrency(item.trueCost)}</td>
