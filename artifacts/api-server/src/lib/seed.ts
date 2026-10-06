@@ -1,6 +1,7 @@
-import db from "./db.js";
+import db, { isNewDatabase } from "./db.js";
 
 export function seedDatabase() {
+  if (!isNewDatabase) return;
   const existingCategories = db.prepare("SELECT COUNT(*) as count FROM categories").get() as any;
   if (existingCategories.count > 0) return;
 

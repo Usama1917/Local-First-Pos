@@ -3,6 +3,13 @@ import { dbPath } from "./paths.js";
 
 export const db = new DatabaseSync(dbPath);
 
+// True only on the very first boot against an empty file (before the schema exists).
+// The demo seed runs then and never again — so once the shop clears the demo data
+// (scripts/clear-demo-data.mjs), a restart can't bring it back.
+export const isNewDatabase = !db
+  .prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'settings'")
+  .get();
+
 db.exec("PRAGMA journal_mode = WAL");
 db.exec("PRAGMA foreign_keys = ON");
 db.exec("PRAGMA busy_timeout = 5000");
