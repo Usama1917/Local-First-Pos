@@ -179,6 +179,24 @@ pnpm workspace (Node 24, TypeScript 5.9). Packages:
 
 ## 7. Session changelog (everything done so far)
 
+### Session 2026‑10‑15 — encrypted DB backup to GitHub (button + daily + on stop)
+- **`scripts/cloud-backup.mjs`** (all logic, Node 24, no deps): `VACUUM INTO` snapshot (read‑only, safe while
+  the server runs) → gzip → AES‑256‑GCM (scrypt key; header `POSBAK01|salt|iv|tag`) → GitHub Contents API PUT
+  to orphan branch **`db-backups`** (`backups/YYYY/MM/store-<ts>.db.gz.enc`; branch auto‑created). **Refuses
+  unless the repo is `private`.** Skips when the snapshot hash is unchanged (`--force` overrides). Subcommands:
+  `setup` (interactive), `configure` (JSON on stdin), `status` (JSON, no secrets), `restore <file> [out]`.
+  Records `lastError` so the UI shows failures of unattended runs (e.g. expired token).
+- Config/secrets: **`cloud-backup.json`** at project root (gitignored). Log: `logs/cloud-backup.log`.
+- Routes (admin via `/backup` gate): `GET /backup/cloud/status`, `POST /backup/cloud/config`, `POST /backup/cloud/run`
+  — they spawn the script with `process.execPath`; `cloudErrorAr()` translates common errors. Not in the OpenAPI
+  spec (same as the other raw `/backup/*` calls).
+- Settings → النسخ الاحتياطي: «نسخة على GitHub» card (upload button + one‑time setup form).
+- **Fixed:** the raw `fetch()` calls in Settings (backup info, data/archive dir, folder picker, backup download)
+  sent no bearer token since auth landed → 401. Now via `apiFetch()`; download fetches a blob.
+- Windows: `Setup Cloud Backup.bat`, `Cloud Backup Hidden.vbs` (daily Task Scheduler task "POS Cloud Backup",
+  13:00, StartWhenAvailable; schtasks fallback), `Stop POS.bat` uploads after stopping if configured.
+- Not verified against real GitHub yet (repo was public; only the 401/private‑check paths were exercised).
+
 ### Session 2026‑07‑19 — system‑wide delete, cashier UX, server auth + adversarial review (COMMITTED & PUSHED)
 Committed to `main` and pushed. `pnpm run typecheck` and `pnpm run build` are green. Restart the API after backend edits (`dev` = build && start). Verified end‑to‑end in the browser.
 

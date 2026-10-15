@@ -2,8 +2,9 @@ import { Router } from "express";
 import fs from "fs";
 import path from "path";
 import AdmZip from "adm-zip";
+import { execFile } from "child_process";
 import db from "../lib/db.js";
-import { dataDir, dbPath, backupDir, getDataLocationSource, setConfiguredDataDir, getArchiveDir, setConfiguredArchiveDir } from "../lib/paths.js";
+import { projectRoot, dataDir, dbPath, backupDir, getDataLocationSource, setConfiguredDataDir, getArchiveDir, setConfiguredArchiveDir } from "../lib/paths.js";
 import { pickFolder } from "../lib/dialog.js";
 import { browserAvailable } from "../lib/pdf.js";
 import { requireAdmin } from "../middlewares/auth.js";
@@ -102,6 +103,63 @@ router.post("/backup/pick-folder", (_req, res) => {
   pickFolder()
     .then((dir) => res.json({ path: dir }))
     .catch((e: any) => res.status(500).json({ error: e.message }));
+});
+
+// ---- Cloud backup (encrypted DB → private GitHub repo, branch db-backups) ----
+// All the logic lives in scripts/cloud-backup.mjs (also run daily by Task Scheduler and by
+// "Stop POS.bat"); these routes just drive it. Token/password never leave the server.
+const cloudScript = path.join(projectRoot, "scripts", "cloud-backup.mjs");
+
+// The script logs in English (for cmd); show the shop the common causes in Arabic.
+function cloudErrorAr(msg: string): string {
+  if (/→ 401/.test(msg)) return "التوكن غلط أو انتهت صلاحيته — اعمل توكن جديد ودخّله من «تعديل الإعداد».";
+  if (/NOT private/.test(msg)) return "الريبو عام (Public) — لازم تخليه خاص (Private) من إعدادات الريبو على GitHub الأول.";
+  if (/→ (403|404)/.test(msg)) return "التوكن مالوش صلاحية على الريبو ده — لازم Contents: Read and write على نفس الريبو.";
+  if (/fetch failed|ENOTFOUND|ETIMEDOUT|ECONNRESET|aborted/i.test(msg)) return "مفيش إنترنت أو GitHub مش بيرد — جرّب تاني بعدين.";
+  if (/Password must be/.test(msg)) return "كلمة سر التشفير لازم ٨ حروف على الأقل.";
+  if (/Token is required/.test(msg)) return "التوكن مطلوب.";
+  if (/Repo must look like/.test(msg)) return "اكتب الريبو بالشكل ده: owner/name";
+  return msg;
+}
+
+function runCloud(args: string[], input?: unknown): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const child = execFile(process.execPath, [cloudScript, ...args], { cwd: projectRoot, timeout: 5 * 60_000 }, (err, stdout) => {
+      if (!err) return resolve(stdout);
+      const line = stdout.split(/\r?\n/).reverse().find((l) => l.includes("[ERROR]"));
+      reject(new Error(cloudErrorAr(line ? line.replace(/^.*\[ERROR\]\s*/, "") : err.message)));
+    });
+    child.stdin?.end(input === undefined ? "" : JSON.stringify(input));
+  });
+}
+
+function cloudStatus() {
+  return runCloud(["status"]).then((out) => {
+    const st = JSON.parse(out);
+    return { ...st, lastError: st.lastError ? cloudErrorAr(st.lastError) : null };
+  });
+}
+
+router.get("/backup/cloud/status", (_req, res) => {
+  cloudStatus()
+    .then((st) => res.json(st))
+    .catch((e) => res.status(500).json({ error: e.message }));
+});
+
+// Save repo/token/password (empty token/password = keep current) + register the daily task.
+router.post("/backup/cloud/config", (req, res) => {
+  const { repo, token, password } = req.body || {};
+  runCloud(["configure"], { repo, token, password })
+    .then(() => res.json({ success: true }))
+    .catch((e) => res.status(400).json({ error: e.message }));
+});
+
+// The Settings button: upload a fresh encrypted copy now.
+router.post("/backup/cloud/run", (_req, res) => {
+  runCloud(["--force"])
+    .then(cloudStatus)
+    .then((st) => res.json(st))
+    .catch((e) => res.status(500).json({ error: e.message }));
 });
 
 router.post("/backup/restore", (req, res) => {

@@ -64,6 +64,9 @@ logs/
 # Per-machine config (e.g. chosen database location)
 pos-config.json
 
+# Cloud backup settings — holds the GitHub token + encryption password. NEVER commit.
+cloud-backup.json
+
 # Per-machine production notes written on the shop PC during setup/cleanup.
 # May contain shop-specific paths/details — never commit it.
 PRODUCTION_DATA_CLEANUP_NOTE.txt

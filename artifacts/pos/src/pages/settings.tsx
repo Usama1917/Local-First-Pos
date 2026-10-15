@@ -26,8 +26,31 @@ import { cn } from "@/lib/utils";
 import { isAdmin, type SessionUser } from "@/lib/pages";
 import UsersPage from "@/pages/users";
 import { motion } from "framer-motion";
-import { Save, Download, HardDrive, Settings, FolderOpen, Sun, Moon, Plus, Trash2, Type, Contrast, Maximize2, Volume2 } from "lucide-react";
+import { Save, Download, HardDrive, Settings, FolderOpen, CloudUpload, Sun, Moon, Plus, Trash2, Type, Contrast, Maximize2, Volume2 } from "lucide-react";
 import { toast } from "sonner";
+
+// Raw /api calls (endpoints not in the OpenAPI spec) must carry the session token too —
+// the generated hooks get it from custom-fetch, plain fetch() doesn't.
+function apiFetch(url: string, init: RequestInit = {}) {
+  let token: string | undefined;
+  try { token = JSON.parse(localStorage.getItem("pos_user") || "null")?.token; } catch { /* no session */ }
+  const headers = new Headers(init.headers);
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+  return fetch(url, { ...init, headers });
+}
+
+function postJson(url: string, body?: unknown) {
+  return apiFetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+}
+
+type CloudStatus = {
+  configured: boolean; repo: string | null; branch: string; suggestedRepo: string | null;
+  lastUploadAt: string | null; lastRemotePath: string | null; lastError: string | null; lastErrorAt: string | null;
+};
 
 export default function SettingsPage() {
   const qc = useQueryClient();
@@ -35,7 +58,11 @@ export default function SettingsPage() {
   const updateSettings = useUpdateSettings();
   const createBackup = useCreateBackup();
   const { data: backups } = useListBackups();
-  const { data: dbInfo } = useQuery({ queryKey: ["backup-info"], queryFn: () => fetch("/api/backup/info").then(r => r.json()) });
+  const { data: dbInfo } = useQuery({ queryKey: ["backup-info"], queryFn: () => apiFetch("/api/backup/info").then(r => r.json()) });
+  const { data: cloud } = useQuery<CloudStatus>({ queryKey: ["cloud-backup"], queryFn: () => apiFetch("/api/backup/cloud/status").then(r => r.json()) });
+  const [cloudBusy, setCloudBusy] = useState(false);
+  const [cloudForm, setCloudForm] = useState({ repo: "", token: "", password: "", confirm: "" });
+  const [showCloudForm, setShowCloudForm] = useState(false);
   const [newDataDir, setNewDataDir] = useState("");
   const [newArchiveDir, setNewArchiveDir] = useState("");
   const [theme, setThemeState] = useState<Theme>(getTheme());
@@ -107,13 +134,54 @@ export default function SettingsPage() {
     }
   };
 
-  const triggerDownload = (filename: string) => {
+  // Fetch as a blob (a plain <a href> can't send the Authorization header).
+  const triggerDownload = async (filename: string) => {
+    const res = await apiFetch(`/api/backup/download/${encodeURIComponent(filename)}`);
+    if (!res.ok) { toast.error("تعذّر تنزيل النسخة"); return; }
+    const url = URL.createObjectURL(await res.blob());
     const a = document.createElement("a");
-    a.href = `/api/backup/download/${encodeURIComponent(filename)}`;
+    a.href = url;
     a.download = filename;
     document.body.appendChild(a);
     a.click();
     a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10_000);
+  };
+
+  const uploadToGithub = async () => {
+    setCloudBusy(true);
+    try {
+      const res = await postJson("/api/backup/cloud/run");
+      const r = await res.json();
+      if (!res.ok) throw new Error(r?.error);
+      toast.success("تم رفع النسخة على GitHub ✓");
+    } catch (e: any) {
+      toast.error(`فشل الرفع: ${e?.message || ""}`);
+    } finally {
+      setCloudBusy(false);
+      qc.invalidateQueries({ queryKey: ["cloud-backup"] });
+    }
+  };
+
+  const saveCloudConfig = async () => {
+    const f = cloudForm;
+    if (f.password && f.password !== f.confirm) { toast.error("كلمتين السر مش متطابقين"); return; }
+    setCloudBusy(true);
+    try {
+      const res = await postJson("/api/backup/cloud/config", {
+        repo: f.repo.trim() || cloud?.repo || cloud?.suggestedRepo, token: f.token, password: f.password,
+      });
+      const r = await res.json();
+      if (!res.ok) throw new Error(r?.error);
+      toast.success("تم حفظ إعداد GitHub");
+      setCloudForm({ repo: "", token: "", password: "", confirm: "" });
+      setShowCloudForm(false);
+    } catch (e: any) {
+      toast.error(`تعذّر الحفظ: ${e?.message || ""}`);
+    } finally {
+      setCloudBusy(false);
+      qc.invalidateQueries({ queryKey: ["cloud-backup"] });
+    }
   };
 
   const handleBackup = async () => {
@@ -125,11 +193,7 @@ export default function SettingsPage() {
 
   const saveDataDir = async () => {
     if (!newDataDir.trim()) { toast.error("اكتب أو اختر مسار المجلد"); return; }
-    const res = await fetch("/api/backup/data-dir", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ dir: newDataDir.trim() }),
-    });
+    const res = await postJson("/api/backup/data-dir", { dir: newDataDir.trim() });
     if (res.ok) { toast.success("تم الحفظ — أعد تشغيل البرنامج لتطبيق المكان الجديد"); setNewDataDir(""); }
     else toast.error("تعذّر الحفظ");
   };
@@ -137,18 +201,14 @@ export default function SettingsPage() {
   // Open the native folder picker on the shop PC and fill the given field.
   const browseFolder = async (setter: (v: string) => void) => {
     try {
-      const r = await fetch("/api/backup/pick-folder", { method: "POST" }).then((x) => x.json());
+      const r = await postJson("/api/backup/pick-folder").then((x) => x.json());
       if (r?.path) setter(r.path);
     } catch { toast.error("تعذّر فتح نافذة التصفّح"); }
   };
 
   const saveArchiveDir = async () => {
     if (!newArchiveDir.trim()) { toast.error("اكتب أو اختر مجلد الأرشفة"); return; }
-    const res = await fetch("/api/backup/archive-dir", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ dir: newArchiveDir.trim() }),
-    });
+    const res = await postJson("/api/backup/archive-dir", { dir: newArchiveDir.trim() });
     if (res.ok) { toast.success("تم حفظ مكان الأرشفة"); setNewArchiveDir(""); qc.invalidateQueries({ queryKey: ["backup-info"] }); }
     else toast.error("تعذّر الحفظ");
   };
@@ -419,6 +479,73 @@ export default function SettingsPage() {
                   {!(backups as any[])?.length && <p className="text-sm text-muted-foreground">لا توجد نسخ احتياطية</p>}
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader><CardTitle>نسخة على GitHub</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                بترفع نسخة <span className="font-medium">مشفّرة</span> من قاعدة البيانات على فرع
+                <span className="font-mono"> {cloud?.branch || "db-backups"} </span>
+                في ريبو GitHub. بتترفع لوحدها كل يوم، ومع "Stop POS.bat"، ومن الزرار ده.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <Button onClick={uploadToGithub} disabled={cloudBusy || !cloud?.configured}>
+                  <CloudUpload className="h-4 w-4 ml-2" />
+                  {cloudBusy ? "جاري الرفع..." : "رفع نسخة على GitHub الآن"}
+                </Button>
+                <Button variant="outline" onClick={() => setShowCloudForm((v) => !v)}>
+                  {cloud?.configured ? "تعديل الإعداد" : "إعداد GitHub (مرة واحدة)"}
+                </Button>
+              </div>
+              <div className="rounded-md bg-muted/50 p-3 text-sm space-y-1">
+                {cloud?.configured ? (
+                  <>
+                    <p>الريبو: <span className="font-mono">{cloud.repo}</span></p>
+                    <p>آخر رفعة: {cloud.lastUploadAt ? new Date(cloud.lastUploadAt).toLocaleString("ar-EG") : "لسه"}</p>
+                  </>
+                ) : (
+                  <p className="text-muted-foreground">لسه متعملش إعداد — اضغط "إعداد GitHub".</p>
+                )}
+                {cloud?.lastError && (
+                  <p className="text-destructive text-xs break-all">
+                    ⚠️ آخر محاولة فشلت ({cloud.lastErrorAt ? new Date(cloud.lastErrorAt).toLocaleString("ar-EG") : ""}): {cloud.lastError}
+                  </p>
+                )}
+              </div>
+              {showCloudForm && (
+                <div className="space-y-3 rounded-md border p-3">
+                  <ul className="text-xs text-muted-foreground list-disc pr-4 space-y-1">
+                    <li>لازم الريبو يكون <span className="font-medium">خاص (Private)</span> — النظام بيرفض يرفع على ريبو عام.</li>
+                    <li>التوكن: github.com/settings/personal-access-tokens/new ← نفس الريبو بس ← Contents: Read and write.</li>
+                    <li>كلمة سر التشفير: <span className="font-medium">اكتبها في مكان آمن</span> — من غيرها النسخ مش هتتفتح أبداً.</li>
+                  </ul>
+                  <div className="space-y-1">
+                    <Label>الريبو (owner/name)</Label>
+                    <Input dir="ltr" placeholder={cloud?.repo || cloud?.suggestedRepo || "owner/name"} value={cloudForm.repo}
+                      onChange={(e) => setCloudForm({ ...cloudForm, repo: e.target.value })} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label>التوكن{cloud?.configured && " (سيبه فاضي عشان يفضل القديم)"}</Label>
+                    <Input dir="ltr" type="password" autoComplete="off" value={cloudForm.token}
+                      onChange={(e) => setCloudForm({ ...cloudForm, token: e.target.value })} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <Label>كلمة سر التشفير{cloud?.configured && " (فاضي = القديمة)"}</Label>
+                      <Input dir="ltr" type="password" autoComplete="new-password" value={cloudForm.password}
+                        onChange={(e) => setCloudForm({ ...cloudForm, password: e.target.value })} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label>تأكيد كلمة السر</Label>
+                      <Input dir="ltr" type="password" autoComplete="new-password" value={cloudForm.confirm}
+                        onChange={(e) => setCloudForm({ ...cloudForm, confirm: e.target.value })} />
+                    </div>
+                  </div>
+                  <Button onClick={saveCloudConfig} disabled={cloudBusy}>{cloudBusy ? "جاري التحقق..." : "حفظ الإعداد"}</Button>
+                </div>
+              )}
             </CardContent>
           </Card>
 

@@ -20,6 +20,18 @@ if "%FOUND%"=="0" (
   echo تم إيقاف النظام ✓
 )
 
+REM --- نسخة احتياطية مشفّرة على GitHub (لو متعمل لها إعداد) ---
+if exist "cloud-backup.json" (
+  echo.
+  echo جارٍ رفع نسخة احتياطية على GitHub ...
+  node scripts\cloud-backup.mjs
+  if errorlevel 1 (
+    echo [تنبيه] فشل رفع النسخة — البيانات سليمة على الجهاز. التفاصيل في logs\cloud-backup.log
+  ) else (
+    echo [✓] النسخة الاحتياطية على GitHub تمام.
+  )
+)
+
 echo.
 echo ملاحظة: هذا الملف يوقف فقط العملية اللي بتستخدم المنفذ 8080.
 pause

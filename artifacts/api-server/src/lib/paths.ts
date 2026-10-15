@@ -4,7 +4,7 @@ import { fileURLToPath } from "url";
 
 // Bundled at artifacts/api-server/dist/index.mjs, so three levels up is the project root.
 const here = path.dirname(fileURLToPath(import.meta.url));
-const projectRoot = path.resolve(here, "../../..");
+export const projectRoot = path.resolve(here, "../../..");
 const configFile = path.join(projectRoot, "pos-config.json");
 const defaultDataDir = path.join(projectRoot, "data");
 
