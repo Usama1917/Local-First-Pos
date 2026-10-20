@@ -1,6 +1,8 @@
 import db, { isNewDatabase } from "./db.js";
+import { hosted } from "./runtime.js";
 
 export function seedDatabase() {
+  if (hosted || process.env.POS_SEED_DEMO === "0") return;
   if (!isNewDatabase) return;
   const existingCategories = db.prepare("SELECT COUNT(*) as count FROM categories").get() as any;
   if (existingCategories.count > 0) return;

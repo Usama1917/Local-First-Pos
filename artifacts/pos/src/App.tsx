@@ -97,7 +97,16 @@ function AuthGate() {
     <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
       <Router
         user={user}
-        onLogout={() => { localStorage.removeItem("pos_user"); setUser(null); }}
+        onLogout={() => {
+          const token = readStoredUser()?.token;
+          // Capture the token before clearing storage; revoke it server-side too.
+          if (token) void fetch("/api/auth/logout", {
+            method: "POST", headers: { Authorization: `Bearer ${token}` },
+          }).catch(() => {});
+          localStorage.removeItem("pos_user");
+          queryClient.clear();
+          setUser(null);
+        }}
       />
     </WouterRouter>
   );

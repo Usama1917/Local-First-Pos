@@ -1,5 +1,6 @@
 import { randomBytes } from "node:crypto";
 import db from "./db.js";
+import { hosted } from "./runtime.js";
 
 export interface Session {
   token: string;
@@ -12,6 +13,7 @@ export interface Session {
 
 /** Issue a fresh opaque session token for a user and persist it. */
 export function createSession(userId: number): string {
+  if (hosted) db.exec("DELETE FROM sessions WHERE createdAt <= datetime('now', '-12 hours')");
   const token = randomBytes(32).toString("hex");
   db.prepare("INSERT INTO sessions (token, userId) VALUES (?, ?)").run(token, userId);
   return token;
@@ -23,7 +25,7 @@ export function getSession(token: string | undefined | null): Session | null {
   const row = db.prepare(`
     SELECT s.token, u.id as userId, u.username, u.name, u.role, u.permissions, u.isActive
     FROM sessions s JOIN users u ON s.userId = u.id
-    WHERE s.token = ?
+    WHERE s.token = ? ${hosted ? "AND s.createdAt > datetime('now', '-12 hours')" : ""}
   `).get(token) as any;
   if (!row || !row.isActive) return null;
   let permissions: string[] = [];

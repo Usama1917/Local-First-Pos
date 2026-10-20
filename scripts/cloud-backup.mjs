@@ -23,8 +23,12 @@ import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const configFile = path.join(root, "cloud-backup.json");
-const logFile = path.join(root, "logs", "cloud-backup.log");
+const hosted = process.env.POS_HOSTED === "1" || !!process.env.RAILWAY_ENVIRONMENT_ID;
+const configDir = process.env.POS_CONFIG_DIR
+  ? path.resolve(process.env.POS_CONFIG_DIR)
+  : hosted && process.env.POS_DATA_DIR ? path.join(path.resolve(process.env.POS_DATA_DIR), "config") : root;
+const configFile = path.join(configDir, "cloud-backup.json");
+const logFile = path.join(hosted && process.env.POS_DATA_DIR ? process.env.POS_DATA_DIR : root, "logs", "cloud-backup.log");
 const BRANCH = "db-backups";
 const TASK_NAME = "POS Cloud Backup";
 const TASK_TIME = "13:00";
@@ -37,7 +41,7 @@ const SCRYPT = { N: 2 ** 15, r: 8, p: 1, maxmem: 64 * 1024 * 1024 };
 function resolveDataDir() {
   if (process.env.POS_DATA_DIR) return path.resolve(process.env.POS_DATA_DIR);
   try {
-    const cfg = JSON.parse(fs.readFileSync(path.join(root, "pos-config.json"), "utf8"));
+    const cfg = JSON.parse(fs.readFileSync(path.join(configDir, "pos-config.json"), "utf8"));
     if (cfg?.dataDir) return path.resolve(String(cfg.dataDir));
   } catch {
     /* no config → default */
@@ -65,7 +69,8 @@ function readConfig() {
 }
 
 function writeConfig(cfg) {
-  fs.writeFileSync(configFile, JSON.stringify(cfg, null, 2), "utf8");
+  fs.mkdirSync(configDir, { recursive: true });
+  fs.writeFileSync(configFile, JSON.stringify(cfg, null, 2), { encoding: "utf8", mode: 0o600 });
 }
 
 function deriveKey(password, salt) {

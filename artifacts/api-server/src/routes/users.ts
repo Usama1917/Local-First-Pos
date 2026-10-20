@@ -1,15 +1,16 @@
 import { Router } from "express";
 import db from "../lib/db.js";
 import { requireAdmin } from "../middlewares/auth.js";
+import { isPasswordHash, storePassword, validNewPassword } from "../lib/password.js";
+import { hosted } from "../lib/runtime.js";
 
 const router = Router();
 
-// User management (incl. viewing stored passwords — a deliberate manager feature)
-// is admin-only, enforced server-side.
+// User management is admin-only. Legacy local passwords remain viewable;
+// hosted/migrated passwords are never exposed.
 router.use("/users", requireAdmin);
 
-// Shape a DB row for the client. Passwords ARE returned: the manager is allowed
-// to view them (explicit product decision for this local single-shop system).
+// An empty password tells the UI to offer reset instead of reveal.
 function shape(row: any) {
   if (!row) return row;
   let permissions: string[] = [];
@@ -18,7 +19,7 @@ function shape(row: any) {
     id: row.id,
     username: row.username,
     name: row.name,
-    password: row.password,
+    password: hosted || isPasswordHash(row.password) ? "" : row.password,
     role: row.role,
     permissions,
     isActive: !!row.isActive,
@@ -41,12 +42,16 @@ router.get("/users", (_req, res) => {
 router.post("/users", (req, res) => {
   const { username, password, name, role = "staff", permissions = [], isActive = true } = req.body || {};
   if (!username || !password || !name) return res.status(400).json({ error: "اسم المستخدم وكلمة المرور والاسم مطلوبين" });
+  if (!validNewPassword(password) || typeof username !== "string" || typeof name !== "string" ||
+      !["admin", "staff", "cashier"].includes(role)) {
+    return res.status(400).json({ error: "بيانات غير صالحة — كلمة المرور على الاستضافة ١٢ حرفًا على الأقل" });
+  }
   const exists = db.prepare("SELECT 1 FROM users WHERE username = ?").get(username);
   if (exists) return res.status(400).json({ error: "اسم المستخدم مستخدم بالفعل" });
   const perms = role === "admin" ? null : JSON.stringify(Array.isArray(permissions) ? permissions : []);
   const r = db.prepare(
     "INSERT INTO users (username, password, name, role, permissions, isActive) VALUES (?,?,?,?,?,?)",
-  ).run(username, password, name, role, perms, isActive ? 1 : 0);
+  ).run(username, storePassword(password), name, role, perms, isActive ? 1 : 0);
   res.status(201).json(shape(db.prepare("SELECT * FROM users WHERE id = ?").get(r.lastInsertRowid)));
 });
 
@@ -56,6 +61,12 @@ router.patch("/users/:id", (req, res) => {
   if (!user) return res.status(404).json({ error: "غير موجود" });
 
   const { username, password, name, role, permissions, isActive } = req.body || {};
+  if ((password !== undefined && password !== "" && !validNewPassword(password)) ||
+      (username !== undefined && typeof username !== "string") ||
+      (name !== undefined && typeof name !== "string") ||
+      (role !== undefined && !["admin", "staff", "cashier"].includes(role))) {
+    return res.status(400).json({ error: "بيانات غير صالحة — كلمة المرور على الاستضافة ١٢ حرفًا على الأقل" });
+  }
 
   // Guard: never strip the last active admin (by demotion or deactivation).
   const wasAdmin = user.role === "admin" && user.isActive;
@@ -93,7 +104,7 @@ router.patch("/users/:id", (req, res) => {
     WHERE id = ?
   `).run(
     username || null,
-    password || null,
+    password ? storePassword(password, isPasswordHash(user.password)) : null,
     name || null,
     role || null,
     permsValue !== undefined ? 1 : 0,
@@ -101,6 +112,9 @@ router.patch("/users/:id", (req, res) => {
     isActive !== undefined ? (isActive ? 1 : 0) : null,
     id,
   );
+  if (password || isActive === false || (role !== undefined && role !== user.role)) {
+    db.prepare("DELETE FROM sessions WHERE userId = ?").run(id);
+  }
 
   res.json(shape(db.prepare("SELECT * FROM users WHERE id = ?").get(id)));
 });

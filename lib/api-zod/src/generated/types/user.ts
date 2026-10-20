@@ -10,6 +10,7 @@ export interface User {
   id: number;
   username: string;
   name: string;
+  /** Empty for protected passwords (hosted mode). Never returns a password hash. */
   password?: string;
   role: string;
   permissions?: string[];

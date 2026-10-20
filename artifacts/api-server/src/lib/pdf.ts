@@ -3,6 +3,10 @@ import fs from "fs";
 import os from "os";
 import path from "path";
 import { pathToFileURL } from "url";
+import { hosted } from "./runtime.js";
+
+let queue = Promise.resolve();
+let queued = 0;
 
 // Locate an installed Chromium-based browser (Edge ships with Windows). We drive
 // it headless to print HTML → PDF, which renders Arabic/RTL correctly with zero
@@ -50,6 +54,16 @@ export function browserAvailable(): boolean {
  * stabilize, then kill the browser. Robust across browser versions and platforms.
  */
 export function htmlToPdf(html: string, outPath: string): Promise<void> {
+  if (!hosted) return renderPdf(html, outPath);
+  if (queued >= 100) return Promise.reject(new Error("قائمة أرشفة PDF ممتلئة"));
+  queued++;
+  // One Chromium at a time keeps memory bounded on a small hosting plan.
+  const result = queue.then(() => renderPdf(html, outPath));
+  queue = result.catch(() => {}).finally(() => { queued--; });
+  return result;
+}
+
+function renderPdf(html: string, outPath: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const browser = findBrowser();
     if (!browser) return reject(new Error("لم يتم العثور على متصفح (Edge/Chrome) لإنشاء PDF"));
@@ -64,6 +78,7 @@ export function htmlToPdf(html: string, outPath: string): Promise<void> {
     const args = [
       "--headless=new",
       "--disable-gpu",
+      "--disable-dev-shm-usage",
       "--no-sandbox",
       "--no-first-run",
       "--no-default-browser-check",

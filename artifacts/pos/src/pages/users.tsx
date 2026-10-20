@@ -143,7 +143,8 @@ function UserFormDialog({ user, onClose, onCreated }: { user: any | null; onClos
         <div className="space-y-1"><Label>اسم المستخدم *</Label><Input value={form.username} onChange={(e) => set("username", e.target.value)} autoComplete="off" /></div>
         <div className="space-y-1">
           <Label>{isEdit ? "كلمة مرور جديدة (اتركها فارغة لو مش هتتغير)" : "كلمة المرور *"}</Label>
-          <Input value={form.password} onChange={(e) => set("password", e.target.value)} autoComplete="new-password" placeholder={isEdit ? "••••••" : ""} />
+          <Input type="password" value={form.password} onChange={(e) => set("password", e.target.value)} autoComplete="new-password" placeholder={isEdit ? "••••••" : ""} />
+          <p className="text-xs text-muted-foreground">على الاستضافة: ١٢ حرفًا على الأقل. كلمة المرور المحمية لا تُعرض؛ يمكن تعيين كلمة جديدة.</p>
         </div>
         <div className="space-y-1">
           <Label>الصلاحية</Label>
@@ -237,12 +238,12 @@ export default function UsersPage() {
                 <td className="p-3 font-medium">{u.name}</td>
                 <td className="p-3 font-mono text-muted-foreground">{u.username}</td>
                 <td className="p-3">
-                  <div className="flex items-center gap-2">
+                  {!u.password ? <span className="text-xs text-muted-foreground">محمية — يمكن تغييرها</span> : <div className="flex items-center gap-2">
                     <span className="font-mono">{revealed[u.id] ? u.password : "••••••"}</span>
                     <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setRevealed((r) => ({ ...r, [u.id]: !r[u.id] }))} title={revealed[u.id] ? "إخفاء" : "إظهار"}>
                       {revealed[u.id] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </Button>
-                  </div>
+                  </div>}
                 </td>
                 <td className="p-3">
                   <Badge variant={roleIsAdmin(u.role) ? "default" : "secondary"}>{ROLE_LABEL[u.role] || u.role}</Badge>

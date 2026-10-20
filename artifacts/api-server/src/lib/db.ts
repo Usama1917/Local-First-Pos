@@ -1,5 +1,7 @@
 import { DatabaseSync } from "node:sqlite";
 import { dbPath } from "./paths.js";
+import { hosted } from "./runtime.js";
+import { hashPassword, isPasswordHash, validNewPassword } from "./password.js";
 
 export const db = new DatabaseSync(dbPath);
 
@@ -441,8 +443,6 @@ export function initializeSchema() {
 
     INSERT OR IGNORE INTO settings (id, shopName) VALUES (1, 'محل الأدوات الصحية والدهانات');
 
-    INSERT OR IGNORE INTO users (username, password, name, role)
-    VALUES ('admin', 'admin123', 'المدير', 'admin');
   `);
 
   // Migrations for columns added after the first release (CREATE TABLE IF NOT
@@ -452,6 +452,7 @@ export function initializeSchema() {
   ensureColumn("sales_invoices", "commissionPaid", "REAL NOT NULL DEFAULT 0");
   // Per-user allowed page keys (JSON array). NULL for admins (full access).
   ensureColumn("users", "permissions", "TEXT");
+  initializeAccounts();
   // Shop's custom sale terms (one per line) printed on invoices above the signatures.
   ensureColumn("settings", "invoiceTerms", "TEXT");
   // Invoice amendment chain (see the CREATE TABLE comment above).
@@ -467,6 +468,43 @@ export function initializeSchema() {
   ensureColumn("return_items", "costAtSale", "REAL");
   backfillCountedMovements();
   backfillSaleCosts();
+}
+
+function initializeAccounts() {
+  const users = db.prepare("SELECT id, username, password, role, isActive FROM users").all() as
+    { id: number; username: string; password: string; role: string; isActive: number }[];
+  if (!users.length) {
+    const username = hosted ? process.env.POS_ADMIN_USERNAME?.trim() : "admin";
+    const password = hosted ? process.env.POS_ADMIN_PASSWORD : "admin123";
+    if (!username || !validNewPassword(password)) {
+      throw new Error("Set POS_ADMIN_USERNAME and a unique POS_ADMIN_PASSWORD (at least 12 characters) for the first hosted boot.");
+    }
+    db.prepare("INSERT INTO users (username, password, name, role) VALUES (?, ?, 'المدير', 'admin')")
+      .run(username, hosted ? hashPassword(password) : password);
+    return;
+  }
+  if (!hosted) return;
+  // Validate before modifying accounts imported from the shop.
+  if (!users.some(u => u.role === "admin" && u.isActive)) {
+    throw new Error("The imported database must have an active administrator.");
+  }
+  for (const user of users) {
+    if (user.isActive && !isPasswordHash(user.password) && !validNewPassword(user.password)) {
+      throw new Error(`User ID ${user.id} needs a password of at least 12 characters before cloud migration.`);
+    }
+  }
+  const legacy = users.filter(u => !isPasswordHash(u.password));
+  if (!legacy.length) return;
+  db.exec("BEGIN");
+  try {
+    const update = db.prepare("UPDATE users SET password = ? WHERE id = ?");
+    for (const user of legacy) update.run(hashPassword(user.password), user.id);
+    db.exec("DELETE FROM sessions");
+    db.exec("COMMIT");
+  } catch (error) {
+    db.exec("ROLLBACK");
+    throw error;
+  }
 }
 
 /**

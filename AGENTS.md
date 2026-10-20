@@ -5,6 +5,11 @@
 > sanitary‑ware / paints / plumbing shop. Target runtime: a **Windows** shop PC.
 > Development: **macOS**. Database: **local SQLite**. No cloud, no paid hosting.
 
+> **2026-10-20 update:** optional Railway hosting is now supported at the owner's
+> request. Windows/local mode remains supported. Read `docs/RAILWAY_DEPLOY_AR.md`
+> before deploying or migrating data. The old local-only statements below describe
+> the Windows installation, not the optional hosted mode.
+
 ---
 
 ## 0. TL;DR — the 6 things that bite people
@@ -178,6 +183,25 @@ pnpm workspace (Node 24, TypeScript 5.9). Packages:
 ---
 
 ## 7. Session changelog (everything done so far)
+
+### Session 2026-10-20 — Railway hosting preparation
+- Root `Dockerfile` (Node 24, Chromium, Arabic fonts), restrictive `.dockerignore`,
+  `railway.json` healthcheck and single replica. No shop DB/config/secrets in image.
+- Cloud mode is `POS_HOSTED=1` or presence of `RAILWAY_ENVIRONMENT_ID`; do not use
+  `NODE_ENV` to distinguish local/cloud, because the Windows launcher uses production.
+- Requires a Railway Volume and absolute persistent paths. `/data` stores DB,
+  archives, backups and config. No demo data; initial admin credentials from Variables.
+- Hosted passwords use scrypt; legacy plaintext is validated/migrated on a **copy**
+  during cloud migration. Never run hosted tests against the real shop database.
+  Local plaintext-view feature remains for legacy local accounts only.
+- Hosted server workflow permissions, login throttling, 12-hour sessions, logout/
+  password reset revocation; audit name is taken from the authenticated session.
+- Daily consistent local snapshots (last seven) and daily encrypted GitHub backup
+  checks **only when configured**. Same-volume snapshots are not off-site protection.
+- `pnpm run test:hosting` uses temporary databases; Docker build tests the actual
+  Linux runtime including PDF before deployment. A local test needs the built API and SPA.
+- No offline/cloud synchronization, no live database upload, no Railway deployment
+  is performed by merely pushing this source. Follow the deployment guide separately.
 
 ### Session 2026‑10‑15 — encrypted DB backup to GitHub (button + daily + on stop)
 - **`scripts/cloud-backup.mjs`** (all logic, Node 24, no deps): `VACUUM INTO` snapshot (read‑only, safe while

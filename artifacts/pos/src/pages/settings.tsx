@@ -558,7 +558,7 @@ export default function SettingsPage() {
                 <p className="mt-2 font-medium">مجلد النسخ الاحتياطية:</p>
                 <p className="font-mono text-xs break-all text-muted-foreground">{(dbInfo as any)?.backupDir || "..."}</p>
               </div>
-              <div className="space-y-1">
+              {(dbInfo as any)?.hosted ? <p className="text-sm text-muted-foreground">البيانات محفوظة على وحدة تخزين دائمة في الاستضافة. تغيير المسار من هنا غير متاح.</p> : <div className="space-y-1">
                 <Label>تغيير مكان حفظ البيانات (مسار مجلد)</Label>
                 <div className="flex gap-2">
                   <Input placeholder="مثال: D:\POS-Data" value={newDataDir} onChange={e => setNewDataDir(e.target.value)} />
@@ -568,7 +568,7 @@ export default function SettingsPage() {
                 <p className="text-xs text-muted-foreground">
                   ⚠️ يتطلب إعادة تشغيل البرنامج. لو عندك بيانات قديمة، انقل ملف <span className="font-mono">store.db</span> للمكان الجديد قبل التشغيل.
                 </p>
-              </div>
+              </div>}
             </CardContent>
           </Card>
 
@@ -585,7 +585,7 @@ export default function SettingsPage() {
                 <p className="font-medium">مجلد الأرشفة الحالي:</p>
                 <p className="font-mono text-xs break-all text-muted-foreground">{(dbInfo as any)?.archiveDir || "غير مفعّل"}</p>
               </div>
-              <div className="space-y-1">
+              {(dbInfo as any)?.hosted ? <p className="text-sm text-muted-foreground">الأرشفة مفعّلة على السيرفر، وليست على جهاز المحل. طباعة الفواتير من المتصفح تظل على طابعتك المحلية.</p> : <div className="space-y-1">
                 <Label>مجلد حفظ الفواتير</Label>
                 <div className="flex gap-2">
                   <Input placeholder="مثال: D:\POS-Invoices" value={newArchiveDir} onChange={e => setNewArchiveDir(e.target.value)} />
@@ -596,7 +596,7 @@ export default function SettingsPage() {
                 {(dbInfo as any)?.pdfEngineAvailable === false && (
                   <p className="text-xs text-amber-600 dark:text-amber-400">⚠️ مفيش متصفّح (Edge/Chrome) متثبّت على الجهاز — مطلوب لإنشاء ملفات الـ PDF.</p>
                 )}
-              </div>
+              </div>}
             </CardContent>
           </Card>
         </TabsContent>

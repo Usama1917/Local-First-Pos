@@ -1,13 +1,38 @@
 import { Router } from "express";
 import db from "../lib/db.js";
 import { createSession, destroySession, bearerToken, getSession } from "../lib/session.js";
+import { verifyPassword } from "../lib/password.js";
+import { hosted } from "../lib/runtime.js";
 
 const router = Router();
+const attempts = new Map<string, { count: number; until: number }>();
 
 router.post("/auth/login", (req, res) => {
-  const { username, password } = req.body;
+  const { username, password } = req.body || {};
+  if (typeof username !== "string" || typeof password !== "string" ||
+      username.length > 100 || password.length > 256) {
+    return res.status(400).json({ error: "بيانات الدخول غير صالحة" });
+  }
+  if (hosted) {
+    const now = Date.now();
+    for (const [key, value] of attempts) if (value.until <= now) attempts.delete(key);
+    // Global cap bounds CPU spent on password hashing even with rotating IPs.
+    const keys = ["global", `ip:${req.ip || req.socket.remoteAddress}`];
+    for (const key of keys) {
+      const entry = attempts.get(key);
+      if (entry && entry.count >= (key === "global" ? 200 : 20)) {
+        res.setHeader("Retry-After", String(Math.ceil((entry.until - now) / 1000)));
+        return res.status(429).json({ error: "محاولات دخول كثيرة — حاول بعد ١٥ دقيقة" });
+      }
+    }
+    for (const key of keys) {
+      const entry = attempts.get(key) || { count: 0, until: now + 15 * 60_000 };
+      entry.count++;
+      attempts.set(key, entry);
+    }
+  }
   const user = db.prepare("SELECT * FROM users WHERE username = ? AND isActive = 1").get(username) as any;
-  if (!user || user.password !== password) {
+  if (!user || !verifyPassword(password, user.password)) {
     return res.status(401).json({ error: "اسم المستخدم أو كلمة المرور غير صحيحة" });
   }
   let permissions: string[] = [];

@@ -8,6 +8,7 @@ import { projectRoot, dataDir, dbPath, backupDir, getDataLocationSource, setConf
 import { pickFolder } from "../lib/dialog.js";
 import { browserAvailable } from "../lib/pdf.js";
 import { requireAdmin } from "../middlewares/auth.js";
+import { hosted } from "../lib/runtime.js";
 
 const router = Router();
 
@@ -71,11 +72,13 @@ router.get("/backup/info", (_req, res) => {
   res.json({
     dataDir, dbPath, backupDir, source: getDataLocationSource(),
     archiveDir: getArchiveDir(), pdfEngineAvailable: browserAvailable(),
+    hosted, pathsLocked: hosted,
   });
 });
 
 // Choose a new data directory (applied after a restart).
 router.post("/backup/data-dir", (req, res) => {
+  if (hosted) return res.status(409).json({ error: "مكان البيانات ثابت على وحدة التخزين الدائمة في Railway" });
   const { dir } = req.body;
   if (!dir || typeof dir !== "string") return res.status(400).json({ error: "المسار مطلوب" });
   try {
@@ -88,6 +91,7 @@ router.post("/backup/data-dir", (req, res) => {
 
 // Choose the auto-archive folder (applies immediately — read fresh each document).
 router.post("/backup/archive-dir", (req, res) => {
+  if (hosted) return res.status(409).json({ error: "الأرشفة محفوظة على وحدة التخزين الدائمة في Railway" });
   const { dir } = req.body;
   if (typeof dir !== "string") return res.status(400).json({ error: "المسار مطلوب" });
   try {
@@ -100,6 +104,7 @@ router.post("/backup/archive-dir", (req, res) => {
 
 // Open a native folder-picker on the shop PC and return the chosen path ("" = cancelled).
 router.post("/backup/pick-folder", (_req, res) => {
+  if (hosted) return res.status(409).json({ error: "تصفّح مجلدات الجهاز متاح في النسخة المحلية فقط" });
   pickFolder()
     .then((dir) => res.json({ path: dir }))
     .catch((e: any) => res.status(500).json({ error: e.message }));
