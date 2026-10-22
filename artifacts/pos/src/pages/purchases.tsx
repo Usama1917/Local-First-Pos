@@ -1,3 +1,4 @@
+import { Table } from "@/components/ui/table";
 import { useState, useEffect } from "react";
 import {
   useListPurchaseInvoices,
@@ -270,8 +271,8 @@ function NewPurchaseDialog({ onClose, open, invoiceId }: { onClose: () => void; 
           <Button variant="ghost" size="sm" className="h-6 text-amber-800 dark:text-amber-200" onClick={() => { resetForm(); clearDraft(); }}>ابدأ من جديد</Button>
         </div>
       )}
-      <div className="grid grid-cols-4 gap-3">
-        <div className="col-span-2 space-y-1">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="sm:col-span-2 space-y-1">
           <Label>المورد</Label>
           <Select value={supplierId} onValueChange={setSupplierId} disabled={readOnly}>
             <SelectTrigger><SelectValue placeholder="اختر المورد" /></SelectTrigger>
@@ -291,7 +292,7 @@ function NewPurchaseDialog({ onClose, open, invoiceId }: { onClose: () => void; 
           </Select>
         </div>
         {paymentType === "partial" && (
-          <div className="col-span-2 space-y-1"><Label>المدفوع</Label><Input type="number" value={paidAmount} onChange={e => setPaidAmount(e.target.value)} disabled={readOnly} /></div>
+          <div className="sm:col-span-2 space-y-1"><Label>المدفوع</Label><Input type="number" value={paidAmount} onChange={e => setPaidAmount(e.target.value)} disabled={readOnly} /></div>
         )}
       </div>
 
@@ -313,7 +314,7 @@ function NewPurchaseDialog({ onClose, open, invoiceId }: { onClose: () => void; 
       )}
 
       <div className="overflow-x-auto">
-        <table className="w-full table-fixed text-sm">
+        <Table className="purchase-entry-table w-full table-fixed text-sm">
           <thead className="bg-muted/50">
             <tr>
               <th className="p-2 text-right w-[18%]">المنتج</th>
@@ -357,7 +358,7 @@ function NewPurchaseDialog({ onClose, open, invoiceId }: { onClose: () => void; 
               </tr>
             ))}
           </tbody>
-        </table>
+        </Table>
       </div>
 
       {items.length > 0 && (
@@ -434,13 +435,13 @@ export default function PurchasesPage() {
         )}
       </Dialog>
 
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">المشتريات</h1>
         <Button onClick={() => setOpenId("new")}><Plus className="h-4 w-4 ml-2" />فاتورة مشتريات</Button>
       </div>
 
       <Card><CardContent className="p-4">
-        <div className="flex gap-3">
+        <div className="flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input className="pr-9" placeholder="رقم الفاتورة أو المورد..." value={search} onChange={e => setSearch(e.target.value)} onKeyDown={onSearchKeyDown} />
@@ -456,7 +457,7 @@ export default function PurchasesPage() {
       </CardContent></Card>
 
       <Card><CardContent className="p-0">
-        <table className="w-full text-sm">
+        <Table className="w-full text-sm">
           <thead className="bg-muted/50">
             <tr className="text-right">
               <th className="p-3">الرقم</th>
@@ -492,7 +493,7 @@ export default function PurchasesPage() {
               </td></tr>
             )}
           </tbody>
-        </table>
+        </Table>
       </CardContent></Card>
     </div>
   );

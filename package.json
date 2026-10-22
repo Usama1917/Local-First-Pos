@@ -3,18 +3,23 @@
   "version": "0.0.0",
   "license": "MIT",
   "packageManager": "pnpm@11.2.2",
-  "engines": { "node": ">=24 <25" },
+  "engines": {
+    "node": ">=24 <25"
+  },
   "scripts": {
     "preinstall": "node scripts/check-package-manager.cjs",
     "build": "pnpm run typecheck && pnpm -r --if-present run build",
     "build:shop": "pnpm --filter @workspace/api-server --filter @workspace/pos run build",
     "start:shop": "pnpm --filter @workspace/api-server run start",
     "test:hosting": "node --test tests/hosting.test.mjs",
+    "test:mobile": "pnpm run build:shop && playwright test -c playwright.mobile.config.ts",
     "typecheck:libs": "tsc --build",
     "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck"
   },
   "private": true,
   "devDependencies": {
+    "@playwright/test": "^1.64.1",
+    "@types/node": "catalog:",
     "prettier": "^3.8.3",
     "typescript": "~5.9.3"
   }

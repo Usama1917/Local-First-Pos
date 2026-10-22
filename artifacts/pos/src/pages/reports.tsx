@@ -1,3 +1,4 @@
+import { Table } from "@/components/ui/table";
 import { useState } from "react";
 import {
   useGetSalesReport,
@@ -19,7 +20,7 @@ import { Calendar, TrendingUp, Package, Star, HardHat, ShoppingBag, Coins } from
 
 function DateRangePicker({ from, to, onFrom, onTo }: { from: string; to: string; onFrom: (v: string) => void; onTo: (v: string) => void }) {
   return (
-    <div className="flex gap-3 items-center">
+    <div className="flex flex-wrap gap-3 items-center">
       <div className="flex items-center gap-2">
         <Label className="shrink-0">من:</Label>
         <Input type="date" value={from} onChange={e => onFrom(e.target.value)} className="w-36" />
@@ -57,7 +58,7 @@ export default function ReportsPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">التقارير</h1>
         <DateRangePicker from={dateFrom} to={dateTo} onFrom={setDateFrom} onTo={setDateTo} />
       </div>
@@ -83,7 +84,7 @@ export default function ReportsPage() {
         <TabsContent value="sales" className="space-y-4">
           {loadSales ? <div className="p-8 text-center text-muted-foreground">جاري التحميل...</div> : (
             <>
-              <div className="grid grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <Card><CardContent className="p-4">
                   <p className="text-2xl font-bold text-primary">{formatCurrency(sales?.summary?.totalSales)}</p>
                   <p className="text-xs text-muted-foreground">إجمالي المبيعات</p>
@@ -130,7 +131,7 @@ export default function ReportsPage() {
                 <Card>
                   <CardHeader><CardTitle>المبيعات حسب التصنيف</CardTitle></CardHeader>
                   <CardContent>
-                    <table className="w-full text-sm">
+                    <Table className="w-full text-sm">
                       <thead className="bg-muted/50"><tr>
                         <th className="p-2 text-right">التصنيف</th>
                         <th className="p-2 text-left">المبيعات</th>
@@ -145,7 +146,7 @@ export default function ReportsPage() {
                           </tr>
                         ))}
                       </tbody>
-                    </table>
+                    </Table>
                   </CardContent>
                 </Card>
               )}
@@ -156,7 +157,7 @@ export default function ReportsPage() {
         <TabsContent value="inventory">
           {loadInv ? <div className="p-8 text-center text-muted-foreground">جاري التحميل...</div> : (
             <div className="space-y-4">
-              <div className="grid grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <Card><CardContent className="p-4">
                   <p className="text-2xl font-bold">{inv?.summary?.totalProducts}</p>
                   <p className="text-xs text-muted-foreground">إجمالي الأصناف</p>
@@ -176,7 +177,7 @@ export default function ReportsPage() {
               </div>
               <Card><CardContent className="p-0">
                 <div className="overflow-y-auto max-h-96">
-                  <table className="w-full text-sm">
+                  <Table className="w-full text-sm">
                     <thead className="bg-muted/50 sticky top-0">
                       <tr className="text-right">
                         <th className="p-2">المنتج</th>
@@ -199,7 +200,7 @@ export default function ReportsPage() {
                         </tr>
                       ))}
                     </tbody>
-                  </table>
+                  </Table>
                 </div>
               </CardContent></Card>
             </div>
@@ -208,7 +209,7 @@ export default function ReportsPage() {
 
         <TabsContent value="best">
           <Card><CardContent className="p-0">
-            <table className="w-full text-sm">
+            <Table className="w-full text-sm">
               <thead className="bg-muted/50"><tr className="text-right">
                 <th className="p-3">#</th>
                 <th className="p-3">المنتج</th>
@@ -228,13 +229,13 @@ export default function ReportsPage() {
                 ))}
                 {best.length === 0 && <tr><td colSpan={5} className="p-8 text-center text-muted-foreground">لا توجد بيانات</td></tr>}
               </tbody>
-            </table>
+            </Table>
           </CardContent></Card>
         </TabsContent>
 
         <TabsContent value="commission">
           <Card><CardContent className="p-0">
-            <table className="w-full text-sm">
+            <Table className="w-full text-sm">
               <thead className="bg-muted/50"><tr className="text-right">
                 <th className="p-3">الصنايعي</th>
                 <th className="p-3">التخصص</th>
@@ -256,12 +257,12 @@ export default function ReportsPage() {
                 ))}
                 {commissions.length === 0 && <tr><td colSpan={6} className="p-8 text-center text-muted-foreground">لا توجد بيانات</td></tr>}
               </tbody>
-            </table>
+            </Table>
           </CardContent></Card>
         </TabsContent>
 
         <TabsContent value="purchases" className="space-y-4">
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <Card><CardContent className="p-4">
               <p className="text-2xl font-bold">{formatCurrency(purchases?.summary?.totalPurchases)}</p>
               <p className="text-xs text-muted-foreground">إجمالي المشتريات</p>
@@ -279,7 +280,7 @@ export default function ReportsPage() {
             <Card>
               <CardHeader><CardTitle>المشتريات حسب المورد</CardTitle></CardHeader>
               <CardContent>
-                <table className="w-full text-sm">
+                <Table className="w-full text-sm">
                   <thead className="bg-muted/50"><tr>
                     <th className="p-2 text-right">المورد</th>
                     <th className="p-2 text-left">الإجمالي</th>
@@ -292,7 +293,7 @@ export default function ReportsPage() {
                       </tr>
                     ))}
                   </tbody>
-                </table>
+                </Table>
               </CardContent>
             </Card>
           )}

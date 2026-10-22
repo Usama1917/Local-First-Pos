@@ -6,12 +6,15 @@ const Table = React.forwardRef<
   HTMLTableElement,
   React.HTMLAttributes<HTMLTableElement>
 >(({ className, ...props }, ref) => (
-  <div className="relative w-full overflow-auto">
-    <table
-      ref={ref}
-      className={cn("w-full caption-bottom text-sm", className)}
-      {...props}
-    />
+  <div className="table-container min-w-0 max-w-full">
+    <p className="table-scroll-hint no-print px-3 py-2 text-xs text-muted-foreground sm:hidden">اسحب الجدول يمينًا ويسارًا لعرض باقي الأعمدة</p>
+    <div className="table-scroll relative w-full overflow-auto" tabIndex={0} role="region" aria-label="جدول بيانات قابل للتمرير أفقيًا">
+      <table
+        ref={ref}
+        className={cn("w-full caption-bottom text-sm", className)}
+        {...props}
+      />
+    </div>
   </div>
 ))
 Table.displayName = "Table"

@@ -1,3 +1,4 @@
+import { Table } from "@/components/ui/table";
 import { useState, useEffect } from "react";
 import { useSearch } from "wouter";
 import {
@@ -163,7 +164,7 @@ function ExpensesLogTab() {
       <Dialog open={showForm} onOpenChange={setShowForm}>
         <DialogContent className="max-w-md">
           <DialogHeader><DialogTitle>{editId ? "تعديل مصروف" : "إضافة مصروف"}</DialogTitle></DialogHeader>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1">
               <Label>المبلغ *</Label>
               <Input type="number" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} />
@@ -172,7 +173,7 @@ function ExpensesLogTab() {
               <Label>التاريخ</Label>
               <Input type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} />
             </div>
-            <div className="col-span-2 space-y-1">
+            <div className="sm:col-span-2 space-y-1">
               <Label>اتصرف في إيه *</Label>
               <Input
                 value={form.description}
@@ -180,7 +181,7 @@ function ExpensesLogTab() {
                 placeholder="مثال: فاتورة كهربا"
               />
             </div>
-            <div className="col-span-2 space-y-1">
+            <div className="sm:col-span-2 space-y-1">
               <Label>البند</Label>
               <Input
                 value={form.category}
@@ -188,12 +189,12 @@ function ExpensesLogTab() {
                 placeholder="مثال: كهربا / مواصلات / صيانة"
               />
             </div>
-            <div className="col-span-2 space-y-1">
+            <div className="sm:col-span-2 space-y-1">
               <Label>ملاحظات</Label>
               <Textarea rows={2} value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} />
             </div>
           </div>
-          <div className="flex justify-end gap-2 pt-2">
+          <div className="flex flex-wrap justify-end gap-2 pt-2">
             <Button variant="outline" onClick={() => setShowForm(false)}>إلغاء</Button>
             <Button onClick={handleSave} disabled={createExpense.isPending || updateExpense.isPending}>حفظ</Button>
           </div>
@@ -235,7 +236,7 @@ function ExpensesLogTab() {
       </Card>
 
       <Card><CardContent className="p-0">
-        <table className="w-full text-sm">
+        <Table className="w-full text-sm">
           <thead className="bg-muted/50">
             <tr className="text-right">
               <th className="p-3">التاريخ</th>
@@ -289,7 +290,7 @@ function ExpensesLogTab() {
               </td></tr>
             )}
           </tbody>
-        </table>
+        </Table>
         {/* The total above covers the WHOLE range; the table is capped. Say so rather
             than letting a truncated list read as the complete picture. */}
         {!isLoading && page?.total > items.length && (
@@ -394,8 +395,8 @@ function MonthlyExpensesTab() {
           <DialogHeader>
             <DialogTitle>{editId ? "تعديل التزام شهري" : "إضافة التزام شهري"}</DialogTitle>
           </DialogHeader>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="col-span-2 space-y-1">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="sm:col-span-2 space-y-1">
               <Label>النوع</Label>
               <Select value={form.type} onValueChange={(v) => setForm(f => ({ ...f, type: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
@@ -406,7 +407,7 @@ function MonthlyExpensesTab() {
                 </SelectContent>
               </Select>
             </div>
-            <div className={cn("space-y-1", isSalary ? "" : "col-span-2")}>
+            <div className={cn("space-y-1", isSalary ? "" : "sm:col-span-2")}>
               <Label>{isSalary ? "اسم الموظف *" : "الاسم *"}</Label>
               <Input
                 value={form.name}
@@ -449,7 +450,7 @@ function MonthlyExpensesTab() {
                 <Input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} />
               </div>
             )}
-            <div className="col-span-2 space-y-1">
+            <div className="sm:col-span-2 space-y-1">
               <Label>ملاحظات</Label>
               <Textarea rows={2} value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} />
             </div>
@@ -457,7 +458,7 @@ function MonthlyExpensesTab() {
           <p className="text-xs text-muted-foreground">
             يوم 29 أو 30 أو 31 بيتزحلق لآخر يوم في الشهور الأقصر.
           </p>
-          <div className="flex justify-end gap-2 pt-2">
+          <div className="flex flex-wrap justify-end gap-2 pt-2">
             <Button variant="outline" onClick={() => setShowForm(false)}>إلغاء</Button>
             <Button onClick={handleSave} disabled={createCommitment.isPending || updateCommitment.isPending}>حفظ</Button>
           </div>
@@ -509,7 +510,7 @@ function MonthlyExpensesTab() {
       )}
 
       <Card><CardContent className="p-0">
-        <table className="w-full text-sm">
+        <Table className="w-full text-sm">
           <thead className="bg-muted/50">
             <tr className="text-right">
               <th className="p-3">الاسم</th>
@@ -576,7 +577,7 @@ function MonthlyExpensesTab() {
               </td></tr>
             )}
           </tbody>
-        </table>
+        </Table>
       </CardContent></Card>
     </div>
   );
@@ -635,7 +636,7 @@ function PayDialog({ commitment, onClose, onPaid }: { commitment: any; onClose: 
             هيتسجّل تلقائياً في «مصروفات دورية» ضمن إجمالي مصروفات الشهر.
           </p>
         </div>
-        <div className="flex justify-end gap-2 pt-2">
+        <div className="flex flex-wrap justify-end gap-2 pt-2">
           <Button variant="outline" onClick={onClose}>إلغاء</Button>
           <Button onClick={handlePay} disabled={pay.isPending}>
             <HandCoins className="h-4 w-4 ml-2" />تأكيد الصرف

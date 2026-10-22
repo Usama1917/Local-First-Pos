@@ -20,6 +20,7 @@ function environment(dir, overrides = {}) {
     SystemRoot: process.env.SystemRoot,
     NODE_ENV: "production",
     POS_HOSTED: "1",
+    POS_AUTH_ENABLED: "1",
     POS_DATA_DIR: dir,
     POS_CONFIG_DIR: path.join(dir, "config"),
     POS_ARCHIVE_DIR: path.join(dir, "archive"),
@@ -105,6 +106,22 @@ test("hosted startup fails closed without volume, credentials, or persistent pat
     assert.equal(child.error, undefined);
     assert.match(child.stderr, /Volume|POS_ADMIN|POS_DATA_DIR|persistent volume/);
   }
+});
+
+test("open hosted mode starts without account secrets and serves the API directly", async t => {
+  const dir = temporary(t);
+  const server = await start(dir, {
+    POS_AUTH_ENABLED: "",
+    POS_ADMIN_USERNAME: "",
+    POS_ADMIN_PASSWORD: "",
+  });
+  t.after(() => server.stop());
+
+  const config = await request(server, "/auth/config");
+  assert.deepEqual(config.data, { authEnabled: false });
+  assert.equal((await request(server, "/products")).status, 200);
+  // Open mode deliberately keeps manager-only workflows usable without a token.
+  assert.equal((await request(server, "/backup/info")).status, 200);
 });
 
 test("hosted API: durable data, auth, permissions, backups, PDF and restart", async t => {

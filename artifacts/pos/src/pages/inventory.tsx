@@ -1,3 +1,4 @@
+import { Table } from "@/components/ui/table";
 import { useState, useEffect } from "react";
 import { useSearch, useLocation } from "wouter";
 import {
@@ -69,7 +70,7 @@ function StockCountDetail({ countId, onClose }: { countId: number; onClose: () =
         {items.filter((i: any) => (localItems[i.productId] ?? i.countedQty) !== i.systemQty).length} فرق من {items.length} صنف
       </div>
       <div className="overflow-y-auto max-h-96">
-        <table className="w-full text-sm">
+        <Table className="w-full text-sm">
           <thead className="bg-muted/50 sticky top-0">
             <tr>
               <th className="p-2 text-right">المنتج</th>
@@ -110,7 +111,7 @@ function StockCountDetail({ countId, onClose }: { countId: number; onClose: () =
               );
             })}
           </tbody>
-        </table>
+        </Table>
       </div>
       {count.status === "draft" && (
         <DialogFooter>
@@ -187,9 +188,9 @@ export default function InventoryPage() {
         </Dialog>
       )}
 
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">المخزن</h1>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button variant="outline" onClick={() => setShowAdjust(true)}>تعديل يدوي</Button>
           <Button
             onClick={() => handleNewCount("uncounted")}
@@ -234,7 +235,7 @@ export default function InventoryPage() {
 
         <TabsContent value="counts">
           <Card><CardContent className="p-0">
-            <table className="w-full text-sm">
+            <Table className="w-full text-sm">
               <thead className="bg-muted/50">
                 <tr className="text-right">
                   <th className="p-3">الاسم</th>
@@ -261,13 +262,13 @@ export default function InventoryPage() {
                   ))}
                 {!isLoading && counts.length === 0 && <tr><td colSpan={5} className="p-8 text-center text-muted-foreground">لا توجد جلسات جرد</td></tr>}
               </tbody>
-            </table>
+            </Table>
           </CardContent></Card>
         </TabsContent>
 
         <TabsContent value="movements">
           <Card><CardContent className="p-0">
-            <table className="w-full text-sm">
+            <Table className="w-full text-sm">
               <thead className="bg-muted/50">
                 <tr className="text-right">
                   <th className="p-3">المنتج</th>
@@ -293,7 +294,7 @@ export default function InventoryPage() {
                 ))}
                 {mvts.length === 0 && <tr><td colSpan={7} className="p-8 text-center text-muted-foreground">لا توجد حركات</td></tr>}
               </tbody>
-            </table>
+            </Table>
           </CardContent></Card>
         </TabsContent>
       </Tabs>

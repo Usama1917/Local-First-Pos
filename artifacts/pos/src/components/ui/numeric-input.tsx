@@ -23,6 +23,8 @@ export function NumericInput({ value, onValue, ...props }: { value: number; onVa
   return (
     <Input
       type="number"
+      // Signed discounts need a minus key, which many phone decimal keyboards omit.
+      inputMode="text"
       {...props}
       value={text}
       onFocus={(e) => { focused.current = true; props.onFocus?.(e); }}

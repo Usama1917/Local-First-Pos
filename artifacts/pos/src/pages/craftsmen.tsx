@@ -1,3 +1,4 @@
+import { Table } from "@/components/ui/table";
 import { useState } from "react";
 import {
   useListCraftsmen,
@@ -109,7 +110,7 @@ function CraftsmanProfile({ id }: { id: number; onClose: () => void }) {
         </div>
       </DialogHeader>
 
-      <div className="grid grid-cols-4 gap-3 mb-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-2">
         <Card><CardContent className="p-3 text-center">
           <p className="text-xl font-bold">{formatCurrency(craftsman.totalSales)}</p>
           <p className="text-xs text-muted-foreground">إجمالي المبيعات</p>
@@ -131,7 +132,7 @@ function CraftsmanProfile({ id }: { id: number; onClose: () => void }) {
       {/* Withdraw commission */}
       <div className="rounded-md border bg-muted/30 p-3 mb-1">
         {!showWithdraw ? (
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="text-sm">
               <span className="text-muted-foreground">العمولة المستحقة للسحب: </span>
               <span className="font-bold text-emerald-700 dark:text-emerald-400">{formatCurrency(outstanding)}</span>
@@ -143,7 +144,7 @@ function CraftsmanProfile({ id }: { id: number; onClose: () => void }) {
         ) : (
           <div className="space-y-2">
             <p className="text-sm font-semibold flex items-center gap-1"><Banknote className="h-4 w-4" />سحب عمولة نقدًا</p>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label>المبلغ (المستحق {formatCurrency(outstanding)})</Label>
                 <Input type="number" value={amount} onChange={e => setAmount(e.target.value)} max={outstanding} />
@@ -153,7 +154,7 @@ function CraftsmanProfile({ id }: { id: number; onClose: () => void }) {
                 <Input value={notes} onChange={e => setNotes(e.target.value)} placeholder="مثال: سحب آخر السنة" />
               </div>
             </div>
-            <div className="flex justify-end gap-2">
+            <div className="flex flex-wrap justify-end gap-2">
               <Button variant="outline" size="sm" onClick={() => setShowWithdraw(false)}>إلغاء</Button>
               <Button size="sm" onClick={handleWithdraw} disabled={createPayout.isPending}>
                 <Printer className="h-4 w-4 ml-1" />تأكيد السحب وطباعة الإيصال
@@ -190,7 +191,7 @@ function CraftsmanProfile({ id }: { id: number; onClose: () => void }) {
               <p>لا توجد فواتير لهذا الصنايعي</p>
             </div>
           ) : (
-            <table className="w-full text-sm">
+            <Table className="w-full text-sm">
               <thead className="bg-muted/50">
                 <tr>
                   <th className="p-2 text-right">الفاتورة</th>
@@ -221,7 +222,7 @@ function CraftsmanProfile({ id }: { id: number; onClose: () => void }) {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </Table>
           )}
         </TabsContent>
 
@@ -232,7 +233,7 @@ function CraftsmanProfile({ id }: { id: number; onClose: () => void }) {
               <p>لا توجد تسعيرات لهذا الصنايعي</p>
             </div>
           ) : (
-            <table className="w-full text-sm">
+            <Table className="w-full text-sm">
               <thead className="bg-muted/50">
                 <tr>
                   <th className="p-2 text-right">التسعيرة</th>
@@ -257,7 +258,7 @@ function CraftsmanProfile({ id }: { id: number; onClose: () => void }) {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </Table>
           )}
         </TabsContent>
 
@@ -268,7 +269,7 @@ function CraftsmanProfile({ id }: { id: number; onClose: () => void }) {
               <p>لا توجد سحوبات عمولة بعد</p>
             </div>
           ) : (
-            <table className="w-full text-sm">
+            <Table className="w-full text-sm">
               <thead className="bg-muted/50">
                 <tr>
                   <th className="p-2 text-right">الإيصال</th>
@@ -293,7 +294,7 @@ function CraftsmanProfile({ id }: { id: number; onClose: () => void }) {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </Table>
           )}
         </TabsContent>
 
@@ -307,7 +308,7 @@ function CraftsmanProfile({ id }: { id: number; onClose: () => void }) {
               <p>لا يوجد عملاء مرتبطين بهذا الصنايعي</p>
             </div>
           ) : (
-            <table className="w-full text-sm">
+            <Table className="w-full text-sm">
               <thead className="bg-muted/50">
                 <tr>
                   <th className="p-2 text-right">العميل</th>
@@ -340,7 +341,7 @@ function CraftsmanProfile({ id }: { id: number; onClose: () => void }) {
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </Table>
           )}
         </TabsContent>
       </Tabs>
@@ -398,20 +399,20 @@ export default function CraftsmenPage() {
       <Dialog open={showAdd} onOpenChange={setShowAdd}>
         <DialogContent className="max-w-sm">
           <DialogHeader><DialogTitle>إضافة صنايعي</DialogTitle></DialogHeader>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="col-span-2 space-y-1"><Label>الاسم *</Label><Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} /></div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="sm:col-span-2 space-y-1"><Label>الاسم *</Label><Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} /></div>
             <div className="space-y-1"><Label>هاتف</Label><Input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} /></div>
             <div className="space-y-1"><Label>التخصص</Label><Input placeholder="سباك، نقاش..." value={form.jobType} onChange={e => setForm(f => ({ ...f, jobType: e.target.value }))} /></div>
             <div className="space-y-1"><Label>نسبة العمولة %</Label><Input type="number" value={form.commissionPercent} onChange={e => setForm(f => ({ ...f, commissionPercent: e.target.value }))} /></div>
           </div>
-          <div className="flex justify-end gap-2 pt-2">
+          <div className="flex flex-wrap justify-end gap-2 pt-2">
             <Button variant="outline" onClick={() => setShowAdd(false)}>إلغاء</Button>
             <Button onClick={handleAdd} disabled={createCraftsman.isPending}>حفظ</Button>
           </div>
         </DialogContent>
       </Dialog>
 
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">الصنايعية</h1>
         <Button onClick={() => setShowAdd(true)}><Plus className="h-4 w-4 ml-2" />إضافة صنايعي</Button>
       </div>
@@ -424,7 +425,7 @@ export default function CraftsmenPage() {
       </CardContent></Card>
 
       <Card><CardContent className="p-0">
-        <table className="w-full text-sm">
+        <Table className="w-full text-sm">
           <thead className="bg-muted/50">
             <tr className="text-right">
               <th className="p-3">الاسم</th>
@@ -464,7 +465,7 @@ export default function CraftsmenPage() {
               </td></tr>
             )}
           </tbody>
-        </table>
+        </Table>
       </CardContent></Card>
     </div>
   );

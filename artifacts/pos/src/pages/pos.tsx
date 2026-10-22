@@ -1,3 +1,4 @@
+import { Table } from "@/components/ui/table";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useSearch, useLocation } from "wouter";
 import {
@@ -370,7 +371,7 @@ export default function POSPage() {
   ];
 
   return (
-    <div className="flex gap-4 h-[calc(100vh-7rem)]">
+    <div className="pos-workspace flex flex-col gap-4 lg:h-[calc(100dvh-7rem)] lg:flex-row">
       <Dialog open={showDraftDialog} onOpenChange={setShowDraftDialog}>
         <DialogContent>
           <DialogHeader><DialogTitle>مسودة غير مكتملة</DialogTitle></DialogHeader>
@@ -478,7 +479,7 @@ export default function POSPage() {
       </Dialog>
 
       {/* Search Panel */}
-      <div className="w-80 flex flex-col gap-3">
+      <div className="w-full min-w-0 flex flex-col gap-3 lg:w-72 lg:shrink-0 xl:w-80">
         <Card>
           <CardContent className="p-3">
             <div className="relative">
@@ -490,12 +491,12 @@ export default function POSPage() {
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
                 onKeyDown={onSearchKeyDown}
-                autoFocus
+                autoFocus={window.matchMedia("(min-width: 1024px) and (pointer: fine)").matches}
               />
             </div>
           </CardContent>
         </Card>
-        <div className="flex-1 overflow-y-auto space-y-2">
+        <div className="max-h-60 overflow-y-auto space-y-2 lg:max-h-none lg:flex-1">
           {productResults.map((p: any, i: number) => (
             <Card
               key={p.id}
@@ -539,7 +540,7 @@ export default function POSPage() {
       </div>
 
       {/* Cart Panel */}
-      <div className="flex-1 flex flex-col gap-3">
+      <div className="min-w-0 flex-1 flex flex-col gap-3">
         {original && (
           <div className="flex items-center gap-3 rounded-lg border border-amber-500/40 bg-amber-50 px-4 py-2.5 text-sm dark:bg-amber-950/30">
             <Pencil className="h-4 w-4 shrink-0 text-amber-700 dark:text-amber-400" />
@@ -556,7 +557,7 @@ export default function POSPage() {
             </Button>
           </div>
         )}
-        <div className="flex gap-2">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           <Select value={customerId || "__none__"} onValueChange={(v) => setCustomerId(v === "__none__" ? "" : v)}>
             <SelectTrigger className="flex-1">
               <SelectValue placeholder="اختر العميل (اختياري)" />
@@ -597,7 +598,7 @@ export default function POSPage() {
                 <p>السلة فارغة</p>
               </div>
             ) : (
-              <table className="w-full">
+              <Table className="pos-cart-table w-full">
                 <thead className="bg-muted/50 sticky top-0">
                   <tr className="text-xs text-muted-foreground">
                     <th className="p-3 text-right">المنتج</th>
@@ -614,7 +615,7 @@ export default function POSPage() {
                     const belowMin = item.minSellingPrice > 0 && unitNet < item.minSellingPrice;
                     return (
                     <tr key={idx} className="border-b nav-hover">
-                      <td className="p-3">
+                      <td className="cart-product p-3">
                         <p className="font-medium text-sm">{item.productName}</p>
                         <p className="text-xs text-muted-foreground">{item.sku}</p>
                         {belowMin && (
@@ -624,44 +625,49 @@ export default function POSPage() {
                           </p>
                         )}
                       </td>
-                      <td className="p-3">
+                      <td className="cart-quantity p-3" data-label="الكمية">
                         <div className="flex items-center justify-center gap-1">
-                          <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => updateQty(idx, -1)}>
+                          <Button variant="outline" size="icon" className="h-7 w-7" aria-label={`تقليل كمية ${item.productName}`} onClick={() => updateQty(idx, -1)}>
                             <Minus className="h-3 w-3" />
                           </Button>
                           {/* Editable so weight products (or large counts) can be typed directly. */}
                           <NumericInput
                             className="h-7 w-14 text-center font-semibold px-1"
                             value={item.quantity}
+                            inputMode="decimal"
+                            aria-label={`كمية ${item.productName}`}
                             onValue={n => setQty(idx, n)}
                             title={item.soldByWeight ? "الكمية (تقبل الكسور)" : "العدد"}
                           />
-                          <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => updateQty(idx, 1)}>
+                          <Button variant="outline" size="icon" className="h-7 w-7" aria-label={`زيادة كمية ${item.productName}`} onClick={() => updateQty(idx, 1)}>
                             <Plus className="h-3 w-3" />
                           </Button>
                         </div>
                       </td>
-                      <td className="p-3 text-center text-sm">{formatCurrency(item.sellingPrice)}</td>
-                      <td className="p-3">
+                      <td className="p-3 text-center text-sm" data-label="سعر الوحدة">{formatCurrency(item.sellingPrice)}</td>
+                      <td className="p-3" data-label="خصم / إضافة">
                         <NumericInput
                           className={`h-7 text-xs text-center ${belowMin ? "border-amber-500 focus-visible:ring-amber-500" : ""}`}
                           value={item.discount}
+                          aria-label={`خصم ${item.productName}`}
                           onValue={n => updateDiscount(idx, n)}
                           placeholder="0"
                           title="خصم بالجنيه — قيمة سالبة تعني إضافة على السعر"
                         />
                       </td>
-                      <td className="p-3">
+                      <td className="p-3" data-label="الإجمالي">
                         <NumericInput
                           className="h-7 text-sm text-left font-bold text-primary"
                           value={item.total}
+                          inputMode="decimal"
+                          aria-label={`إجمالي ${item.productName}`}
                           onValue={n => updateLineTotal(idx, n)}
                           placeholder="0"
                           title="عدّل الإجمالي مباشرة — الفرق يتسجل كخصم أو إضافة على الصنف"
                         />
                       </td>
-                      <td className="p-3">
-                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => removeItem(idx)}>
+                      <td className="cart-remove p-3">
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" aria-label={`حذف ${item.productName} من السلة`} onClick={() => removeItem(idx)}>
                           <Trash2 className="h-3 w-3" />
                         </Button>
                       </td>
@@ -669,7 +675,7 @@ export default function POSPage() {
                     );
                   })}
                 </tbody>
-              </table>
+              </Table>
             )}
           </CardContent>
         </Card>
@@ -677,8 +683,8 @@ export default function POSPage() {
         {/* Totals & Actions */}
         <Card>
           <CardContent className="p-4">
-            <div className="flex gap-4 items-end">
-              <div className="flex-1 space-y-2">
+            <div className="flex flex-col gap-4 xl:flex-row xl:items-end">
+              <div className="w-full min-w-0 flex-1 space-y-2">
                 <div className="flex justify-between text-sm"><span className="text-muted-foreground">الإجمالي الفرعي:</span><span className="font-medium">{formatCurrency(subtotal)}</span></div>
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-muted-foreground">خصم الفاتورة:</span>
@@ -689,8 +695,8 @@ export default function POSPage() {
                   <span className="text-primary">{formatCurrency(total)}</span>
                 </div>
               </div>
-              <div className="flex gap-2">
-                <Button size="lg" className="h-14 px-8 text-base" onClick={() => setShowFinalizeDialog(true)} disabled={cart.length === 0}>
+              <div className="flex w-full gap-2 xl:w-auto">
+                <Button size="lg" className="h-14 w-full px-8 text-base" onClick={() => setShowFinalizeDialog(true)} disabled={cart.length === 0}>
                   <CheckCircle className="h-5 w-5 ml-2" />
                   {original ? "حفظ التعديل" : "إنهاء الفاتورة"}
                 </Button>

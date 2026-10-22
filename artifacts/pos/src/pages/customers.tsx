@@ -1,3 +1,4 @@
+import { Table } from "@/components/ui/table";
 import { useState } from "react";
 import {
   useListCustomers,
@@ -81,7 +82,7 @@ function CustomerProfile({ customerId, onClose }: { customerId: number; onClose:
           <span>{(customer as any).area || ""}</span>
         </div>
       </DialogHeader>
-      <div className="grid grid-cols-3 gap-3 mb-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
         <Card><CardContent className="p-3 text-center">
           <p className="text-2xl font-bold text-destructive">{formatCurrency((customer as any).totalDebt)}</p>
           <p className="text-xs text-muted-foreground">إجمالي المديونية</p>
@@ -95,8 +96,8 @@ function CustomerProfile({ customerId, onClose }: { customerId: number; onClose:
           <p className="text-xs text-muted-foreground">إجمالي المدفوع</p>
         </CardContent></Card>
       </div>
-      <div className="flex gap-2 mb-4 p-3 bg-muted/50 rounded-lg">
-        <Input type="number" placeholder="المبلغ" value={payAmount} onChange={e => setPayAmount(e.target.value)} className="w-32" />
+      <div className="flex flex-col sm:flex-row gap-2 mb-4 p-3 bg-muted/50 rounded-lg">
+        <Input type="number" placeholder="المبلغ" value={payAmount} onChange={e => setPayAmount(e.target.value)} className="sm:w-32" />
         <Input placeholder="ملاحظات الدفعة" value={payNote} onChange={e => setPayNote(e.target.value)} className="flex-1" />
         <Button onClick={handlePay} disabled={addPayment.isPending}>
           <CreditCard className="h-4 w-4 ml-2" />
@@ -124,7 +125,7 @@ function CustomerProfile({ customerId, onClose }: { customerId: number; onClose:
               <p>لا توجد فواتير لهذا العميل</p>
             </div>
           ) : (
-            <table className="w-full text-sm">
+            <Table className="w-full text-sm">
               <thead className="bg-muted/50">
                 <tr>
                   <th className="p-2 text-right">الفاتورة</th>
@@ -157,7 +158,7 @@ function CustomerProfile({ customerId, onClose }: { customerId: number; onClose:
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </Table>
           )}
         </TabsContent>
 
@@ -168,7 +169,7 @@ function CustomerProfile({ customerId, onClose }: { customerId: number; onClose:
               <p>لا توجد تسعيرات لهذا العميل</p>
             </div>
           ) : (
-            <table className="w-full text-sm">
+            <Table className="w-full text-sm">
               <thead className="bg-muted/50">
                 <tr>
                   <th className="p-2 text-right">التسعيرة</th>
@@ -199,12 +200,12 @@ function CustomerProfile({ customerId, onClose }: { customerId: number; onClose:
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </Table>
           )}
         </TabsContent>
 
         <TabsContent value="statement">
-          <table className="w-full text-sm">
+          <Table className="w-full text-sm">
             <thead className="bg-muted/50"><tr>
               <th className="p-2 text-right">التاريخ</th>
               <th className="p-2 text-right">البيان</th>
@@ -223,11 +224,11 @@ function CustomerProfile({ customerId, onClose }: { customerId: number; onClose:
                 </tr>
               ))}
             </tbody>
-          </table>
+          </Table>
         </TabsContent>
 
         <TabsContent value="payments">
-          <table className="w-full text-sm">
+          <Table className="w-full text-sm">
             <thead className="bg-muted/50"><tr>
               <th className="p-2 text-right">التاريخ</th>
               <th className="p-2 text-left">المبلغ</th>
@@ -242,7 +243,7 @@ function CustomerProfile({ customerId, onClose }: { customerId: number; onClose:
                 </tr>
               ))}
             </tbody>
-          </table>
+          </Table>
         </TabsContent>
       </Tabs>
     </DialogContent>
@@ -296,22 +297,22 @@ export default function CustomersPage() {
       <Dialog open={showAdd} onOpenChange={setShowAdd}>
         <DialogContent className="max-w-md">
           <DialogHeader><DialogTitle>إضافة عميل جديد</DialogTitle></DialogHeader>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="col-span-2 space-y-1"><Label>الاسم *</Label><Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} /></div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="sm:col-span-2 space-y-1"><Label>الاسم *</Label><Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} /></div>
             <div className="space-y-1"><Label>هاتف</Label><Input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} /></div>
             <div className="space-y-1"><Label>هاتف 2</Label><Input value={form.phone2} onChange={e => setForm(f => ({ ...f, phone2: e.target.value }))} /></div>
             <div className="space-y-1"><Label>المنطقة</Label><Input value={form.area} onChange={e => setForm(f => ({ ...f, area: e.target.value }))} /></div>
             <div className="space-y-1"><Label>رصيد افتتاحي</Label><Input type="number" value={form.openingBalance} onChange={e => setForm(f => ({ ...f, openingBalance: e.target.value }))} /></div>
-            <div className="col-span-2 space-y-1"><Label>العنوان</Label><Input value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} /></div>
+            <div className="sm:col-span-2 space-y-1"><Label>العنوان</Label><Input value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} /></div>
           </div>
-          <div className="flex justify-end gap-2 pt-2">
+          <div className="flex flex-wrap justify-end gap-2 pt-2">
             <Button variant="outline" onClick={() => setShowAdd(false)}>إلغاء</Button>
             <Button onClick={handleAdd} disabled={createCustomer.isPending}>حفظ</Button>
           </div>
         </DialogContent>
       </Dialog>
 
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">العملاء</h1>
         <Button onClick={() => setShowAdd(true)}>
           <Plus className="h-4 w-4 ml-2" />
@@ -330,7 +331,7 @@ export default function CustomersPage() {
 
       <Card>
         <CardContent className="p-0">
-          <table className="w-full text-sm">
+          <Table className="w-full text-sm">
             <thead className="bg-muted/50">
               <tr className="text-right">
                 <th className="p-3">العميل</th>
@@ -368,7 +369,7 @@ export default function CustomersPage() {
                 </td></tr>
               )}
             </tbody>
-          </table>
+          </Table>
         </CardContent>
       </Card>
     </div>

@@ -184,6 +184,26 @@ pnpm workspace (Node 24, TypeScript 5.9). Packages:
 
 ## 7. Session changelog (everything done so far)
 
+### Session 2026-10-22 — responsive mobile interface
+- RTL navigation drawer below 1024px; desktop sidebar retained. Responsive forms,
+  wrapping tabs/toolbars, viewport-bounded scrollable dialogs and touch-sized controls.
+- Shared `Table` provides horizontal scrolling; raw screen tables use this wrapper.
+  POS cart switches to cards via screen-only CSS with the SAME fields/handlers.
+  Do not duplicate invoice calculations in separate mobile components.
+- Mobile permits pinch zoom; numeric values are LTR; signed `NumericInput` uses a
+  text keyboard so phone users can enter a minus. Quantity/total fields opt into decimal keyboards.
+- User settings explain initial Railway credentials versus stored accounts, and
+  password-change session revocation.
+- **Optional sign-in:** authentication is now off by default (`POS_AUTH_ENABLED`
+  must equal `1` to enable it). In open mode the server gives every request the
+  same full-manager access and the SPA opens straight to the dashboard; this is
+  appropriate only when everyone with the URL is trusted. `POS_ADMIN_*` values
+  are needed only for the first boot of an empty database with sign-in enabled.
+- `pnpm run test:mobile` builds and runs Playwright on a dedicated temporary DB:
+  small phone, Android Chromium, iPhone WebKit, tablet, landscape, desktop.
+  Never run these write tests against the production site or the real local DB.
+- See `docs/MOBILE_UI_AR.md` for usage, test commands and hardware/printing limits.
+
 ### Session 2026-10-20 — Railway hosting preparation
 - Root `Dockerfile` (Node 24, Chromium, Arabic fonts), restrictive `.dockerignore`,
   `railway.json` healthcheck and single replica. No shop DB/config/secrets in image.

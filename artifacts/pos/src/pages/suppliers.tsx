@@ -1,3 +1,4 @@
+import { Table } from "@/components/ui/table";
 import { useState } from "react";
 import {
   useListSuppliers,
@@ -61,7 +62,7 @@ function SupplierProfile({ id }: { id: number }) {
   return (
     <DialogContent className="max-w-lg">
       <DialogHeader><DialogTitle>{s.name}</DialogTitle></DialogHeader>
-      <div className="grid grid-cols-2 gap-3 mb-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
         <Card><CardContent className="p-3 text-center">
           <p className="text-xl font-bold text-destructive">{formatCurrency(s.totalDebt)}</p>
           <p className="text-xs text-muted-foreground">المستحق للمورد</p>
@@ -71,8 +72,8 @@ function SupplierProfile({ id }: { id: number }) {
           <p className="text-xs text-muted-foreground">{s.contactPerson || ""}</p>
         </CardContent></Card>
       </div>
-      <div className="flex gap-2 p-3 bg-muted/50 rounded-lg mb-3">
-        <Input type="number" placeholder="المبلغ" value={payAmount} onChange={e => setPayAmount(e.target.value)} className="w-32" />
+      <div className="flex flex-col sm:flex-row gap-2 p-3 bg-muted/50 rounded-lg mb-3">
+        <Input type="number" placeholder="المبلغ" value={payAmount} onChange={e => setPayAmount(e.target.value)} className="sm:w-32" />
         <Input placeholder="ملاحظات" value={payNote} onChange={e => setPayNote(e.target.value)} className="flex-1" />
         <Button onClick={handlePay} disabled={addPayment.isPending}>
           <CreditCard className="h-4 w-4 ml-2" />
@@ -80,7 +81,7 @@ function SupplierProfile({ id }: { id: number }) {
         </Button>
       </div>
       <h3 className="font-semibold mb-2">الدفعات</h3>
-      <table className="w-full text-sm">
+      <Table className="w-full text-sm">
         <thead className="bg-muted/50"><tr>
           <th className="p-2 text-right">التاريخ</th>
           <th className="p-2 text-left">المبلغ</th>
@@ -96,7 +97,7 @@ function SupplierProfile({ id }: { id: number }) {
           ))}
           {!(payments as any[])?.length && <tr><td colSpan={3} className="p-4 text-center text-muted-foreground">لا توجد دفعات</td></tr>}
         </tbody>
-      </table>
+      </Table>
     </DialogContent>
   );
 }
@@ -209,14 +210,14 @@ function SuppliersTab() {
       <Dialog open={showAdd} onOpenChange={setShowAdd}>
         <DialogContent className="max-w-sm">
           <DialogHeader><DialogTitle>إضافة مورد</DialogTitle></DialogHeader>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="col-span-2 space-y-1"><Label>الاسم *</Label><Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} /></div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="sm:col-span-2 space-y-1"><Label>الاسم *</Label><Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} /></div>
             <div className="space-y-1"><Label>هاتف</Label><Input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} /></div>
             <div className="space-y-1"><Label>جهة الاتصال</Label><Input value={form.contactPerson} onChange={e => setForm(f => ({ ...f, contactPerson: e.target.value }))} /></div>
             <div className="space-y-1"><Label>رصيد افتتاحي</Label><Input type="number" value={form.openingBalance} onChange={e => setForm(f => ({ ...f, openingBalance: e.target.value }))} /></div>
-            <div className="col-span-2 space-y-1"><Label>العنوان</Label><Input value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} /></div>
+            <div className="sm:col-span-2 space-y-1"><Label>العنوان</Label><Input value={form.address} onChange={e => setForm(f => ({ ...f, address: e.target.value }))} /></div>
           </div>
-          <div className="flex justify-end gap-2 pt-2">
+          <div className="flex flex-wrap justify-end gap-2 pt-2">
             <Button variant="outline" onClick={() => setShowAdd(false)}>إلغاء</Button>
             <Button onClick={handleAdd} disabled={createSupplier.isPending}>حفظ</Button>
           </div>
@@ -235,7 +236,7 @@ function SuppliersTab() {
       </CardContent></Card>
 
       <Card><CardContent className="p-0">
-        <table className="w-full text-sm">
+        <Table className="w-full text-sm">
           <thead className="bg-muted/50">
             <tr className="text-right">
               <th className="p-3">المورد</th>
@@ -267,7 +268,7 @@ function SuppliersTab() {
               </td></tr>
             )}
           </tbody>
-        </table>
+        </Table>
       </CardContent></Card>
     </div>
   );
@@ -358,7 +359,7 @@ function AttributeTab({
             <div className="space-y-1"><Label>الاسم *</Label><Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} /></div>
             <div className="space-y-1"><Label>الاسم بالإنجليزية</Label><Input value={form.nameEn} onChange={e => setForm(f => ({ ...f, nameEn: e.target.value }))} /></div>
           </div>
-          <div className="flex justify-end gap-2 pt-2">
+          <div className="flex flex-wrap justify-end gap-2 pt-2">
             <Button variant="outline" onClick={() => setShowAdd(false)}>إلغاء</Button>
             <Button onClick={handleSave} disabled={create.isPending || update.isPending}>حفظ</Button>
           </div>
@@ -370,7 +371,7 @@ function AttributeTab({
       </div>
 
       <Card><CardContent className="p-0">
-        <table className="w-full text-sm">
+        <Table className="w-full text-sm">
           <thead className="bg-muted/50">
             <tr className="text-right">
               <th className="p-3">{headerLabel}</th>
@@ -400,7 +401,7 @@ function AttributeTab({
               </td></tr>
             )}
           </tbody>
-        </table>
+        </Table>
       </CardContent></Card>
     </div>
   );

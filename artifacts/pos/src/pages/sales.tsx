@@ -1,3 +1,4 @@
+import { Table } from "@/components/ui/table";
 import { useState, useEffect, useRef, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { useSearch, useLocation } from "wouter";
 import {
@@ -95,7 +96,7 @@ function InvoiceDetail({ invoiceId }: { invoiceId: number }) {
     // RTL, so this dialog carries its own close button in the toolbar instead.
     <DialogContent hideClose className="max-w-3xl max-h-[90vh] overflow-y-auto gap-0 p-0">
       {/* Toolbar — not printed */}
-      <div className="no-print flex items-center justify-between gap-3 border-b px-6 py-3">
+      <div className="no-print flex flex-wrap items-center justify-between gap-3 border-b px-3 sm:px-6 py-3">
         {/* Close sits first so RTL puts it in the far-right corner, and being in
             the flex flow it can't land on top of the title the way the pinned
             `absolute right-4` one did. */}
@@ -155,7 +156,7 @@ function InvoiceDetail({ invoiceId }: { invoiceId: number }) {
         </div>
 
         {/* Meta box */}
-        <div className="grid grid-cols-2 gap-x-8 gap-y-2 rounded-lg border bg-muted/20 p-4 text-sm">
+        <div className="grid grid-cols-1 sm:grid-cols-2 print:grid-cols-2 gap-x-8 gap-y-2 rounded-lg border bg-muted/20 p-4 text-sm">
           <div><span className="text-muted-foreground">العميل:</span> <span className="font-semibold">{inv.customerName || "عميل نقدي"}</span></div>
           <div><span className="text-muted-foreground">رقم الفاتورة:</span> <span className="font-mono font-bold">{inv.serial}</span></div>
           <div>
@@ -167,13 +168,13 @@ function InvoiceDetail({ invoiceId }: { invoiceId: number }) {
           {/* Amendment chain — printed too, so a customer holding either copy can
               tell which one is the valid invoice. */}
           {inv.amendedFromSerial && (
-            <div className="col-span-2">
+            <div className="sm:col-span-2">
               <span className="text-muted-foreground">تعديل للفاتورة:</span>{" "}
               <span className="font-mono font-semibold">{inv.amendedFromSerial}</span>
             </div>
           )}
           {inv.amendedToSerial && (
-            <div className="col-span-2 font-semibold text-destructive">
+            <div className="sm:col-span-2 font-semibold text-destructive">
               هذه الفاتورة تم تعديلها — الفاتورة السارية هي{" "}
               <span className="font-mono">{inv.amendedToSerial}</span>
             </div>
@@ -181,7 +182,7 @@ function InvoiceDetail({ invoiceId }: { invoiceId: number }) {
         </div>
 
         {/* Line items */}
-        <table className="mt-4 w-full border-collapse text-sm">
+        <Table className="mt-4 w-full border-collapse text-sm">
           <thead>
             <tr className="bg-muted/60">
               <th className="w-8 border border-foreground/20 p-2 text-center">#</th>
@@ -210,7 +211,7 @@ function InvoiceDetail({ invoiceId }: { invoiceId: number }) {
               <tr><td colSpan={6} className="border border-foreground/20 p-4 text-center text-muted-foreground">لا توجد أصناف</td></tr>
             )}
           </tbody>
-        </table>
+        </Table>
 
         {/* Totals */}
         <div className="mt-4 flex justify-end">
@@ -227,7 +228,7 @@ function InvoiceDetail({ invoiceId }: { invoiceId: number }) {
         {inv.notes && <p className="mt-4 text-sm"><span className="text-muted-foreground">ملاحظات:</span> {inv.notes}</p>}
 
         {/* Signatures */}
-        <div className="mt-12 grid grid-cols-2 gap-12 text-sm">
+        <div className="mt-12 grid grid-cols-1 sm:grid-cols-2 print:grid-cols-2 gap-12 text-sm">
           <div className="text-center">
             <div className="mx-auto w-48 border-t border-foreground/60 pt-1">توقيع صاحب المحل</div>
           </div>
@@ -337,7 +338,7 @@ export default function SalesPage() {
         </Dialog>
       )}
 
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">فواتير المبيعات</h1>
         <Badge variant="outline" className="text-sm">{(data as any)?.total || 0} فاتورة</Badge>
       </div>
@@ -384,7 +385,7 @@ export default function SalesPage() {
 
       <Card>
         <CardContent className="p-0">
-          <table className="w-full text-sm">
+          <Table className="w-full text-sm">
             <thead className="bg-muted/50">
               <tr className="text-right">
                 <th className="p-3">الرقم</th>
@@ -468,7 +469,7 @@ export default function SalesPage() {
                 </td></tr>
               )}
             </tbody>
-          </table>
+          </Table>
         </CardContent>
       </Card>
     </div>

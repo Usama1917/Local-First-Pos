@@ -322,7 +322,109 @@
   background-attachment: fixed;
 }
 
+/* Screen-only layout rules: printing keeps the original document geometry. */
+@media screen {
+  .app-shell { height: 100vh; height: 100dvh; }
+  .app-header { padding-top: env(safe-area-inset-top); }
+  .app-main {
+    --page-padding: .75rem;
+    padding-bottom: max(var(--page-padding), env(safe-area-inset-bottom));
+    padding-left: max(var(--page-padding), env(safe-area-inset-left));
+    padding-right: max(var(--page-padding), env(safe-area-inset-right));
+  }
+  [data-app-dialog] {
+    max-height: calc(100dvh - 2rem);
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+  }
+  [data-app-dialog] > *, .app-tabs > *, .app-main > * { min-width: 0; }
+  .table-scroll { overscroll-behavior-x: contain; }
+  [data-app-select-trigger] { min-width: 0; }
+  [data-app-select-content] {
+    max-width: calc(100vw - 1rem);
+    max-height: var(--radix-select-content-available-height);
+  }
+  .table-scroll > .wide-entry-table { min-width: 50rem; }
+  .table-scroll > .purchase-entry-table { min-width: 68rem; }
+  .table-scroll th { white-space: nowrap; }
+  .table-scroll td { overflow-wrap: anywhere; }
+  .table-scroll input { min-width: 4rem; }
+  .mobile-navigation {
+    width: min(20rem, calc(100vw - 2rem));
+    height: 100dvh;
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+@media screen and (min-width: 640px) {
+  .app-main { --page-padding: 1.5rem; }
+}
+
+@media screen and (max-width: 1023px) {
+  .table-scroll > table { min-width: 40rem; }
+  /* Present the SAME cart fields as cards, keeping one source for calculations. */
+  .pos-workspace .table-scroll > .pos-cart-table { display: block; min-width: 0; }
+  .pos-cart-table thead { display: none; }
+  .pos-cart-table tbody { display: block; }
+  .pos-cart-table tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    position: relative;
+    padding: .75rem;
+    gap: .75rem;
+  }
+  .pos-cart-table td { display: block; min-width: 0; padding: 0; text-align: start; }
+  .pos-cart-table td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: .375rem;
+    color: hsl(var(--muted-foreground));
+    font-size: .8rem;
+  }
+  .pos-cart-table .cart-product { grid-column: 1 / -1; padding-left: 3rem; }
+  .pos-cart-table .cart-quantity { grid-column: 1 / -1; }
+  .pos-cart-table .cart-quantity > div { justify-content: flex-start; }
+  .pos-cart-table .cart-quantity input { width: 5rem; }
+  .pos-cart-table .cart-remove { position: absolute; top: .5rem; left: .5rem; }
+  .pos-workspace .table-scroll-hint { display: none; }
+  .pos-workspace input, .pos-workspace button { min-height: 2.75rem; }
+  .pos-cart-table button { min-width: 2.75rem; }
+}
+
+@media screen and (max-width: 639px) {
+  [data-app-dialog] {
+    width: calc(100vw - 1rem);
+    max-width: calc(100vw - 1rem);
+    max-height: calc(100dvh - 1rem);
+    border-radius: .75rem;
+  }
+  [data-app-dialog]:not(.p-0) { padding: 1rem; }
+  /* Prevent iOS focus zoom and make compact desktop controls usable by touch. */
+  input:not([type="checkbox"]):not([type="radio"]), textarea, select, [role="combobox"] {
+    font-size: max(16px, 1rem);
+    min-height: 2.75rem;
+    min-width: 0;
+    max-width: 100%;
+  }
+  button:not([role="switch"]):not([role="checkbox"]):not([role="radio"]) {
+    min-height: 2.75rem;
+  }
+  [role="option"], [role="menuitem"] { min-height: 2.75rem; overflow-wrap: anywhere; }
+  .table-scroll button { min-width: 2.75rem; }
+  .app-tabs { height: auto; width: 100%; }
+  .app-main h1 { font-size: 1.5rem; }
+  .invoice-print { padding: 1rem; }
+  .invoice-print > .flex { flex-wrap: wrap; gap: .75rem; }
+  [data-sonner-toaster][data-x-position="left"] {
+    left: max(env(safe-area-inset-left), .5rem) !important;
+    width: calc(100vw - 1rem) !important;
+    --width: calc(100vw - 1rem);
+  }
+}
+
 @media print {
+  .table-scroll { overflow: visible !important; }
   .no-print {
     display: none !important;
   }

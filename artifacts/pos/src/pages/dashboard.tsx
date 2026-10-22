@@ -1,3 +1,4 @@
+import { Table } from "@/components/ui/table";
 import {
   useGetDashboardSummary,
   getGetDashboardSummaryQueryKey,
@@ -103,9 +104,9 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-3xl font-bold tracking-tight">لوحة التحكم</h1>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button
             variant="outline"
             onClick={startQuickCount}
@@ -237,7 +238,7 @@ export default function Dashboard() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-        <Card className="col-span-4">
+        <Card className="md:col-span-2 lg:col-span-4">
           <CardHeader>
             <CardTitle>أحدث فواتير المبيعات</CardTitle>
           </CardHeader>
@@ -276,7 +277,7 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        <Card className="col-span-3">
+        <Card className="md:col-span-2 lg:col-span-3">
           <CardHeader>
             <CardTitle className="text-destructive flex items-center gap-2">
               <AlertCircle className="h-5 w-5" />
@@ -340,7 +341,7 @@ export default function Dashboard() {
                 مفيش حركات مخزن مستنية جرد
               </div>
             ) : (
-              <table className="w-full text-sm">
+              <Table className="w-full text-sm">
                 <thead className="sticky top-0 bg-muted/50">
                   <tr className="text-right">
                     <th className="p-3">المنتج</th>
@@ -380,7 +381,7 @@ export default function Dashboard() {
                     );
                   })}
                 </tbody>
-              </table>
+              </Table>
             )}
           </div>
         </CardContent>

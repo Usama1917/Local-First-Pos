@@ -1,3 +1,4 @@
+import { Table } from "@/components/ui/table";
 import { useGetProfitReport } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -48,7 +49,7 @@ function ProfitWalk({ p }: { p: any }) {
     <Card>
       <CardHeader><CardTitle>تفاصيل الربح — من المبيعات لصافي الربح</CardTitle></CardHeader>
       <CardContent className="p-0">
-        <table className="w-full text-sm">
+        <Table className="w-full text-sm">
           <tbody>
             {rows.map((r, i) => (
               <tr
@@ -75,7 +76,7 @@ function ProfitWalk({ p }: { p: any }) {
               </tr>
             ))}
           </tbody>
-        </table>
+        </Table>
       </CardContent>
     </Card>
   );
@@ -91,7 +92,7 @@ function BreakdownTable({
       <CardHeader><CardTitle className="flex items-center gap-2"><Icon className="h-5 w-5" />{title}</CardTitle></CardHeader>
       <CardContent className="p-0">
         <div className="max-h-[420px] overflow-y-auto">
-          <table className="w-full text-sm">
+          <Table className="w-full text-sm">
             <thead className="sticky top-0 bg-muted/50">
               <tr className="text-right">
                 <th className="p-3">الصنف</th>
@@ -121,7 +122,7 @@ function BreakdownTable({
                 <tr><td colSpan={5} className="p-8 text-center text-muted-foreground">{emptyLabel}</td></tr>
               )}
             </tbody>
-          </table>
+          </Table>
         </div>
       </CardContent>
     </Card>
@@ -275,7 +276,7 @@ export function ProfitTab({
           <CardHeader><CardTitle className="flex items-center gap-2"><Wallet className="h-5 w-5" />المصروفات حسب البند</CardTitle></CardHeader>
           <CardContent className="p-0">
             <div className="max-h-[420px] overflow-y-auto">
-              <table className="w-full text-sm">
+              <Table className="w-full text-sm">
                 <thead className="sticky top-0 bg-muted/50">
                   <tr className="text-right">
                     <th className="p-3">البند</th>
@@ -305,7 +306,7 @@ export function ProfitTab({
                     </tr>
                   </tfoot>
                 )}
-              </table>
+              </Table>
             </div>
           </CardContent>
         </Card>

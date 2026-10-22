@@ -1,3 +1,4 @@
+import { Table } from "@/components/ui/table";
 import { useState } from "react";
 import {
   useListUsers,
@@ -65,7 +66,7 @@ function PermissionsDialog({ user, onClose }: { user: any; onClose: () => void }
               <Button size="sm" variant="ghost" onClick={() => setEnabled(new Set())}>مسح الكل</Button>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {pages.map((p) => {
               const on = enabled.has(p.key);
               return (
@@ -139,12 +140,13 @@ function UserFormDialog({ user, onClose, onCreated }: { user: any | null; onClos
     <DialogContent className="max-w-sm">
       <DialogHeader><DialogTitle>{isEdit ? "تعديل مستخدم" : "إضافة مستخدم"}</DialogTitle></DialogHeader>
       <div className="space-y-3">
-        <div className="space-y-1"><Label>الاسم *</Label><Input value={form.name} onChange={(e) => set("name", e.target.value)} /></div>
-        <div className="space-y-1"><Label>اسم المستخدم *</Label><Input value={form.username} onChange={(e) => set("username", e.target.value)} autoComplete="off" /></div>
+        <div className="space-y-1"><Label htmlFor="user-name">الاسم *</Label><Input id="user-name" value={form.name} onChange={(e) => set("name", e.target.value)} /></div>
+        <div className="space-y-1"><Label htmlFor="user-username">اسم المستخدم *</Label><Input id="user-username" value={form.username} onChange={(e) => set("username", e.target.value)} autoComplete="off" autoCapitalize="none" spellCheck={false} /></div>
         <div className="space-y-1">
-          <Label>{isEdit ? "كلمة مرور جديدة (اتركها فارغة لو مش هتتغير)" : "كلمة المرور *"}</Label>
-          <Input type="password" value={form.password} onChange={(e) => set("password", e.target.value)} autoComplete="new-password" placeholder={isEdit ? "••••••" : ""} />
+          <Label htmlFor="user-password">{isEdit ? "كلمة مرور جديدة (اتركها فارغة لو مش هتتغير)" : "كلمة المرور *"}</Label>
+          <Input id="user-password" type="password" value={form.password} onChange={(e) => set("password", e.target.value)} autoComplete="new-password" placeholder={isEdit ? "••••••" : ""} />
           <p className="text-xs text-muted-foreground">على الاستضافة: ١٢ حرفًا على الأقل. كلمة المرور المحمية لا تُعرض؛ يمكن تعيين كلمة جديدة.</p>
+          {isEdit && <p className="text-xs text-muted-foreground">تغيير كلمة المرور يُلغي جلسات دخول الحساب، وستحتاج تسجيل الدخول بالكلمة الجديدة.</p>}
         </div>
         <div className="space-y-1">
           <Label>الصلاحية</Label>
@@ -218,8 +220,13 @@ export default function UsersPage() {
         <Button onClick={openAdd}><Plus className="h-4 w-4 ml-2" />إضافة مستخدم</Button>
       </div>
 
+      <p className="rounded-lg border bg-muted/40 p-3 text-sm text-muted-foreground">
+        لتغيير اسم المستخدم أو كلمة المرور اضغط زر القلم بجوار الحساب.
+        في الاستضافة، متغيرات Railway تُستخدم لإنشاء أول مدير فقط؛ التعديلات هنا تُحفظ في قاعدة البيانات ولا تحتاج تعديل Railway.
+      </p>
+
       <Card><CardContent className="p-0">
-        <table className="w-full text-sm">
+        <Table className="w-full text-sm">
           <thead className="bg-muted/50">
             <tr className="text-right">
               <th className="p-3">الاسم</th>
@@ -268,7 +275,7 @@ export default function UsersPage() {
               </td></tr>
             )}
           </tbody>
-        </table>
+        </Table>
       </CardContent></Card>
     </div>
   );

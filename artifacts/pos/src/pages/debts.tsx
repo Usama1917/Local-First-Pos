@@ -1,3 +1,4 @@
+import { Table } from "@/components/ui/table";
 import { useState } from "react";
 import {
   useListCustomerDebts,
@@ -86,7 +87,7 @@ export default function DebtsPage() {
 
       <h1 className="text-2xl font-bold">المديونيات</h1>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Card>
           <CardContent className="p-4 flex items-center gap-4">
             <div className="bg-destructive/10 p-3 rounded-full"><TrendingUp className="h-6 w-6 text-destructive" /></div>
@@ -115,7 +116,7 @@ export default function DebtsPage() {
 
         <TabsContent value="customers">
           <Card><CardContent className="p-0">
-            <table className="w-full text-sm">
+            <Table className="w-full text-sm">
               <thead className="bg-muted/50">
                 <tr className="text-right">
                   <th className="p-3">العميل</th>
@@ -145,13 +146,13 @@ export default function DebtsPage() {
                 }
                 {!loadingCust && custDebts.length === 0 && <tr><td colSpan={6} className="p-8 text-center text-muted-foreground">لا توجد مديونيات</td></tr>}
               </tbody>
-            </table>
+            </Table>
           </CardContent></Card>
         </TabsContent>
 
         <TabsContent value="suppliers">
           <Card><CardContent className="p-0">
-            <table className="w-full text-sm">
+            <Table className="w-full text-sm">
               <thead className="bg-muted/50">
                 <tr className="text-right">
                   <th className="p-3">المورد</th>
@@ -179,7 +180,7 @@ export default function DebtsPage() {
                 }
                 {!loadingSupp && suppDebts.length === 0 && <tr><td colSpan={5} className="p-8 text-center text-muted-foreground">لا توجد مستحقات</td></tr>}
               </tbody>
-            </table>
+            </Table>
           </CardContent></Card>
         </TabsContent>
       </Tabs>

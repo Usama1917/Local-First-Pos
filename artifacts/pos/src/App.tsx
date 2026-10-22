@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Switch, Route, Redirect, Router as WouterRouter } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { DirectionProvider } from "@radix-ui/react-direction";
@@ -44,7 +44,7 @@ const queryClient = new QueryClient({
   },
 });
 
-function Router({ user, onLogout }: { user: SessionUser; onLogout: () => void }) {
+function Router({ user, onLogout }: { user: SessionUser; onLogout?: () => void }) {
   const pages = allowedPages(user);
 
   if (pages.length === 0) {
@@ -75,6 +75,7 @@ function Router({ user, onLogout }: { user: SessionUser; onLogout: () => void })
 }
 
 function AuthGate() {
+  const [authEnabled, setAuthEnabled] = useState<boolean | null>(null);
   const [user, setUser] = useState<SessionUser | null>(() => {
     try {
       const u = JSON.parse(localStorage.getItem("pos_user") || "null");
@@ -89,15 +90,46 @@ function AuthGate() {
     } catch { return null; }
   });
 
-  if (!user) {
+  useEffect(() => {
+    let active = true;
+    fetch("/api/auth/config")
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Could not read auth configuration");
+        return response.json() as Promise<{ authEnabled?: boolean }>;
+      })
+      .then((config) => {
+        if (!active) return;
+        const enabled = config.authEnabled === true;
+        setAuthEnabled(enabled);
+        if (!enabled) {
+          // Keep client-side page visibility in sync with the server's open mode.
+          const openUser: SessionUser = { id: 0, username: "", name: "", role: "admin", permissions: [] };
+          localStorage.setItem("pos_user", JSON.stringify(openUser));
+          setUser(openUser);
+        }
+      })
+      // If the API cannot be reached, don't expose the UI just because we could
+      // not read its security setting.
+      .catch(() => { if (active) setAuthEnabled(true); });
+    return () => { active = false; };
+  }, []);
+
+  if (authEnabled === null) {
+    return <div className="min-h-dvh bg-background" aria-label="جاري تجهيز النظام" />;
+  }
+
+  if (authEnabled && !user) {
     return <LoginPage onLogin={(u) => { localStorage.setItem("pos_user", JSON.stringify(u)); setUser(u); }} />;
   }
+
+  // Open mode always sets the virtual administrator above before rendering.
+  if (!user) return null;
 
   return (
     <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
       <Router
         user={user}
-        onLogout={() => {
+        onLogout={authEnabled ? () => {
           const token = readStoredUser()?.token;
           // Capture the token before clearing storage; revoke it server-side too.
           if (token) void fetch("/api/auth/logout", {
@@ -106,7 +138,7 @@ function AuthGate() {
           localStorage.removeItem("pos_user");
           queryClient.clear();
           setUser(null);
-        }}
+        } : undefined}
       />
     </WouterRouter>
   );

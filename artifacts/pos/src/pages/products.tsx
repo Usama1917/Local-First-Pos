@@ -1,3 +1,4 @@
+import { Table } from "@/components/ui/table";
 import { useState, useRef } from "react";
 import {
   useListProducts,
@@ -159,7 +160,7 @@ function ProductFormFields({
       {/* طريقة البيع: بالقطعة (عدد) أو بالوزن/الكمية */}
       <div className="flex flex-wrap items-center gap-3 rounded-md border bg-muted/30 p-3">
         <Label className="text-sm">طريقة البيع:</Label>
-        <div className="inline-flex rounded-md bg-muted p-0.5 text-sm font-medium">
+        <div className="inline-flex max-w-full flex-wrap rounded-md bg-muted p-0.5 text-sm font-medium">
           <button type="button" onClick={() => setSoldByWeight(false)}
             className={`rounded px-3 py-1 transition-colors ${!form.soldByWeight ? "bg-background shadow" : "text-muted-foreground"}`}>بالقطعة (عدد)</button>
           <button type="button" onClick={() => setSoldByWeight(true)}
@@ -172,7 +173,7 @@ function ProductFormFields({
       {/* RIGHT half — بيانات المنتج */}
       <div className="space-y-4">
         <div className="space-y-1"><Label>الاسم بالعربية *</Label><Input value={form.nameAr} onChange={e => updateForm("nameAr", e.target.value)} /></div>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-1"><Label>كود المنتج (SKU) *</Label><Input value={form.sku} onChange={e => updateForm("sku", e.target.value)} /></div>
           <div className="space-y-1"><Label>التصنيف</Label>
             <Select value={form.categoryId} onValueChange={v => updateForm("categoryId", v)}>
@@ -181,7 +182,7 @@ function ProductFormFields({
             </Select>
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-1"><Label>الماركة</Label>
             <Select value={form.brandId} onValueChange={v => updateForm("brandId", v)}>
               <SelectTrigger><SelectValue placeholder="اختر الماركة" /></SelectTrigger>
@@ -195,7 +196,7 @@ function ProductFormFields({
             </Select>
           </div>
         </div>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-1"><Label>وحدة القياس</Label>
             <Select value={form.unitId} onValueChange={v => updateForm("unitId", v)}>
               <SelectTrigger><SelectValue placeholder="اختر الوحدة" /></SelectTrigger>
@@ -211,7 +212,7 @@ function ProductFormFields({
           </div>
         ) : (
         <div className="space-y-2 rounded-md border p-3">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <Label>الباركود</Label>
             <div className="inline-flex rounded-md bg-muted p-0.5 text-xs font-medium">
               <button type="button" onClick={() => setMode("ready")}
@@ -223,7 +224,7 @@ function ProductFormFields({
 
           {form.barcodeMode === "generate" ? (
             form.barcode ? (
-              <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                 <div className="rounded border bg-white p-1.5"><Barcode value={form.barcode} height={34} width={1.4} fontSize={12} /></div>
                 <div className="flex-1 text-xs text-muted-foreground">
                   <p>الكود المميز: <span className="font-mono font-semibold text-foreground">{form.sku || "—"}</span></p>
@@ -251,7 +252,7 @@ function ProductFormFields({
       {/* LEFT half — حسبة الأسعار */}
       <div className="space-y-4 lg:border-r lg:pr-10">
         <p className="text-sm font-semibold text-muted-foreground">حسبة الأسعار</p>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="space-y-1"><Label>السعر القائمة{perUnitHint}</Label><Input type="number" value={form.listPrice} onChange={e => updateForm("listPrice", e.target.value)} /></div>
           <div className="space-y-1"><Label>خصم المورد %</Label><Input type="number" title="قيمة سالبة تعني إضافة على السعر" value={form.supplierDiscount} onChange={e => updateForm("supplierDiscount", e.target.value)} /></div>
           <div className="space-y-1"><Label>صافي شراء{perUnitHint}</Label><Input type="number" value={form.netPurchasePrice} readOnly className="bg-muted" /></div>
@@ -408,7 +409,7 @@ export default function ProductsPage() {
               المنتجات في هذه الدفعة <Badge variant="secondary" className="ms-1">{queue.length}</Badge>
             </p>
             <div className="border rounded-md max-h-[30vh] overflow-y-auto">
-              <table className="w-full text-sm">
+              <Table className="w-full text-sm">
                 <thead className="bg-muted/50 sticky top-0">
                   <tr className="text-right">
                     <th className="p-2">المنتج</th>
@@ -450,11 +451,11 @@ export default function ProductsPage() {
                     </td></tr>
                   )}
                 </tbody>
-              </table>
+              </Table>
             </div>
           </div>
 
-          <div className="flex justify-end gap-2 pt-4 border-t">
+          <div className="flex flex-wrap justify-end gap-2 pt-4 border-t">
             <Button variant="outline" onClick={() => setShowAddDialog(false)}>إلغاء</Button>
             <Button onClick={handleSubmit} disabled={createProduct.isPending || pendingCount === 0}>
               <Printer className="h-4 w-4 ml-2" />
@@ -469,7 +470,7 @@ export default function ProductsPage() {
         <DialogContent className="max-w-[1180px] w-[95vw] max-h-[94vh] overflow-y-auto">
           <DialogHeader><DialogTitle>تعديل المنتج</DialogTitle></DialogHeader>
           <ProductFormFields form={editForm} setForm={setEditForm} lists={lists} scanEnabled={editId !== null} stockEditable={false} />
-          <div className="flex justify-end gap-2 pt-4 border-t">
+          <div className="flex flex-wrap justify-end gap-2 pt-4 border-t">
             <Button variant="outline" onClick={() => setEditId(null)}>إلغاء</Button>
             <Button onClick={handleUpdate} disabled={updateProduct.isPending}>
               {updateProduct.isPending ? "جاري الحفظ..." : "حفظ التعديلات"}
@@ -478,7 +479,7 @@ export default function ProductsPage() {
         </DialogContent>
       </Dialog>
 
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">المنتجات</h1>
         <Button onClick={() => setShowAddDialog(true)}>
           <Plus className="h-4 w-4 ml-2" />
@@ -513,7 +514,7 @@ export default function ProductsPage() {
       <Card>
         <CardContent className="p-0">
           {isLoading ? <div className="p-8 text-center text-muted-foreground">جاري التحميل...</div> : (
-            <table className="w-full text-sm">
+            <Table className="w-full text-sm">
               <thead className="bg-muted/50">
                 <tr className="text-right">
                   <th className="p-3">المنتج</th>
@@ -566,7 +567,7 @@ export default function ProductsPage() {
                   </td></tr>
                 )}
               </tbody>
-            </table>
+            </Table>
           )}
         </CardContent>
       </Card>

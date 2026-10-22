@@ -1,3 +1,4 @@
+import { Table } from "@/components/ui/table";
 import { useState } from "react";
 import {
   useCreateReturn,
@@ -157,7 +158,7 @@ export default function ReturnsPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">المرتجعات والاستبدال</h1>
         {invoice && <Button variant="outline" onClick={resetAll}><Undo2 className="h-4 w-4 ml-2" />فاتورة جديدة</Button>}
       </div>
@@ -165,7 +166,7 @@ export default function ReturnsPage() {
       {/* Invoice lookup */}
       <Card><CardContent className="p-4">
         <Label className="mb-1 block">رقم الفاتورة (أو اعمل سكان)</Label>
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2">
           <div className="relative flex-1">
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -193,7 +194,7 @@ export default function ReturnsPage() {
           {/* Returnable items */}
           <Card><CardContent className="p-0">
             <div className="p-3 border-b font-semibold flex items-center gap-2"><RotateCcw className="h-4 w-4" />أصناف الفاتورة — اختر الكمية المرتجعة لكل صنف</div>
-            <table className="w-full text-sm">
+            <Table className="w-full text-sm">
               <thead className="bg-muted/50">
                 <tr className="text-right">
                   <th className="p-2">الصنف</th>
@@ -243,7 +244,7 @@ export default function ReturnsPage() {
                   );
                 })}
               </tbody>
-            </table>
+            </Table>
           </CardContent></Card>
 
           {/* Exchange: new items */}
@@ -264,7 +265,7 @@ export default function ReturnsPage() {
               )}
             </div>
             {newItems.length > 0 && (
-              <table className="w-full text-sm">
+              <Table className="w-full text-sm">
                 <thead className="bg-muted/50">
                   <tr className="text-right">
                     <th className="p-2">الصنف</th>
@@ -285,7 +286,7 @@ export default function ReturnsPage() {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </Table>
             )}
           </CardContent></Card>
 
@@ -313,7 +314,7 @@ export default function ReturnsPage() {
                 <Input placeholder="ملاحظات (اختياري)" value={notes} onChange={(e) => setNotes(e.target.value)} />
               </div>
             </div>
-            <div className="flex justify-end gap-2">
+            <div className="flex flex-wrap justify-end gap-2">
               <Button variant="outline" onClick={resetAll}>إلغاء</Button>
               <Button onClick={handleSubmit} disabled={!hasSelection || createReturn.isPending}>
                 <Printer className="h-4 w-4 ml-2" />
@@ -327,7 +328,7 @@ export default function ReturnsPage() {
       {/* History */}
       <Card><CardContent className="p-0">
         <div className="p-3 border-b font-semibold">آخر المرتجعات والاستبدالات</div>
-        <table className="w-full text-sm">
+        <Table className="w-full text-sm">
           <thead className="bg-muted/50">
             <tr className="text-right">
               <th className="p-3">الإيصال</th>
@@ -371,7 +372,7 @@ export default function ReturnsPage() {
               </td></tr>
             )}
           </tbody>
-        </table>
+        </Table>
       </CardContent></Card>
     </div>
   );

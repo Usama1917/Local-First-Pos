@@ -2,10 +2,15 @@ import { Router } from "express";
 import db from "../lib/db.js";
 import { createSession, destroySession, bearerToken, getSession } from "../lib/session.js";
 import { verifyPassword } from "../lib/password.js";
-import { hosted } from "../lib/runtime.js";
+import { authEnabled, hosted } from "../lib/runtime.js";
 
 const router = Router();
 const attempts = new Map<string, { count: number; until: number }>();
+
+// The browser uses this to decide whether the optional login page is needed.
+router.get("/auth/config", (_req, res) => {
+  res.json({ authEnabled });
+});
 
 router.post("/auth/login", (req, res) => {
   const { username, password } = req.body || {};

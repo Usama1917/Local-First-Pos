@@ -217,7 +217,7 @@ export default function SettingsPage() {
 
   return (
     <div className={cn("space-y-4", tab === "users" ? "max-w-none" : "max-w-2xl")}>
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">الإعدادات</h1>
       </div>
 
@@ -251,7 +251,7 @@ export default function SettingsPage() {
                 <Label>حد نفاد المخزون</Label>
                 <Input type="number" value={form.lowStockThreshold} onChange={e => setForm((f: any) => ({ ...f, lowStockThreshold: parseInt(e.target.value) || 5 }))} className="w-32" />
               </div>
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <Label>تفعيل عمولة الصنايعية</Label>
                 <Switch checked={form.enableCraftsmanCommission} onCheckedChange={v => setForm((f: any) => ({ ...f, enableCraftsmanCommission: v }))} />
               </div>
@@ -460,11 +460,11 @@ export default function SettingsPage() {
                 <h3 className="font-semibold mb-2">النسخ المتاحة</h3>
                 <div className="space-y-2">
                   {(backups as any[])?.map((b: any) => (
-                    <div key={b.filename} className="flex items-center justify-between p-3 border rounded-lg bg-card">
-                      <div className="flex items-center gap-3">
+                    <div key={b.filename} className="flex flex-wrap items-center justify-between gap-3 p-3 border rounded-lg bg-card">
+                      <div className="flex min-w-0 items-center gap-3">
                         <HardDrive className="h-4 w-4 text-muted-foreground" />
-                        <div>
-                          <p className="text-sm font-medium">{b.filename}</p>
+                        <div className="min-w-0">
+                          <p className="break-all text-sm font-medium">{b.filename}</p>
                           <p className="text-xs text-muted-foreground">{new Date(b.createdAt).toLocaleString("ar-EG")}</p>
                         </div>
                       </div>
@@ -531,7 +531,7 @@ export default function SettingsPage() {
                     <Input dir="ltr" type="password" autoComplete="off" value={cloudForm.token}
                       onChange={(e) => setCloudForm({ ...cloudForm, token: e.target.value })} />
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <div className="space-y-1">
                       <Label>كلمة سر التشفير{cloud?.configured && " (فاضي = القديمة)"}</Label>
                       <Input dir="ltr" type="password" autoComplete="new-password" value={cloudForm.password}

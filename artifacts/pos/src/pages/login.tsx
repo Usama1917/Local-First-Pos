@@ -39,12 +39,12 @@ export default function LoginPage({ onLogin }: { onLogin: (user: any) => void })
           </div>
           <form onSubmit={submit} className="space-y-3">
             <div className="space-y-1">
-              <Label>اسم المستخدم</Label>
-              <Input value={username} onChange={(e) => setUsername(e.target.value)} autoFocus autoComplete="username" />
+              <Label htmlFor="login-username">اسم المستخدم</Label>
+              <Input id="login-username" value={username} onChange={(e) => setUsername(e.target.value)} autoFocus={window.matchMedia("(min-width: 1024px) and (pointer: fine)").matches} autoCapitalize="none" spellCheck={false} autoComplete="username" />
             </div>
             <div className="space-y-1">
-              <Label>كلمة المرور</Label>
-              <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" />
+              <Label htmlFor="login-password">كلمة المرور</Label>
+              <Input id="login-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" />
             </div>
             <Button type="submit" className="w-full" disabled={login.isPending}>
               <Lock className="h-4 w-4 ml-2" />

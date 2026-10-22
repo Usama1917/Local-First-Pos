@@ -1,6 +1,6 @@
 import { DatabaseSync } from "node:sqlite";
 import { dbPath } from "./paths.js";
-import { hosted } from "./runtime.js";
+import { authEnabled, hosted } from "./runtime.js";
 import { hashPassword, isPasswordHash, validNewPassword } from "./password.js";
 
 export const db = new DatabaseSync(dbPath);
@@ -471,6 +471,9 @@ export function initializeSchema() {
 }
 
 function initializeAccounts() {
+  // An open installation does not need bootstrap account credentials. If sign-in
+  // is enabled later, this runs on the next boot and creates the first manager.
+  if (!authEnabled) return;
   const users = db.prepare("SELECT id, username, password, role, isActive FROM users").all() as
     { id: number; username: string; password: string; role: string; isActive: number }[];
   if (!users.length) {

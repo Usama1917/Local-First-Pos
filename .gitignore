@@ -73,3 +73,7 @@ PRODUCTION_DATA_CLEANUP_NOTE.txt
 
 # Claude Code per-machine settings
 .claude/settings.local.json
+
+# Browser regression artifacts (synthetic test data/screenshots only).
+/test-results/
+/playwright-report/

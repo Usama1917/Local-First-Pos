@@ -1,3 +1,4 @@
+import { Table } from "@/components/ui/table";
 import { useEffect, useState, type SyntheticEvent } from "react";
 import { useLocation } from "wouter";
 import {
@@ -333,7 +334,7 @@ function QuotationDialog({ onClose, open, quotationId, onOpenQuotation }: {
         <div className="p-10 text-center text-muted-foreground">جاري تحميل التسعيرة...</div>
       ) : (
         <>
-          <div className="flex gap-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
             <Select disabled={readOnly} value={customerId || "__none__"} onValueChange={(v) => setCustomerId(v === "__none__" ? "" : v)}>
               <SelectTrigger className="flex-1"><SelectValue placeholder="اختر العميل (اختياري)" /></SelectTrigger>
               <SelectContent>
@@ -348,7 +349,7 @@ function QuotationDialog({ onClose, open, quotationId, onOpenQuotation }: {
                 {allCraftsmen.map((c: any) => <SelectItem key={c.id} value={String(c.id)}>{c.name} {c.jobType ? `(${c.jobType})` : ""}</SelectItem>)}
               </SelectContent>
             </Select>
-            <Input type="date" disabled={readOnly} className="w-36" value={validUntil} onChange={e => setValidUntil(e.target.value)} title="صالحة حتى" />
+            <Input type="date" disabled={readOnly} value={validUntil} onChange={e => setValidUntil(e.target.value)} title="صالحة حتى" />
           </div>
           {(customerId || craftsmanId) && (
             <div className="flex gap-2 text-xs text-muted-foreground bg-muted/40 px-3 py-2 rounded-md">
@@ -373,7 +374,7 @@ function QuotationDialog({ onClose, open, quotationId, onOpenQuotation }: {
               {!productResults.length && <div className="p-3 text-center text-muted-foreground">لا توجد نتائج</div>}
             </div>
           )}
-          <table className="w-full text-sm table-fixed">
+          <Table className="wide-entry-table w-full text-sm table-fixed">
             <thead className="bg-muted/50"><tr>
               <th className="p-2 text-right w-[30%]">المنتج</th>
               <th className="p-2 text-center w-[18%]">الكمية</th>
@@ -425,8 +426,8 @@ function QuotationDialog({ onClose, open, quotationId, onOpenQuotation }: {
                 <tr><td colSpan={6} className="p-6 text-center text-muted-foreground">ابحث عن منتج أو امسح الباركود لإضافته</td></tr>
               )}
             </tbody>
-          </table>
-          <div className="flex justify-between items-start gap-6">
+          </Table>
+          <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-start gap-6">
             <div className="flex flex-1 flex-col gap-2 text-sm">
               <div className="flex items-center gap-2">
                 <span className="w-16 shrink-0">خصم:</span>
@@ -529,7 +530,7 @@ export default function QuotationsPage() {
         )}
       </Dialog>
 
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">التسعيرات</h1>
         <Button onClick={() => setShowAdd(true)}>
           <Plus className="h-4 w-4 ml-2" />
@@ -564,7 +565,7 @@ export default function QuotationsPage() {
 
       <Card>
         <CardContent className="p-0">
-          <table className="w-full text-sm">
+          <Table className="w-full text-sm">
             <thead className="bg-muted/50">
               <tr className="text-right">
                 <th className="p-3">الرقم</th>
@@ -617,7 +618,7 @@ export default function QuotationsPage() {
                 </td></tr>
               )}
             </tbody>
-          </table>
+          </Table>
         </CardContent>
       </Card>
     </div>
