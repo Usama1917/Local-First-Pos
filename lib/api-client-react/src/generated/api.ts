@@ -63,12 +63,14 @@ import type {
   GetBestSellersParams,
   GetCraftsmanCommissionReportParams,
   GetInventoryReportParams,
+  GetInvoiceProfitReportParams,
   GetNextBarcode200,
   GetProfitReportParams,
   GetPurchasesReportParams,
   GetSalesReportParams,
   HealthStatus,
   InventoryReport,
+  InvoiceProfitReport,
   ListCraftsmenParams,
   ListCustomersParams,
   ListDraftsParams,
@@ -7817,6 +7819,90 @@ export function useGetProfitReport<TData = Awaited<ReturnType<typeof getProfitRe
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetProfitReportQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+
+
+
+
+
+
+export const getGetInvoiceProfitReportUrl = (params?: GetInvoiceProfitReportParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/reports/invoice-profit?${stringifiedParams}` : `/api/reports/invoice-profit`
+}
+
+/**
+ * @summary Profit of every live sales invoice in a period (internal, never printed)
+ */
+export const getInvoiceProfitReport = async (params?: GetInvoiceProfitReportParams, options?: RequestInit): Promise<InvoiceProfitReport> => {
+
+  return customFetch<InvoiceProfitReport>(getGetInvoiceProfitReportUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetInvoiceProfitReportQueryKey = (params?: GetInvoiceProfitReportParams,) => {
+    return [
+    `/api/reports/invoice-profit`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetInvoiceProfitReportQueryOptions = <TData = Awaited<ReturnType<typeof getInvoiceProfitReport>>, TError = ErrorType<unknown>>(params?: GetInvoiceProfitReportParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getInvoiceProfitReport>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetInvoiceProfitReportQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getInvoiceProfitReport>>> = ({ signal }) => getInvoiceProfitReport(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getInvoiceProfitReport>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetInvoiceProfitReportQueryResult = NonNullable<Awaited<ReturnType<typeof getInvoiceProfitReport>>>
+export type GetInvoiceProfitReportQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Profit of every live sales invoice in a period (internal, never printed)
+ */
+
+export function useGetInvoiceProfitReport<TData = Awaited<ReturnType<typeof getInvoiceProfitReport>>, TError = ErrorType<unknown>>(
+ params?: GetInvoiceProfitReportParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getInvoiceProfitReport>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetInvoiceProfitReportQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

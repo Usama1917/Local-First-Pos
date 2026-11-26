@@ -4,6 +4,7 @@ import { nextSerial, getSettings } from "../lib/db.js";
 import { archiveSale } from "../lib/archive.js";
 import { actorName } from "../lib/actor.js";
 import { performDelete, reverseDocStock } from "../lib/deletion.js";
+import { INVOICE_PROFIT_COLUMNS } from "../lib/invoice-profit.js";
 
 const router = Router();
 
@@ -13,7 +14,9 @@ const router = Router();
 const INVOICE_SELECT = `
   SELECT si.*, c.name as customerName, cr.name as craftsmanName,
          orig.serial as amendedFromSerial, orig.createdBy as amendedFromBy,
-         orig.createdAt as amendedFromAt, nxt.serial as amendedToSerial
+         orig.createdAt as amendedFromAt, nxt.serial as amendedToSerial,
+         -- Internal profit figures (shop-only screens; never on the printed invoice).
+         ${INVOICE_PROFIT_COLUMNS}
   FROM sales_invoices si
   LEFT JOIN customers c ON si.customerId = c.id
   LEFT JOIN craftsmen cr ON si.craftsmanId = cr.id

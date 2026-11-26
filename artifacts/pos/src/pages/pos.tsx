@@ -14,6 +14,7 @@ import {
   useSaveDraft,
   useGetDraft,
   useDeleteDraft,
+  getProduct,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -30,6 +31,7 @@ import { useBarcodeScanner, findProductByCode } from "@/hooks/use-barcode-scanne
 import { useListKeyboardNav } from "@/hooks/use-list-keyboard-nav";
 import { useHotkeys, type Hotkey } from "@/hooks/use-hotkeys";
 import { ShortcutHintBar } from "@/components/shortcut-hint-bar";
+import { InvoiceProfitCard } from "@/components/invoice-profit-card";
 import { beep } from "@/lib/feedback";
 import { Search, Plus, Minus, Trash2, ShoppingCart, CheckCircle, X, Package, AlertTriangle, Pencil } from "lucide-react";
 import { toast } from "sonner";
@@ -44,6 +46,8 @@ interface CartItem {
   quantity: number;
   discount: number;
   total: number;
+  /** Unit cost for the internal profit card. Missing on drafts saved before it existed. */
+  cost?: number | null;
 }
 
 export default function POSPage() {
@@ -103,6 +107,7 @@ export default function POSPage() {
       quantity: it.quantity,
       discount: it.discount || 0,
       total: it.total,
+      cost: it.costAtSale ?? null,
     })));
     setCustomerId(original.customerId ? String(original.customerId) : "");
     setCraftsmanId(original.craftsmanId ? String(original.craftsmanId) : "");
@@ -168,6 +173,7 @@ export default function POSPage() {
         quantity: 1,
         discount: 0,
         total: product.sellingPrice,
+        cost: product.trueCost ?? null,
       }];
     });
     setSearchQuery("");
@@ -345,6 +351,29 @@ export default function POSPage() {
 
   const customers = customersData?.items || [];
   const craftsmen = craftsmenData?.items || [];
+
+  // Internal profit of this invoice — same formula the server stores per invoice:
+  // total − cost of goods − craftsman commission (shown on screen only, never printed).
+  // Lines restored from a draft saved before costs were tracked carry no cost —
+  // look the product up once so the profit isn't shown as the whole total.
+  const missingIds = cart.filter((i) => i.cost == null).map((i) => i.productId).join(",");
+  useEffect(() => {
+    if (!missingIds) return;
+    let alive = true;
+    const ids = [...new Set(missingIds.split(",").map(Number))];
+    Promise.all(ids.map((id) => getProduct(id).then((p: any) => [id, Number(p?.trueCost) || 0] as const).catch(() => [id, 0] as const)))
+      .then((pairs) => {
+        if (!alive) return;
+        const costs = new Map(pairs);
+        setCart((prev) => prev.map((i) => (i.cost == null && costs.has(i.productId) ? { ...i, cost: costs.get(i.productId) } : i)));
+      });
+    return () => { alive = false; };
+  }, [missingIds]);
+
+  const costTotal = cart.reduce((s, i) => s + i.quantity * (i.cost || 0), 0);
+  const missingCost = cart.filter((i) => i.cost != null && !(Number(i.cost) > 0)).length;
+  const commissionPct = Number((craftsmen as any[]).find((c) => String(c.id) === craftsmanId)?.commissionPercent) || 0;
+  const commission = (total * commissionPct) / 100;
 
   // Cross-platform cashier shortcuts. "mod" = ⌘ on macOS / Ctrl on Windows, so
   // every binding works on both the dev Mac and the shop PC. Modifier + F-key
@@ -680,8 +709,9 @@ export default function POSPage() {
           </CardContent>
         </Card>
 
-        {/* Totals & Actions */}
-        <Card>
+        {/* Totals & Actions + the separate internal profit card (left side in RTL) */}
+        <div className="flex flex-col gap-3 xl:flex-row xl:items-stretch">
+        <Card className="min-w-0 flex-1">
           <CardContent className="p-4">
             <div className="flex flex-col gap-4 xl:flex-row xl:items-end">
               <div className="w-full min-w-0 flex-1 space-y-2">
@@ -705,6 +735,17 @@ export default function POSPage() {
             <ShortcutHintBar items={shortcutHints} className="mt-3 border-t pt-3 no-print" />
           </CardContent>
         </Card>
+        {cart.length > 0 && (
+          <InvoiceProfitCard
+            className="w-full sm:w-64 sm:self-end xl:w-60 xl:shrink-0 xl:self-auto"
+            total={total}
+            cost={costTotal}
+            commission={commission}
+            missingCost={missingCost}
+            lineCount={cart.length}
+          />
+        )}
+        </div>
       </div>
     </div>
   );

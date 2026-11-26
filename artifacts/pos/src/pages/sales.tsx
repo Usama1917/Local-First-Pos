@@ -23,6 +23,7 @@ import { Dialog, DialogContent, DialogTitle, DialogClose } from "@/components/ui
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { AuditInfo } from "@/components/ui/audit-info";
+import { InvoiceProfitBreakdown, ProfitAmount, isLiveInvoice } from "@/components/invoice-profit-card";
 import { formatCurrency } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { useListKeyboardNav } from "@/hooks/use-list-keyboard-nav";
@@ -243,6 +244,9 @@ function InvoiceDetail({ invoiceId }: { invoiceId: number }) {
           شكراً لتعاملكم معنا{shop?.shopPhone ? ` — للاستفسار: ${shop.shopPhone}` : ""}
         </p>
       </div>
+
+      {/* Internal profit — deliberately outside .invoice-print and no-print. */}
+      <InvoiceProfitBreakdown inv={inv} />
     </DialogContent>
   );
 }
@@ -396,11 +400,12 @@ export default function SalesPage() {
                 <th className="p-3">الدفع</th>
                 <th className="p-3 text-left">الإجمالي</th>
                 <th className="p-3 text-left">المتبقي</th>
+                <th className="p-3 text-left" title="الإجمالي − التكلفة − عمولة الصنايعي ± المرتجعات">الربح</th>
                 <th className="p-3"></th>
               </tr>
             </thead>
             <tbody>
-              {isLoading ? <tr><td colSpan={9} className="p-8 text-center text-muted-foreground">جاري التحميل...</td></tr> :
+              {isLoading ? <tr><td colSpan={10} className="p-8 text-center text-muted-foreground">جاري التحميل...</td></tr> :
                 invoices.map((inv: any, i: number) => (
                   <tr key={inv.id} {...getItemProps(i)} className={cn("border-b", activeIndex === i ? "nav-active" : "nav-hover")}>
                     <td className="p-3 font-mono font-medium text-primary">
@@ -428,6 +433,11 @@ export default function SalesPage() {
                     <td className="p-3">{PAYMENT_LABELS[inv.paymentType] || inv.paymentType}</td>
                     <td className="p-3 text-left font-semibold">{formatCurrency(inv.total)}</td>
                     <td className="p-3 text-left">{inv.remainingAmount > 0 ? <span className="text-destructive font-semibold">{formatCurrency(inv.remainingAmount)}</span> : <span className="text-emerald-600 dark:text-emerald-400">مسدد</span>}</td>
+                    <td className="p-3 text-left">
+                      {isLiveInvoice(inv.status) && inv.profit != null
+                        ? <ProfitAmount profit={inv.profit} total={inv.total} zeroCostLines={inv.zeroCostLines} />
+                        : <span className="text-muted-foreground">—</span>}
+                    </td>
                     <td className="p-3">
                       <div className="flex items-center justify-end gap-1">
                         <Button variant="ghost" size="sm" onClick={() => setSelectedId(inv.id)}>
@@ -463,7 +473,7 @@ export default function SalesPage() {
                 ))
               }
               {!isLoading && invoices.length === 0 && (
-                <tr><td colSpan={9} className="p-8 text-center text-muted-foreground">
+                <tr><td colSpan={10} className="p-8 text-center text-muted-foreground">
                   <Receipt className="h-10 w-10 mx-auto mb-2 opacity-30" />
                   لا توجد فواتير
                 </td></tr>
