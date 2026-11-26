@@ -382,6 +382,14 @@ export interface SalesInvoice {
   amendedToId?: number | null;
   /** @nullable */
   amendedToSerial?: string | null;
+  /** Internal — cost of goods for this invoice (cost at sale) */
+  costTotal?: number;
+  /** Internal — profit effect of returns/exchanges made against this invoice */
+  returnsProfit?: number;
+  /** Internal — lines with no known cost (profit may be overstated) */
+  zeroCostLines?: number;
+  /** Internal — total − cost − craftsman commission + returns effect. Never printed. */
+  profit?: number;
 }
 
 export interface CustomerProfile {
@@ -850,6 +858,14 @@ export interface SalesInvoiceDetail {
   amendedToId?: number | null;
   /** @nullable */
   amendedToSerial?: string | null;
+  /** Internal — cost of goods for this invoice (cost at sale) */
+  costTotal?: number;
+  /** Internal — profit effect of returns/exchanges made against this invoice */
+  returnsProfit?: number;
+  /** Internal — lines with no known cost (profit may be overstated) */
+  zeroCostLines?: number;
+  /** Internal — total − cost − craftsman commission + returns effect. Never printed. */
+  profit?: number;
 }
 
 /**
@@ -1427,6 +1443,43 @@ export interface ExpenseCategoryRow {
   count?: number;
 }
 
+export interface InvoiceProfitRow {
+  id: number;
+  serial: string;
+  createdAt: string;
+  paymentType?: string;
+  /** @nullable */
+  customerName?: string | null;
+  /** @nullable */
+  craftsmanName?: string | null;
+  total: number;
+  costTotal: number;
+  commission: number;
+  returnsProfit: number;
+  profit: number;
+  margin: number;
+  zeroCostLines: number;
+}
+
+export type InvoiceProfitReportTotals = {
+  invoiceCount: number;
+  total: number;
+  costTotal: number;
+  commission: number;
+  returnsProfit: number;
+  profit: number;
+  margin: number;
+  lossCount: number;
+  zeroCostInvoices: number;
+};
+
+export interface InvoiceProfitReport {
+  dateFrom: string;
+  dateTo: string;
+  items: InvoiceProfitRow[];
+  totals: InvoiceProfitReportTotals;
+}
+
 export type ProfitReport = ProfitTotals & {
   windows: ProfitWindow[];
   daily: ProfitDailyRow[];
@@ -1751,6 +1804,11 @@ supplierId?: number;
 };
 
 export type GetProfitReportParams = {
+dateFrom?: string;
+dateTo?: string;
+};
+
+export type GetInvoiceProfitReportParams = {
 dateFrom?: string;
 dateTo?: string;
 };

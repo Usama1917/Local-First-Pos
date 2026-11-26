@@ -1667,6 +1667,21 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ProfitReport"
+  /reports/invoice-profit:
+    get:
+      operationId: getInvoiceProfitReport
+      tags: [reports]
+      summary: Profit of every live sales invoice in a period (internal, never printed)
+      parameters:
+        - { name: dateFrom, in: query, schema: { type: string } }
+        - { name: dateTo, in: query, schema: { type: string } }
+      responses:
+        "200":
+          description: Per-invoice profit report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvoiceProfitReport"
   /reports/craftsman-commission:
     get:
       operationId: getCraftsmanCommissionReport
@@ -2751,6 +2766,10 @@ components:
         amendedFromAt: { type: ["string", "null"] }
         amendedToId: { type: ["integer", "null"] }
         amendedToSerial: { type: ["string", "null"] }
+        costTotal: { type: number, description: "Internal — cost of goods for this invoice (cost at sale)" }
+        returnsProfit: { type: number, description: "Internal — profit effect of returns/exchanges made against this invoice" }
+        zeroCostLines: { type: integer, description: "Internal — lines with no known cost (profit may be overstated)" }
+        profit: { type: number, description: "Internal — total − cost − craftsman commission + returns effect. Never printed." }
     SalesInvoiceDetail:
       type: object
       required: [id, serial, status, items, total, createdAt]
@@ -2787,6 +2806,10 @@ components:
         amendedFromAt: { type: ["string", "null"] }
         amendedToId: { type: ["integer", "null"] }
         amendedToSerial: { type: ["string", "null"] }
+        costTotal: { type: number, description: "Internal — cost of goods for this invoice (cost at sale)" }
+        returnsProfit: { type: number, description: "Internal — profit effect of returns/exchanges made against this invoice" }
+        zeroCostLines: { type: integer, description: "Internal — lines with no known cost (profit may be overstated)" }
+        profit: { type: number, description: "Internal — total − cost − craftsman commission + returns effect. Never printed." }
     SalesInvoiceAmendInput:
       type: object
       description: >-
@@ -3367,6 +3390,46 @@ components:
         category: { type: string }
         total: { type: number }
         count: { type: integer }
+    InvoiceProfitRow:
+      type: object
+      required: [id, serial, createdAt, total, costTotal, commission, returnsProfit, profit, margin, zeroCostLines]
+      properties:
+        id: { type: integer }
+        serial: { type: string }
+        createdAt: { type: string }
+        paymentType: { type: string }
+        customerName: { type: ["string", "null"] }
+        craftsmanName: { type: ["string", "null"] }
+        total: { type: number }
+        costTotal: { type: number }
+        commission: { type: number }
+        returnsProfit: { type: number }
+        profit: { type: number }
+        margin: { type: number }
+        zeroCostLines: { type: integer }
+    InvoiceProfitReport:
+      type: object
+      required: [dateFrom, dateTo, items, totals]
+      properties:
+        dateFrom: { type: string }
+        dateTo: { type: string }
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/InvoiceProfitRow"
+        totals:
+          type: object
+          required: [invoiceCount, total, costTotal, commission, returnsProfit, profit, margin, lossCount, zeroCostInvoices]
+          properties:
+            invoiceCount: { type: integer }
+            total: { type: number }
+            costTotal: { type: number }
+            commission: { type: number }
+            returnsProfit: { type: number }
+            profit: { type: number }
+            margin: { type: number }
+            lossCount: { type: integer }
+            zeroCostInvoices: { type: integer }
     ProfitReport:
       allOf:
         - $ref: "#/components/schemas/ProfitTotals"

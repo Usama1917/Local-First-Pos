@@ -159,7 +159,11 @@ export const GetRecentInvoicesResponseItem = zod.object({
   "amendedFromBy": zod.string().nullish(),
   "amendedFromAt": zod.string().nullish(),
   "amendedToId": zod.number().nullish(),
-  "amendedToSerial": zod.string().nullish()
+  "amendedToSerial": zod.string().nullish(),
+  "costTotal": zod.number().optional().describe('Internal — cost of goods for this invoice (cost at sale)'),
+  "returnsProfit": zod.number().optional().describe('Internal — profit effect of returns\/exchanges made against this invoice'),
+  "zeroCostLines": zod.number().optional().describe('Internal — lines with no known cost (profit may be overstated)'),
+  "profit": zod.number().optional().describe('Internal — total − cost − craftsman commission + returns effect. Never printed.')
 })
 export const GetRecentInvoicesResponse = zod.array(GetRecentInvoicesResponseItem)
 
@@ -729,7 +733,11 @@ export const GetCustomerResponse = zod.object({
   "amendedFromBy": zod.string().nullish(),
   "amendedFromAt": zod.string().nullish(),
   "amendedToId": zod.number().nullish(),
-  "amendedToSerial": zod.string().nullish()
+  "amendedToSerial": zod.string().nullish(),
+  "costTotal": zod.number().optional().describe('Internal — cost of goods for this invoice (cost at sale)'),
+  "returnsProfit": zod.number().optional().describe('Internal — profit effect of returns\/exchanges made against this invoice'),
+  "zeroCostLines": zod.number().optional().describe('Internal — lines with no known cost (profit may be overstated)'),
+  "profit": zod.number().optional().describe('Internal — total − cost − craftsman commission + returns effect. Never printed.')
 })),
   "totalDebt": zod.number(),
   "totalPaid": zod.number(),
@@ -868,7 +876,11 @@ export const GetCustomerInvoicesResponse = zod.object({
   "amendedFromBy": zod.string().nullish(),
   "amendedFromAt": zod.string().nullish(),
   "amendedToId": zod.number().nullish(),
-  "amendedToSerial": zod.string().nullish()
+  "amendedToSerial": zod.string().nullish(),
+  "costTotal": zod.number().optional().describe('Internal — cost of goods for this invoice (cost at sale)'),
+  "returnsProfit": zod.number().optional().describe('Internal — profit effect of returns\/exchanges made against this invoice'),
+  "zeroCostLines": zod.number().optional().describe('Internal — lines with no known cost (profit may be overstated)'),
+  "profit": zod.number().optional().describe('Internal — total − cost − craftsman commission + returns effect. Never printed.')
 })),
   "total": zod.number()
 })
@@ -993,7 +1005,11 @@ export const GetCraftsmanResponse = zod.object({
   "amendedFromBy": zod.string().nullish(),
   "amendedFromAt": zod.string().nullish(),
   "amendedToId": zod.number().nullish(),
-  "amendedToSerial": zod.string().nullish()
+  "amendedToSerial": zod.string().nullish(),
+  "costTotal": zod.number().optional().describe('Internal — cost of goods for this invoice (cost at sale)'),
+  "returnsProfit": zod.number().optional().describe('Internal — profit effect of returns\/exchanges made against this invoice'),
+  "zeroCostLines": zod.number().optional().describe('Internal — lines with no known cost (profit may be overstated)'),
+  "profit": zod.number().optional().describe('Internal — total − cost − craftsman commission + returns effect. Never printed.')
 })),
   "totalSales": zod.number(),
   "totalCommission": zod.number()
@@ -1488,7 +1504,11 @@ export const ListSalesInvoicesResponse = zod.object({
   "amendedFromBy": zod.string().nullish(),
   "amendedFromAt": zod.string().nullish(),
   "amendedToId": zod.number().nullish(),
-  "amendedToSerial": zod.string().nullish()
+  "amendedToSerial": zod.string().nullish(),
+  "costTotal": zod.number().optional().describe('Internal — cost of goods for this invoice (cost at sale)'),
+  "returnsProfit": zod.number().optional().describe('Internal — profit effect of returns\/exchanges made against this invoice'),
+  "zeroCostLines": zod.number().optional().describe('Internal — lines with no known cost (profit may be overstated)'),
+  "profit": zod.number().optional().describe('Internal — total − cost − craftsman commission + returns effect. Never printed.')
 })),
   "total": zod.number()
 })
@@ -1563,7 +1583,11 @@ export const GetSalesInvoiceResponse = zod.object({
   "amendedFromBy": zod.string().nullish(),
   "amendedFromAt": zod.string().nullish(),
   "amendedToId": zod.number().nullish(),
-  "amendedToSerial": zod.string().nullish()
+  "amendedToSerial": zod.string().nullish(),
+  "costTotal": zod.number().optional().describe('Internal — cost of goods for this invoice (cost at sale)'),
+  "returnsProfit": zod.number().optional().describe('Internal — profit effect of returns\/exchanges made against this invoice'),
+  "zeroCostLines": zod.number().optional().describe('Internal — lines with no known cost (profit may be overstated)'),
+  "profit": zod.number().optional().describe('Internal — total − cost − craftsman commission + returns effect. Never printed.')
 })
 
 
@@ -1631,7 +1655,11 @@ export const UpdateSalesInvoiceResponse = zod.object({
   "amendedFromBy": zod.string().nullish(),
   "amendedFromAt": zod.string().nullish(),
   "amendedToId": zod.number().nullish(),
-  "amendedToSerial": zod.string().nullish()
+  "amendedToSerial": zod.string().nullish(),
+  "costTotal": zod.number().optional().describe('Internal — cost of goods for this invoice (cost at sale)'),
+  "returnsProfit": zod.number().optional().describe('Internal — profit effect of returns\/exchanges made against this invoice'),
+  "zeroCostLines": zod.number().optional().describe('Internal — lines with no known cost (profit may be overstated)'),
+  "profit": zod.number().optional().describe('Internal — total − cost − craftsman commission + returns effect. Never printed.')
 })
 
 
@@ -1697,7 +1725,11 @@ export const FinalizeSalesInvoiceResponse = zod.object({
   "amendedFromBy": zod.string().nullish(),
   "amendedFromAt": zod.string().nullish(),
   "amendedToId": zod.number().nullish(),
-  "amendedToSerial": zod.string().nullish()
+  "amendedToSerial": zod.string().nullish(),
+  "costTotal": zod.number().optional().describe('Internal — cost of goods for this invoice (cost at sale)'),
+  "returnsProfit": zod.number().optional().describe('Internal — profit effect of returns\/exchanges made against this invoice'),
+  "zeroCostLines": zod.number().optional().describe('Internal — lines with no known cost (profit may be overstated)'),
+  "profit": zod.number().optional().describe('Internal — total − cost − craftsman commission + returns effect. Never printed.')
 })
 
 
@@ -1748,7 +1780,11 @@ export const CancelSalesInvoiceResponse = zod.object({
   "amendedFromBy": zod.string().nullish(),
   "amendedFromAt": zod.string().nullish(),
   "amendedToId": zod.number().nullish(),
-  "amendedToSerial": zod.string().nullish()
+  "amendedToSerial": zod.string().nullish(),
+  "costTotal": zod.number().optional().describe('Internal — cost of goods for this invoice (cost at sale)'),
+  "returnsProfit": zod.number().optional().describe('Internal — profit effect of returns\/exchanges made against this invoice'),
+  "zeroCostLines": zod.number().optional().describe('Internal — lines with no known cost (profit may be overstated)'),
+  "profit": zod.number().optional().describe('Internal — total − cost − craftsman commission + returns effect. Never printed.')
 })
 
 
@@ -1825,7 +1861,11 @@ export const LookupSalesInvoiceBySerialResponse = zod.object({
   "amendedFromBy": zod.string().nullish(),
   "amendedFromAt": zod.string().nullish(),
   "amendedToId": zod.number().nullish(),
-  "amendedToSerial": zod.string().nullish()
+  "amendedToSerial": zod.string().nullish(),
+  "costTotal": zod.number().optional().describe('Internal — cost of goods for this invoice (cost at sale)'),
+  "returnsProfit": zod.number().optional().describe('Internal — profit effect of returns\/exchanges made against this invoice'),
+  "zeroCostLines": zod.number().optional().describe('Internal — lines with no known cost (profit may be overstated)'),
+  "profit": zod.number().optional().describe('Internal — total − cost − craftsman commission + returns effect. Never printed.')
 })
 
 
@@ -2606,6 +2646,46 @@ export const GetProfitReportResponse = zod.object({
   "count": zod.number().optional()
 }))
 }))
+
+
+/**
+ * @summary Profit of every live sales invoice in a period (internal, never printed)
+ */
+export const GetInvoiceProfitReportQueryParams = zod.object({
+  "dateFrom": zod.coerce.string().optional(),
+  "dateTo": zod.coerce.string().optional()
+})
+
+export const GetInvoiceProfitReportResponse = zod.object({
+  "dateFrom": zod.string(),
+  "dateTo": zod.string(),
+  "items": zod.array(zod.object({
+  "id": zod.number(),
+  "serial": zod.string(),
+  "createdAt": zod.string(),
+  "paymentType": zod.string().optional(),
+  "customerName": zod.string().nullish(),
+  "craftsmanName": zod.string().nullish(),
+  "total": zod.number(),
+  "costTotal": zod.number(),
+  "commission": zod.number(),
+  "returnsProfit": zod.number(),
+  "profit": zod.number(),
+  "margin": zod.number(),
+  "zeroCostLines": zod.number()
+})),
+  "totals": zod.object({
+  "invoiceCount": zod.number(),
+  "total": zod.number(),
+  "costTotal": zod.number(),
+  "commission": zod.number(),
+  "returnsProfit": zod.number(),
+  "profit": zod.number(),
+  "margin": zod.number(),
+  "lossCount": zod.number(),
+  "zeroCostInvoices": zod.number()
+})
+})
 
 
 export const GetCraftsmanCommissionReportQueryParams = zod.object({

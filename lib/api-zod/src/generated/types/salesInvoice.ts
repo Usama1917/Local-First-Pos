@@ -47,4 +47,12 @@ export interface SalesInvoice {
   amendedToId?: number | null;
   /** @nullable */
   amendedToSerial?: string | null;
+  /** Internal — cost of goods for this invoice (cost at sale) */
+  costTotal?: number;
+  /** Internal — profit effect of returns/exchanges made against this invoice */
+  returnsProfit?: number;
+  /** Internal — lines with no known cost (profit may be overstated) */
+  zeroCostLines?: number;
+  /** Internal — total − cost − craftsman commission + returns effect. Never printed. */
+  profit?: number;
 }

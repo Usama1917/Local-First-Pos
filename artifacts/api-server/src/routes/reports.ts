@@ -1,5 +1,6 @@
 import { Router } from "express";
 import db from "../lib/db.js";
+import { INVOICE_PROFIT_COLUMNS } from "../lib/invoice-profit.js";
 
 const router = Router();
 
@@ -332,6 +333,54 @@ router.get("/reports/profit", (req, res) => {
     byCategory: withProfit(byCategory),
     byProduct: withProfit(byProduct),
     expensesByCategory,
+  });
+});
+
+// Every live invoice in the range with its own profit — the per-invoice view of
+// the profit report. Same formula as the invoices list (lib/invoice-profit.ts).
+router.get("/reports/invoice-profit", (req, res) => {
+  const { dateFrom, dateTo } = req.query as any;
+  const from = dateFrom || monthStart();
+  const to = dateTo || todayLocal();
+  const rows = db.prepare(`
+    SELECT si.id, si.serial, si.createdAt, si.paymentType, si.total,
+           si.craftsmanCommission as commission,
+           c.name as customerName, cr.name as craftsmanName,
+           ${INVOICE_PROFIT_COLUMNS}
+    FROM sales_invoices si
+    LEFT JOIN customers c ON si.customerId = c.id
+    LEFT JOIN craftsmen cr ON si.craftsmanId = cr.id
+    WHERE ${LIVE_INVOICES} AND date(si.createdAt) BETWEEN ? AND ?
+    ORDER BY si.createdAt DESC, si.id DESC
+  `).all(from, to) as any[];
+
+  const items = rows.map((r) => ({
+    ...r,
+    total: r2(r.total),
+    commission: r2(r.commission),
+    costTotal: r2(r.costTotal),
+    returnsProfit: r2(r.returnsProfit),
+    profit: r2(r.profit),
+    margin: r.total > 0 ? r2((r.profit / r.total) * 100) : 0,
+  }));
+  const sum = (k: string) => r2(items.reduce((s, r: any) => s + (r[k] || 0), 0));
+  const total = sum("total");
+  const profit = sum("profit");
+  res.json({
+    dateFrom: from,
+    dateTo: to,
+    items,
+    totals: {
+      invoiceCount: items.length,
+      total,
+      costTotal: sum("costTotal"),
+      commission: sum("commission"),
+      returnsProfit: sum("returnsProfit"),
+      profit,
+      margin: total > 0 ? r2((profit / total) * 100) : 0,
+      lossCount: items.filter((r) => r.profit < 0).length,
+      zeroCostInvoices: items.filter((r) => r.zeroCostLines > 0).length,
+    },
   });
 });
 

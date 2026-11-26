@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { formatCurrency, formatNumber } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from "recharts";
+import { InvoiceProfitTable } from "@/components/invoice-profit-table";
 import { TrendingUp, TrendingDown, AlertTriangle, Wallet, HardHat, Package, Coins } from "lucide-react";
 
 /** Money coloured by sign — profit green, loss red. */
@@ -319,6 +320,8 @@ export function ProfitTab({
         icon={TrendingUp}
         emptyLabel="لا توجد مبيعات في الفترة دي"
       />
+
+      <InvoiceProfitTable dateFrom={dateFrom} dateTo={dateTo} />
 
       {p.commission > 0 && (
         <p className="flex items-center gap-2 text-xs text-muted-foreground">
